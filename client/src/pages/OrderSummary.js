@@ -385,6 +385,68 @@ const CheckoutFlow = () => {
     fetchAll();
   }, [navigate, state]);
 
+  // Add this useEffect hook for handling payment returns
+  useEffect(() => {
+    // Check if returning from payment gateway (URL contains payment status info)
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentStatus = urlParams.get('status');
+    
+    if (paymentStatus) {
+      // Get the pending order info from localStorage
+      const pendingOrderId = localStorage.getItem('pendingOrderId');
+      const pendingOrderNumber = localStorage.getItem('pendingOrderNumber');
+      
+      if (pendingOrderId && pendingOrderNumber) {
+        // Clear localStorage
+        localStorage.removeItem('pendingOrderId');
+        localStorage.removeItem('pendingOrderNumber');
+        
+        if (paymentStatus === 'COMPLETED' || paymentStatus === 'SUCCESS') {
+          // Update order status in Firebase
+          const updateOrder = async () => {
+            try {
+              const orderRef = doc(db, 'orders', pendingOrderId);
+              await updateDoc(orderRef, {
+                status: 'CONFIRMED',
+                paymentStatus: 'COMPLETED',
+                updatedAt: Timestamp.now()
+              });
+              
+              // Set order as complete in component state
+              setOrderNumber(pendingOrderNumber);
+              setOrderPlaced(true);
+              
+              // Show success message
+              setSnackbarMessage('Payment successful! Your order has been confirmed.');
+              setSnackbarSeverity('success');
+              setSnackbarOpen(true);
+              
+              // Redirect to order confirmation page
+              setTimeout(() => {
+                navigate('/order-confirmation', { 
+                  state: { 
+                    orderNumber: pendingOrderNumber,
+                    amount: urlParams.get('amount') || cartData.totalPrice,
+                    status: 'SUCCESS'
+                  } 
+                });
+              }, 3000);
+            } catch (error) {
+              console.error('Error updating order status:', error);
+            }
+          };
+          
+          updateOrder();
+        } else if (paymentStatus === 'FAILED' || paymentStatus === 'FAILURE') {
+          // Handle failed payment
+          setSnackbarMessage('Payment failed. Please try again or choose a different payment method.');
+          setSnackbarSeverity('error');
+          setSnackbarOpen(true);
+        }
+      }
+    }
+  }, [navigate, cartData.totalPrice]);
+
   // Handle input changes for personal info
   const handlePersonalInfoChange = (e) => {
     const { name, value } = e.target;
@@ -1250,8 +1312,8 @@ const CheckoutFlow = () => {
   orderNumber,
   setOrderNumber}) => {
 
-   
-    const handleSubmitOrder = async () => {
+   // Replace the existing handleSubmitOrder function with this implementation
+const handlePaymentProcess = async () => {
   setPaymentProcessing(true);
   
   try {
@@ -1273,7 +1335,7 @@ const CheckoutFlow = () => {
       };
     });
     
-    // Save order to Firebase with detailed items
+    // Save order to Firebase with PENDING status
     const orderRef = await addDoc(collection(db, 'orders'), {
       userId: auth.currentUser.uid,
       orderNumber: generatedOrderNumber,
@@ -1283,16 +1345,16 @@ const CheckoutFlow = () => {
         billingAddress: sameAsBilling ? deliveryAddress : billingAddress,
         cartData: {
           ...cartData,
-          items: orderItems // Use the detailed items array
+          items: orderItems
         },
         items: orderItems,
         totalAmount: cartData.totalPrice,
       },
       status: 'PENDING',
-      paymentStatus: 'AWAITING_CONFIRMATION',
-      paymentMethod: 'OFFLINE',
+      paymentStatus: 'INITIATED',
+      paymentMethod: 'ONLINE',
       createdAt: Timestamp.now(),
-      notes: "Order placed during payment gateway maintenance."
+      notes: "Payment in process via PhonePe gateway."
     });
 
     // Store cart items as order items with more detail
@@ -1305,50 +1367,47 @@ const CheckoutFlow = () => {
         quantity: item.quantity,
         price: item.price,
         name: item.name,
-        image: item.image, // Include the image URL
-        totalItemPrice: item.totalItemPrice, // Include the calculated total price
+        image: item.image,
+        totalItemPrice: item.totalItemPrice,
         createdAt: Timestamp.now()
       });
     });
 
     await Promise.all(orderItemsPromises);
     
-    // Clear cart after successful order placement
-    const cartQuery = query(
-      collection(db, 'cart'),
-      where('userId', '==', auth.currentUser.uid)
-    );
+    // Call the payment API to create a payment request
+    const paymentData = {
+      amount: cartData.totalPrice,
+      merchantOrderId: generatedOrderNumber
+    };
     
-    const cartSnapshot = await getDocs(cartQuery);
-    const deletePromises = cartSnapshot.docs.map(doc => deleteDoc(doc.ref));
-    await Promise.all(deletePromises);
+    // Log the request for debugging
+    console.log('Initiating payment with data:', paymentData);
     
-    // Order placed successfully
-    setOrderPlaced(true);
-    setSnackbarMessage('Order placed successfully!');
-    setSnackbarSeverity('success');
-    setSnackbarOpen(true);
+    // Make the API call to your serverless function
+    const response = await axios.post('/api/create-payment', paymentData);
     
-    // Redirect to order confirmation after 3 seconds
-    setTimeout(() => {
-      navigate('/order-confirmation', { 
-        state: { 
-          orderNumber: generatedOrderNumber,
-          amount: cartData.totalPrice,
-          status: 'SUCCESS',
-          items: orderItems // Pass the items to the confirmation page
-        } 
-      });
-    }, 3000);
+    console.log('Payment API response:', response.data);
     
+    if (response.data && response.data.redirectUrl) {
+      // Store order ID in localStorage for reference after payment
+      localStorage.setItem('pendingOrderId', orderRef.id);
+      localStorage.setItem('pendingOrderNumber', generatedOrderNumber);
+      
+      // Redirect to the payment gateway
+      window.location.href = response.data.redirectUrl;
+    } else {
+      throw new Error('Invalid payment gateway response');
+    }
   } catch (error) {
-    console.error('Order Error:', error);
-    setSnackbarMessage('There was a problem placing your order. Please try again.');
+    console.error('Payment Error:', error);
+    setSnackbarMessage('There was a problem initiating the payment. Please try again.');
     setSnackbarSeverity('error');
     setSnackbarOpen(true);
     setPaymentProcessing(false);
   }
 };
+  
     return (
       <StyledPaper elevation={0}>
         <SectionHeading>
@@ -1387,10 +1446,10 @@ const CheckoutFlow = () => {
               sx={{ mb: 3, backgroundColor: '#3D405B' }}
             >
               <Typography variant="subtitle1" sx={{ fontWeight: 500, mb: 1 }}>
-                Payment Gateway Maintenance
+                Secure Payment
               </Typography>
               <Typography variant="body2">
-                Our payment gateway is currently undergoing maintenance. You can still place your order, and our team will contact you shortly to confirm payment details.
+                Your payment will be processed securely through PhonePe. After completing your payment, you'll be redirected back to our website.
               </Typography>
             </Alert>
 
@@ -1409,7 +1468,7 @@ const CheckoutFlow = () => {
 
               <Button
                 variant="contained"
-                onClick={handleSubmitOrder}
+                onClick={handlePaymentProcess}
                 disabled={paymentProcessing}
                 size="large"
                 fullWidth
@@ -1425,11 +1484,11 @@ const CheckoutFlow = () => {
                   paymentProcessing ? (
                     <CircularProgress size={24} color="inherit" />
                   ) : (
-                    <ShoppingBag />
+                    <Payment />
                   )
                 }
               >
-                {paymentProcessing ? 'Processing...' : 'Place Order Now'}
+                {paymentProcessing ? 'Processing...' : 'Proceed to Payment'}
               </Button>
             </Box>
 
@@ -1444,22 +1503,28 @@ const CheckoutFlow = () => {
               mb: 3 
             }}>
               <Chip 
-                label="Cash on Delivery" 
-                variant="outlined" 
-                color="primary"
-                icon={<LocalShipping />}
-              />
-              <Chip 
-                label="Bank Transfer" 
+                label="Credit/Debit Card" 
                 variant="outlined" 
                 color="primary"
                 icon={<Payment />}
               />
               <Chip 
-                label="UPI/Phone Pe" 
+                label="UPI" 
                 variant="outlined" 
                 color="primary"
                 icon={<PhoneAndroid />}
+              />
+              <Chip 
+                label="PhonePe Wallet" 
+                variant="outlined" 
+                color="primary"
+                icon={<Payment />}
+              />
+              <Chip 
+                label="Net Banking" 
+                variant="outlined" 
+                color="primary"
+                icon={<LockOutlined />}
               />
             </Box>
 
@@ -1811,4 +1876,4 @@ const CheckoutFlow = () => {
   );
 };
 
-export default CheckoutFlow;
+export default CheckoutFlow; 
