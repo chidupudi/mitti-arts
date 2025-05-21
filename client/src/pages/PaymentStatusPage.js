@@ -28,6 +28,17 @@ import {
   Card,
   CardContent,
   Fade,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  Stepper,
+  Step,
+  StepLabel,
+  StepContent,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
   useMediaQuery,
   useTheme,
   styled
@@ -41,7 +52,16 @@ import {
   ShoppingBag,
   Home,
   Payment,
-  LocalShipping
+  LocalShipping,
+  CreditCard,
+  Receipt,
+  ExpandMore,
+  ReceiptLong,
+  EventNote,
+  CancelOutlined,
+  InfoOutlined,
+  ArrowBack,
+  ShoppingCartOutlined
 } from '@mui/icons-material';
 
 // Custom styled components
@@ -49,7 +69,8 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
   borderRadius: theme.shape.borderRadius,
   boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
-  background: '#FFFFFF'
+  background: '#FFFFFF',
+  overflow: 'hidden'
 }));
 
 const SectionHeading = styled(Typography)(({ theme }) => ({
@@ -69,23 +90,67 @@ const SectionHeading = styled(Typography)(({ theme }) => ({
   }
 }));
 
-const StatusIconContainer = styled(Box)(({ theme, status }) => ({
-  width: 80,
-  height: 80,
-  borderRadius: '50%',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  marginBottom: theme.spacing(2),
-  backgroundColor: status === 'SUCCESS' 
-    ? theme.palette.success.light 
-    : status === 'FAILED' 
-      ? theme.palette.error.light 
-      : theme.palette.warning.light,
+const StatusBanner = styled(Box)(({ theme, status }) => {
+  const getBackground = () => {
+    switch (status) {
+      case 'SUCCESS':
+      case 'COMPLETED':
+        return `linear-gradient(135deg, ${theme.palette.success.light}, ${theme.palette.success.main})`;
+      case 'FAILED':
+      case 'FAILURE':
+        return `linear-gradient(135deg, ${theme.palette.error.light}, ${theme.palette.error.main})`;
+      default:
+        return `linear-gradient(135deg, ${theme.palette.warning.light}, ${theme.palette.warning.main})`;
+    }
+  };
+
+  return {
+    background: getBackground(),
+    color: '#fff',
+    padding: theme.spacing(2, 3),
+    borderRadius: `${theme.shape.borderRadius}px ${theme.shape.borderRadius}px 0 0`,
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing(1.5),
+    marginBottom: theme.spacing(3),
+    marginLeft: theme.spacing(-3),
+    marginRight: theme.spacing(-3),
+    marginTop: theme.spacing(-3),
+    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+  };
+});
+
+const ErrorDetailCard = styled(Card)(({ theme }) => ({
+  backgroundColor: theme.palette.error.light,
+  color: theme.palette.error.dark,
+  marginTop: theme.spacing(2),
+  marginBottom: theme.spacing(3),
+  '& .MuiCardContent-root': {
+    paddingTop: theme.spacing(1.5),
+    paddingBottom: theme.spacing(1.5),
+  }
 }));
 
+const InfoItem = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  justifyContent: 'space-between',
+  padding: theme.spacing(1.2, 0),
+  borderBottom: `1px solid ${theme.palette.divider}`,
+  '&:last-child': {
+    borderBottom: 'none'
+  }
+}));
+
+const PaymentDetailItem = styled(ListItem)(({ theme }) => ({
+  backgroundColor: theme.palette.background.paper,
+  borderRadius: theme.shape.borderRadius,
+  marginBottom: theme.spacing(1),
+  border: `1px solid ${theme.palette.divider}`
+}));
+
+// Enhanced PaymentStatusPage Component
 const PaymentStatusPage = () => {
-  // Theme setup
+  // Theme and responsive setup
   const theme = useTheme();
   theme.palette.primary = {
     ...theme.palette.primary,
@@ -115,10 +180,13 @@ const PaymentStatusPage = () => {
   const [paymentStatus, setPaymentStatus] = useState('PENDING');
   const [orderDetails, setOrderDetails] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const [errorDetails, setErrorDetails] = useState(null);
+  const [transactionDetails, setTransactionDetails] = useState([]);
   const [paymentInfo, setPaymentInfo] = useState({
     amount: 0,
     transactionId: '',
     orderId: '',
+    merchantOrderId: '',
     timestamp: null
   });
   
@@ -184,6 +252,7 @@ const PaymentStatusPage = () => {
             amount: data.orderDetails?.totalAmount || 0,
             transactionId: orderId,
             orderId: data.orderNumber,
+            merchantOrderId: orderId,
             timestamp: data.updatedAt
           });
         }
@@ -191,6 +260,7 @@ const PaymentStatusPage = () => {
         // If no Firebase orderId, just set basic info
         setPaymentInfo({
           orderId,
+          merchantOrderId: orderId,
           transactionId: orderId,
           timestamp: new Date()
         });
@@ -200,7 +270,8 @@ const PaymentStatusPage = () => {
       localStorage.removeItem('pendingOrderId');
       localStorage.removeItem('pendingOrderNumber');
       
-      setLoading(false);
+      // Now fetch more details from API
+      fetchPaymentStatus(orderId);
     } catch (error) {
       console.error('Error handling payment status:', error);
       setErrorMessage('Error updating order status');
@@ -208,27 +279,50 @@ const PaymentStatusPage = () => {
     }
   };
   
-  // Fetch payment status from the API for cases when not redirected with status
+  // Fetch payment status from the API
   const fetchPaymentStatus = async (orderId) => {
     try {
       // Call the payment status API
       const response = await axios.get(`/api/payment-status/${orderId}`);
       
-      if (response.data.success) {
-        const { status, amount, transactionId, orderId: responseOrderId } = response.data.data;
-        setPaymentStatus(status);
+      if (response.data) {
+        // Set payment status
+        setPaymentStatus(response.data.data.status);
         
+        // Set payment info
         setPaymentInfo({
-          amount,
-          transactionId,
-          orderId: responseOrderId,
-          timestamp: new Date()
+          ...paymentInfo,
+          amount: response.data.data.amount,
+          transactionId: response.data.data.transactionId,
+          orderId: response.data.data.orderId,
+          merchantOrderId: response.data.data.merchantOrderId,
+          timestamp: response.data.data.updatedAt || new Date()
         });
         
+        // Set transaction details if available
+        if (response.data.data.paymentDetails && response.data.data.paymentDetails.length > 0) {
+          setTransactionDetails(response.data.data.paymentDetails);
+        }
+        
+        // Set error details if payment failed
+        if (response.data.data.status === 'FAILED') {
+          // Extract error details from the first payment detail
+          const paymentDetail = response.data.data.paymentDetails?.[0] || {};
+          setErrorDetails({
+            errorCode: paymentDetail.errorCode || response.data.data.fullResponse?.errorCode,
+            detailedErrorCode: paymentDetail.detailedErrorCode || response.data.data.fullResponse?.detailedErrorCode,
+            message: response.data.message
+          });
+        }
+        
         // Fetch order details from Firebase
-        fetchOrderFromFirebase(orderId, status);
+        if (!orderDetails) {
+          fetchOrderFromFirebase(orderId, response.data.data.status);
+        } else {
+          setLoading(false);
+        }
       } else {
-        setErrorMessage(response.data.message || 'Error checking payment status');
+        setErrorMessage(response.data?.message || 'Error checking payment status');
         setLoading(false);
       }
     } catch (error) {
@@ -269,7 +363,7 @@ const PaymentStatusPage = () => {
   
   // Helper function to format amount
   const formatAmount = (amount) => {
-    if (!amount) return '₹0.00';
+    if (!amount && amount !== 0) return '₹0.00';
     return `₹${Number(amount).toFixed(2)}`;
   };
   
@@ -288,6 +382,85 @@ const PaymentStatusPage = () => {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  // Helper function to get a user-friendly error message
+  const getErrorMessage = (errorCode) => {
+    const errorMessages = {
+      'TXN_CANCELLED': 'Transaction was cancelled by the user.',
+      'REQUEST_CANCEL_BY_REQUESTER': 'Payment request was cancelled.',
+      'PAYMENT_DECLINED': 'Payment was declined by the bank.',
+      'INSUFFICIENT_FUNDS': 'Insufficient funds in your account.',
+      'GATEWAY_ERROR': 'There was an issue with the payment gateway.',
+      'NETWORK_ERROR': 'Network connectivity issues occurred.',
+      'INVALID_PAYMENT_METHOD': 'The selected payment method is invalid.',
+      'AUTHORIZATION_FAILED': 'Payment authorization failed.',
+      'SESSION_EXPIRED': 'Payment session expired.'
+    };
+    
+    return errorMessages[errorCode] || 'There was an issue with your payment.';
+  };
+  
+  // Get transaction steps
+  const getTransactionSteps = () => {
+    const steps = [];
+    
+    // Add order created step
+    steps.push({
+      label: 'Order Created',
+      description: `Order #${paymentInfo.merchantOrderId || paymentInfo.orderId} was created`,
+      date: orderDetails?.createdAt ? formatDate(orderDetails.createdAt) : formatDate(paymentInfo.timestamp),
+      completed: true
+    });
+    
+    // Add payment initiated step
+    steps.push({
+      label: 'Payment Initiated',
+      description: `Payment of ${formatAmount(paymentInfo.amount)} was initiated`,
+      date: transactionDetails[0]?.timestamp ? formatDate(transactionDetails[0].timestamp) : formatDate(paymentInfo.timestamp),
+      completed: true
+    });
+    
+    // Add payment status step
+    if (paymentStatus === 'SUCCESS') {
+      steps.push({
+        label: 'Payment Successful',
+        description: 'Your payment was processed successfully',
+        date: formatDate(paymentInfo.timestamp),
+        completed: true
+      });
+      
+      // Add order processing step
+      steps.push({
+        label: 'Order Processing',
+        description: 'Your order is being processed',
+        completed: true
+      });
+      
+      // Add shipping step
+      steps.push({
+        label: 'Order Shipping',
+        description: 'Your order will be shipped soon',
+        completed: false
+      });
+    } else if (paymentStatus === 'FAILED') {
+      steps.push({
+        label: 'Payment Failed',
+        description: errorDetails?.message || 'Your payment could not be processed',
+        date: formatDate(paymentInfo.timestamp),
+        completed: true,
+        error: true
+      });
+    } else {
+      steps.push({
+        label: 'Payment Pending',
+        description: 'Your payment is being processed',
+        date: formatDate(paymentInfo.timestamp),
+        completed: false
+      });
+    }
+    
+    return steps;
   };
   
   // Render loading state
@@ -311,220 +484,342 @@ const PaymentStatusPage = () => {
   return (
     <Fade in={true}>
       <Container maxWidth="md" sx={{ py: 4 }}>
-        <StyledPaper sx={{ textAlign: 'center', py: 4 }}>
-          {/* Status Icon */}
-          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
-            <StatusIconContainer status={paymentStatus}>
-              {paymentStatus === 'SUCCESS' ? (
-                <CheckCircle sx={{ fontSize: 40, color: 'success.dark' }} />
-              ) : paymentStatus === 'FAILED' ? (
-                <Error sx={{ fontSize: 40, color: 'error.dark' }} />
-              ) : (
-                <AccessTime sx={{ fontSize: 40, color: 'warning.dark' }} />
-              )}
-            </StatusIconContainer>
-          </Box>
+        <StyledPaper>
+          {/* Status Banner */}
+          <StatusBanner status={paymentStatus}>
+            {paymentStatus === 'SUCCESS' ? (
+              <CheckCircle sx={{ fontSize: 28 }} />
+            ) : paymentStatus === 'FAILED' ? (
+              <Error sx={{ fontSize: 28 }} />
+            ) : (
+              <AccessTime sx={{ fontSize: 28 }} />
+            )}
+            <Box>
+              <Typography variant="h6" fontWeight={600} sx={{ lineHeight: 1.2 }}>
+                {paymentStatus === 'SUCCESS' ? 'Payment Successful' : 
+                paymentStatus === 'FAILED' ? 'Payment Failed' : 
+                'Payment Processing'}
+              </Typography>
+              <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                Order #{paymentInfo.merchantOrderId || paymentInfo.orderId || 'Unknown'}
+              </Typography>
+            </Box>
+          </StatusBanner>
           
-          {/* Status Title */}
-          <Typography variant="h5" fontWeight={600} gutterBottom>
-            {paymentStatus === 'SUCCESS' ? 'Payment Successful!' : 
-             paymentStatus === 'FAILED' ? 'Payment Failed' : 
-             'Payment Processing'}
-          </Typography>
-          
-          {/* Status Message */}
-          <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 500, mx: 'auto', mb: 3 }}>
-            {paymentStatus === 'SUCCESS' ? 
-              'Your payment has been successfully processed. Your order is confirmed!' : 
-             paymentStatus === 'FAILED' ? 
-              'There was an issue processing your payment. Please try again or choose a different payment method.' : 
-              'Your payment is being processed. This may take a moment...'}
-          </Typography>
-          
-          {/* Error Message if any */}
-          {errorMessage && (
-            <Alert severity="error" sx={{ maxWidth: 500, mx: 'auto', mb: 3 }}>
-              {errorMessage}
-            </Alert>
+          {/* Error Details for Failed Payments */}
+          {paymentStatus === 'FAILED' && errorDetails && (
+            <ErrorDetailCard variant="outlined">
+              <CardContent>
+                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                  <CancelOutlined sx={{ mt: 0.5 }} />
+                  <Box>
+                    <Typography variant="subtitle2" fontWeight={600}>
+                      {errorDetails.errorCode || 'Payment Error'}
+                    </Typography>
+                    <Typography variant="body2">
+                      {getErrorMessage(errorDetails.detailedErrorCode) || errorDetails.message}
+                    </Typography>
+                  </Box>
+                </Box>
+              </CardContent>
+            </ErrorDetailCard>
           )}
           
-          {/* Payment Information */}
-          <Card variant="outlined" sx={{ maxWidth: 500, mx: 'auto', mb: 4 }}>
+          {/* Payment Information Card */}
+          <Card variant="outlined" sx={{ mb: 4 }}>
             <CardContent>
+              <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2 }}>
+                Payment Information
+              </Typography>
+              
               <Grid container spacing={2}>
-                <Grid item xs={6}>
-                  <Typography variant="body2" color="text.secondary">Order ID</Typography>
-                  <Typography variant="body1" fontWeight={500}>
-                    {paymentInfo.orderId || 'N/A'}
-                  </Typography>
+                <Grid item xs={12} md={6}>
+                  <InfoItem>
+                    <Typography variant="body2" color="text.secondary">Transaction ID</Typography>
+                    <Typography variant="body2" fontWeight={500}>
+                      {paymentInfo.transactionId || 'N/A'}
+                    </Typography>
+                  </InfoItem>
+                  
+                  <InfoItem>
+                    <Typography variant="body2" color="text.secondary">Amount</Typography>
+                    <Typography variant="body2" fontWeight={500}>
+                      {formatAmount(paymentInfo.amount)}
+                    </Typography>
+                  </InfoItem>
+                  
+                  <InfoItem>
+                    <Typography variant="body2" color="text.secondary">Date</Typography>
+                    <Typography variant="body2" fontWeight={500}>
+                      {formatDate(paymentInfo.timestamp)}
+                    </Typography>
+                  </InfoItem>
                 </Grid>
                 
-                <Grid item xs={6}>
-                  <Typography variant="body2" color="text.secondary">Amount</Typography>
-                  <Typography variant="body1" fontWeight={500}>
-                    {formatAmount(paymentInfo.amount)}
-                  </Typography>
-                </Grid>
-                
-                <Grid item xs={6}>
-                  <Typography variant="body2" color="text.secondary">Date</Typography>
-                  <Typography variant="body1" fontWeight={500}>
-                    {formatDate(paymentInfo.timestamp)}
-                  </Typography>
-                </Grid>
-                
-                <Grid item xs={6}>
-                  <Typography variant="body2" color="text.secondary">Status</Typography>
-                  <Chip 
-                    label={paymentStatus} 
-                    color={
-                      paymentStatus === 'SUCCESS' ? 'success' : 
-                      paymentStatus === 'FAILED' ? 'error' : 'warning'
-                    }
-                    size="small"
-                    sx={{ fontWeight: 600 }}
-                  />
+                <Grid item xs={12} md={6}>
+                  <InfoItem>
+                    <Typography variant="body2" color="text.secondary">Order ID</Typography>
+                    <Typography variant="body2" fontWeight={500}>
+                      {paymentInfo.merchantOrderId || paymentInfo.orderId || 'N/A'}
+                    </Typography>
+                  </InfoItem>
+                  
+                  <InfoItem>
+                    <Typography variant="body2" color="text.secondary">Status</Typography>
+                    <Chip 
+                      label={paymentStatus} 
+                      size="small"
+                      color={
+                        paymentStatus === 'SUCCESS' ? 'success' : 
+                        paymentStatus === 'FAILED' ? 'error' : 'warning'
+                      }
+                      sx={{ fontWeight: 600 }}
+                    />
+                  </InfoItem>
+                  
+                  <InfoItem>
+                    <Typography variant="body2" color="text.secondary">Payment Method</Typography>
+                    <Typography variant="body2" fontWeight={500}>
+                      {transactionDetails[0]?.paymentMode || 'Online Payment'}
+                    </Typography>
+                  </InfoItem>
                 </Grid>
               </Grid>
             </CardContent>
           </Card>
           
+          {/* Transaction Timeline */}
+          <Box sx={{ mb: 4 }}>
+            <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2 }}>
+              Order Timeline
+            </Typography>
+            
+            <Stepper orientation="vertical" sx={{ ml: -1 }}>
+              {getTransactionSteps().map((step, index) => (
+                <Step key={index} active={true} completed={step.completed}>
+                  <StepLabel
+                    StepIconProps={{
+                      sx: step.error ? { color: theme.palette.error.main } : {}
+                    }}
+                  >
+                    <Typography variant="subtitle2">{step.label}</Typography>
+                  </StepLabel>
+                  <StepContent>
+                    <Typography variant="body2" color="text.secondary">
+                      {step.description}
+                    </Typography>
+                    {step.date && (
+                      <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                        {step.date}
+                      </Typography>
+                    )}
+                  </StepContent>
+                </Step>
+              ))}
+            </Stepper>
+          </Box>
+          
+          {/* Technical Details Accordion (for detailed payment info) */}
+          {transactionDetails.length > 0 && (
+            <Accordion elevation={0} sx={{ border: '1px solid', borderColor: 'divider', mb: 4, '&:before': { display: 'none' } }}>
+              <AccordionSummary expandIcon={<ExpandMore />}>
+                <Typography variant="subtitle2" fontWeight={500}>
+                  Transaction Details
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <List disablePadding>
+                  {transactionDetails.map((detail, index) => (
+                    <PaymentDetailItem key={index} alignItems="flex-start" disablePadding sx={{ px: 2, py: 1.5 }}>
+                      <ListItemIcon sx={{ minWidth: 40 }}>
+                        <ReceiptLong color="primary" />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <Typography variant="body2" fontWeight={500}>
+                              Transaction {index + 1}
+                            </Typography>
+                            <Chip
+                              label={detail.state}
+                              size="small"
+                              color={
+                                detail.state === 'SUCCESS' || detail.state === 'COMPLETED' ? 'success' :
+                                detail.state === 'FAILED' ? 'error' : 'warning'
+                              }
+                              sx={{ fontWeight: 500, fontSize: '0.7rem' }}
+                            />
+                          </Box>
+                        }
+                        secondary={
+                          <Box sx={{ mt: 1 }}>
+                            <Grid container spacing={2}>
+                              <Grid item xs={12} sm={6}>
+                                <Typography variant="caption" color="text.secondary" display="block">
+                                  Transaction ID
+                                </Typography>
+                                <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
+                                  {detail.transactionId}
+                                </Typography>
+                              </Grid>
+                              <Grid item xs={12} sm={6}>
+                                <Typography variant="caption" color="text.secondary" display="block">
+                                  Payment Mode
+                                </Typography>
+                                <Typography variant="body2">
+                                  {detail.paymentMode}
+                                </Typography>
+                              </Grid>
+                              <Grid item xs={12} sm={6}>
+                                <Typography variant="caption" color="text.secondary" display="block">
+                                  Amount
+                                </Typography>
+                                <Typography variant="body2">
+                                  {formatAmount(detail.amount / 100)}
+                                </Typography>
+                              </Grid>
+                              <Grid item xs={12} sm={6}>
+                                <Typography variant="caption" color="text.secondary" display="block">
+                                  Timestamp
+                                </Typography>
+                                <Typography variant="body2">
+                                  {formatDate(detail.timestamp)}
+                                </Typography>
+                              </Grid>
+                              {detail.errorCode && (
+                                <Grid item xs={12}>
+                                  <Typography variant="caption" color="error" display="block">
+                                    Error: {detail.errorCode} - {detail.detailedErrorCode}
+                                  </Typography>
+                                </Grid>
+                              )}
+                            </Grid>
+                          </Box>
+                        }
+                      />
+                    </PaymentDetailItem>
+                  ))}
+                </List>
+              </AccordionDetails>
+            </Accordion>
+          )}
+          
           {/* Action Buttons */}
-          <Box sx={{ 
-            display: 'flex', 
-            justifyContent: 'center', 
-            gap: 2,
-            flexWrap: isMobile ? 'wrap' : 'nowrap'
-          }}>
-            {paymentStatus === 'SUCCESS' && (
-              <Button
-                variant="contained"
-                startIcon={<ShoppingBag />}
-                sx={{
-                  backgroundColor: theme.palette.primary.main,
-                  '&:hover': {
-                    backgroundColor: theme.palette.primary.dark,
-                  },
-                  py: 1.2,
-                  px: 3,
-                  minWidth: isMobile ? '100%' : 'auto'
-                }}
-                onClick={() => navigate('/orders')}
-              >
-                View Orders
-              </Button>
-            )}
-            
-            {paymentStatus === 'FAILED' && (
-              <Button
-                variant="contained"
-                startIcon={<Payment />}
-                sx={{
-                  backgroundColor: theme.palette.primary.main,
-                  '&:hover': {
-                    backgroundColor: theme.palette.primary.dark,
-                  },
-                  py: 1.2,
-                  px: 3,
-                  minWidth: isMobile ? '100%' : 'auto'
-                }}
-                onClick={() => navigate('/checkout')}
-              >
-                Try Again
-              </Button>
-            )}
-            
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
             <Button
               variant="outlined"
-              startIcon={<Home />}
+              startIcon={<ArrowBack />}
+              onClick={() => navigate('/')}
               sx={{
                 color: theme.palette.secondary.main,
                 borderColor: theme.palette.secondary.main,
                 '&:hover': {
                   borderColor: theme.palette.secondary.dark,
-                },
-                py: 1.2,
-                px: 3,
-                minWidth: isMobile ? '100%' : 'auto'
+                }
               }}
-              onClick={() => navigate('/')}
             >
-              Continue Shopping
+              Back to Home
             </Button>
-          </Box>
-          
-          {/* Shipping Info for successful payments */}
-          {paymentStatus === 'SUCCESS' && (
-            <Box sx={{ mt: 4, textAlign: 'center', color: 'text.secondary' }}>
-              <LocalShipping sx={{ fontSize: 30, mb: 1 }} />
-              <Typography variant="body1">
-                Your order will be processed and shipped soon.
-              </Typography>
-              <Typography variant="body2" sx={{ mt: 1 }}>
-                You will receive an email with delivery details.
-              </Typography>
+            
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              {paymentStatus === 'SUCCESS' ? (
+                <Button
+                  variant="contained"
+                  startIcon={<ShoppingBag />}
+                  onClick={() => navigate('/orders')}
+                  sx={{
+                    backgroundColor: theme.palette.primary.main,
+                    '&:hover': {
+                      backgroundColor: theme.palette.primary.dark,
+                    }
+                  }}
+                >
+                  View Orders
+                </Button>
+              ) : (
+                <Button
+                  variant="contained"
+                  startIcon={<ShoppingCartOutlined />}
+                  onClick={() => navigate('/checkout')}
+                  sx={{
+                    backgroundColor: theme.palette.primary.main,
+                    '&:hover': {
+                      backgroundColor: theme.palette.primary.dark,
+                    }
+                  }}
+                >
+                  Try Again
+                </Button>
+              )}
             </Box>
-          )}
+          </Box>
         </StyledPaper>
         
-        {/* Order Details Card (shown only when we have order details) */}
-        {orderDetails && orderDetails.orderDetails && (
+        {/* Order Details - Only show for successful payments */}
+        {orderDetails && orderDetails.orderDetails && paymentStatus === 'SUCCESS' && (
           <StyledPaper sx={{ mt: 3 }}>
-            <SectionHeading>Order Summary</SectionHeading>
+            <SectionHeading>Order Details</SectionHeading>
             
-            {/* Item List */}
+            {/* Display order items if available */}
             {orderDetails.orderDetails.items && orderDetails.orderDetails.items.length > 0 && (
               <Box sx={{ mb: 3 }}>
-                {orderDetails.orderDetails.items.map((item, idx) => (
-                  <Box 
-                    key={item.id || idx}
-                    sx={{ 
-                      display: 'flex', 
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      py: 1,
-                      borderBottom: idx < orderDetails.orderDetails.items.length - 1 ? '1px solid #eee' : 'none'
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Box 
-                        component="img"
-                        src={item.image || 'https://via.placeholder.com/40'}
-                        alt={item.name}
-                        sx={{
-                          width: 40,
-                          height: 40,
-                          borderRadius: 1,
-                          mr: 2,
-                          objectFit: 'cover'
-                        }}
-                      />
-                      <Box>
-                        <Typography variant="body1">{item.name}</Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Qty: {item.quantity}
+                <List disablePadding>
+                  {orderDetails.orderDetails.items.map((item, index) => (
+                    <ListItem 
+                      key={item.id || index}
+                      sx={{ py: 1, px: 0, borderBottom: index < orderDetails.orderDetails.items.length - 1 ? '1px solid #eee' : 'none' }}
+                      disablePadding
+                    >
+                      <Box sx={{ 
+                        display: 'flex', 
+                        width: '100%',
+                        alignItems: 'center' 
+                      }}>
+                        <Box 
+                          component="img"
+                          src={item.image || 'https://via.placeholder.com/40'}
+                          alt={item.name}
+                          sx={{
+                            width: 50,
+                            height: 50,
+                            borderRadius: 1,
+                            mr: 2,
+                            objectFit: 'cover'
+                          }}
+                        />
+                        <Box sx={{ flexGrow: 1 }}>
+                          <Typography variant="body1">{item.name}</Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Qty: {item.quantity}
+                          </Typography>
+                        </Box>
+                        <Typography variant="body1" fontWeight={500}>
+                          {formatAmount(item.price * item.quantity)}
                         </Typography>
                       </Box>
-                    </Box>
-                    <Typography variant="body1" fontWeight={500}>
-                      {formatAmount(item.price * item.quantity)}
-                    </Typography>
-                  </Box>
-                ))}
+                    </ListItem>
+                  ))}
+                </List>
               </Box>
             )}
             
-            {/* Price Summary */}
-            <Grid container spacing={2}>
+            {/* Shipping & Payment Summary */}
+            <Grid container spacing={3}>
               <Grid item xs={12} md={6}>
-                <Card variant="outlined">
+                <Card variant="outlined" sx={{ height: '100%' }}>
                   <CardContent>
-                    <Typography variant="subtitle2" gutterBottom>Delivery Address</Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
+                      <LocalShipping sx={{ mr: 1, color: theme.palette.primary.main }} />
+                      <Typography variant="subtitle2">Shipping Address</Typography>
+                    </Box>
+                    
                     <Typography variant="body2">
                       {orderDetails.orderDetails.personalInfo?.fullName}<br />
                       {orderDetails.orderDetails.deliveryAddress?.addressLine1}<br />
                       {orderDetails.orderDetails.deliveryAddress?.addressLine2 && 
                         `${orderDetails.orderDetails.deliveryAddress.addressLine2}<br />`}
+                      {orderDetails.orderDetails.deliveryAddress?.landmark && 
+                        `Landmark: ${orderDetails.orderDetails.deliveryAddress.landmark}<br />`}
                       {orderDetails.orderDetails.deliveryAddress?.city}, {' '}
                       {orderDetails.orderDetails.deliveryAddress?.state} {' '}
                       {orderDetails.orderDetails.deliveryAddress?.pincode}<br />
@@ -535,9 +830,12 @@ const PaymentStatusPage = () => {
               </Grid>
               
               <Grid item xs={12} md={6}>
-                <Card variant="outlined">
+                <Card variant="outlined" sx={{ height: '100%' }}>
                   <CardContent>
-                    <Typography variant="subtitle2" gutterBottom>Price Details</Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
+                      <Receipt sx={{ mr: 1, color: theme.palette.primary.main }} />
+                      <Typography variant="subtitle2">Order Summary</Typography>
+                    </Box>
                     
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                       <Typography variant="body2" color="text.secondary">Subtotal</Typography>
@@ -568,7 +866,21 @@ const PaymentStatusPage = () => {
                       <Typography variant="subtitle2">Total Amount</Typography>
                       <Typography variant="subtitle2">
                         {formatAmount(orderDetails.orderDetails.cartData?.totalPrice || 
-                                    orderDetails.orderDetails.totalAmount)}
+                                     orderDetails.orderDetails.totalAmount)}
+                      </Typography>
+                    </Box>
+                    
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+                      <Typography variant="body2" color="text.secondary">Payment Method</Typography>
+                      <Typography variant="body2">
+                        {orderDetails.paymentMethod || 'Online Payment'}
+                      </Typography>
+                    </Box>
+                    
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
+                      <Typography variant="body2" color="text.secondary">Order Date</Typography>
+                      <Typography variant="body2">
+                        {orderDetails.createdAt ? formatDate(orderDetails.createdAt) : 'N/A'}
                       </Typography>
                     </Box>
                   </CardContent>
@@ -577,6 +889,36 @@ const PaymentStatusPage = () => {
             </Grid>
           </StyledPaper>
         )}
+        
+        {/* Help Section */}
+        <Card variant="outlined" sx={{ mt: 3, backgroundColor: 'rgba(0, 0, 0, 0.02)' }}>
+          <CardContent>
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+              <InfoOutlined sx={{ mt: 0.5, color: theme.palette.info.main }} />
+              <Box>
+                <Typography variant="subtitle2" gutterBottom>
+                  Need Assistance?
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {paymentStatus === 'FAILED' 
+                    ? 'If you faced issues with the payment, please try again or use a different payment method. You can also contact our support team for help.'
+                    : paymentStatus === 'SUCCESS'
+                    ? 'If you have any questions about your order, our customer support team is here to help.'
+                    : 'If your payment status is still pending, please wait a while and refresh this page. Feel free to contact our support if the issue persists.'
+                  }
+                </Typography>
+                <Button
+                  variant="text"
+                  size="small"
+                  sx={{ mt: 1, color: theme.palette.primary.main }}
+                  onClick={() => navigate('/contact-us')}
+                >
+                  Contact Support
+                </Button>
+              </Box>
+            </Box>
+          </CardContent>
+        </Card>
       </Container>
     </Fade>
   );
