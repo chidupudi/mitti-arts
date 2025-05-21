@@ -89,7 +89,8 @@ const Order = () => {
           ...data,
           orderDate,
           deliveryDate,
-          status: data.status || 'Processing',
+         
+          
           paymentStatus: data.paymentStatus || 'PENDING',
           deliveryDetails: data.deliveryDetails || {
             company: 'Not assigned yet',
@@ -289,15 +290,8 @@ const Order = () => {
 
                     <Grid container spacing={2}>
                       <Grid item xs={12} md={3}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                          {getStatusIcon(order.status)}
-                          <Typography variant="body1" sx={{ ml: 1 }}>
-                            <b>Status:</b> {order.status}
-                          </Typography>
-                        </Box>
-                        <Typography variant="body2">
-                          <b>Estimated Delivery:</b> {formatDate(order.deliveryDate)}
-                        </Typography>
+                        
+                       
                       </Grid>
                       
                       <Grid item xs={12} md={3}>

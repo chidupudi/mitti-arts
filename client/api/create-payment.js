@@ -1,13 +1,25 @@
 // api/create-payment.js
 const axios = require('axios');
 const { getAuthToken, PAYMENT_API } = require('./utils/auth');
+const { 
+    generateChecksum, 
+    isValidOrigin, 
+    validateAmount,
+    rateLimiter 
+} = require('./utils/security');
 
 module.exports = async (req, res) => {
-    // Set CORS headers
-    res.setHeader('Access-Control-Allow-Credentials', true);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-    res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
+    // Improved CORS - only allow specific origins
+    const origin = req.headers.origin;
+    if (isValidOrigin(origin)) {
+        res.setHeader('Access-Control-Allow-Credentials', true);
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    } else {
+        // For security, still process the request but don't set CORS headers
+        console.warn(`Request from unauthorized origin: ${origin}`);
+    }
 
     // Handle preflight OPTIONS request
     if (req.method === 'OPTIONS') {
@@ -16,36 +28,99 @@ module.exports = async (req, res) => {
 
     // Only allow POST requests
     if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Method not allowed' });
+        return res.status(405).json({ 
+            success: false, 
+            code: 'METHOD_NOT_ALLOWED',
+            message: 'Method not allowed' 
+        });
+    }
+    
+    // Get client IP for rate limiting
+    const clientIp = req.headers['x-forwarded-for'] || 
+                    req.connection.remoteAddress;
+    
+    // Apply rate limiting
+    if (!rateLimiter.checkLimit(clientIp, 5)) { // 5 requests per minute
+        return res.status(429).json({
+            success: false,
+            code: 'RATE_LIMIT_EXCEEDED',
+            message: 'Too many requests, please try again later'
+        });
     }
 
     try {
-        const { amount, merchantOrderId } = req.body;
+        const { amount, merchantOrderId, userId, checksum } = req.body;
         
-        // Validate inputs
-        if (!amount || !merchantOrderId) {
-            return res.status(400).json({ error: 'Amount and merchantOrderId are required' });
+        // Log request with masked data
+        console.log('Payment request received:', {
+            merchantOrderId,
+            amount: amount ? '✓' : '✗',
+            userId: userId ? '✓' : '✗',
+            checksum: checksum ? '✓' : '✗',
+        });
+        
+        // Validate required inputs
+        if (!amount || !merchantOrderId || !userId || !checksum) {
+            return res.status(400).json({
+                success: false,
+                code: 'MISSING_PARAMETERS',
+                message: 'Amount, merchantOrderId, userId and checksum are required'
+            });
+        }
+        
+        // Verify checksum to ensure data integrity
+        const checksumValid = verifyChecksum(
+            { amount, merchantOrderId, userId, timestamp: req.body.timestamp }, 
+            checksum
+        );
+        
+        if (!checksumValid) {
+            // Log potential tampering attempt
+            console.error('SECURITY ALERT: Invalid checksum detected', {
+                ip: clientIp,
+                merchantOrderId,
+                userId
+            });
+            
+            return res.status(400).json({
+                success: false,
+                code: 'INVALID_CHECKSUM',
+                message: 'Security verification failed'
+            });
+        }
+        
+        // Validate amount (additional security)
+        if (!validateAmount(amount)) {
+            return res.status(400).json({
+                success: false,
+                code: 'INVALID_AMOUNT',
+                message: 'Invalid amount'
+            });
         }
 
         // Get auth token
         const token = await getAuthToken();
 
-        // Create payment payload
+        // Create payment payload with our own integrity hash
+        const timestamp = Date.now();
+        const integrityHash = crypto
+            .createHmac('sha256', SECRET_KEY)
+            .update(`${merchantOrderId}-${amount}-${timestamp}`)
+            .digest('hex');
+            
         const payload = {
             merchantOrderId,
             amount: parseInt(amount) * 100, // Convert to paisa
             expireAfter: 1200, // 20 minutes
+            integrityHash, // Add our internal hash for verification later
             paymentFlow: {
                 type: "PG_CHECKOUT",
                 message: "Payment for your order",
                 merchantUrls: {
-                    // CRITICAL: Redirect to the React route, not the API endpoint
                     redirectUrl: `https://mittiarts.com/payment-status/${merchantOrderId}`
                 }
             }
         };
-
-        console.log('Creating payment with payload:', payload);
 
         // Call PhonePe API to create payment
         const response = await axios.post(PAYMENT_API, payload, {
@@ -55,13 +130,27 @@ module.exports = async (req, res) => {
             }
         });
 
-        console.log('Create Payment Response:', response.data);
-        return res.status(200).json(response.data);
+        // Add our checksum to the response for frontend verification
+        const responseWithChecksum = {
+            ...response.data,
+            securityHash: generateChecksum({
+                ...response.data,
+                originalAmount: amount,
+                timestamp: Date.now()
+            })
+        };
+
+        return res.status(200).json(responseWithChecksum);
     } catch (error) {
-        console.error('Error creating payment:');
-        console.error('Status:', error.response?.status);
-        console.error('Headers:', error.response?.headers);
-        console.error('Data:', error.response?.data);
-        return res.status(500).json({ error: error.response?.data || error.message });
+        console.error('Error creating payment:', {
+            status: error.response?.status,
+            data: error.response?.data
+        });
+        
+        return res.status(500).json({
+            success: false,
+            code: 'PAYMENT_CREATE_ERROR',
+            message: 'Error creating payment'
+        });
     }
 };

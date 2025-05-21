@@ -122,6 +122,51 @@ const StyledBadge = styled(Badge)(({ theme }) => ({
   },
 }));
 
+const SECRET_KEY = 'your-very-strong-secret-key-min-32-chars';
+
+const sortObjectKeys = (obj) => {
+  if (typeof obj !== 'object' || obj === null) {
+    return obj;
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(sortObjectKeys);
+  }
+  
+  return Object.keys(obj)
+    .sort()
+    .reduce((result, key) => {
+      result[key] = sortObjectKeys(obj[key]);
+      return result;
+    }, {});
+};
+// Utility function to generate checksums
+const generateChecksum = (data) => {
+  // Sort object keys for consistent results regardless of property order
+  const sortedData = sortObjectKeys(data);
+  
+  // Convert to string
+  const dataString = JSON.stringify(sortedData);
+  
+  // Create HMAC using SHA-256
+  return CryptoJS.HmacSHA256(dataString, SECRET_KEY).toString();
+};
+// Verify checksum received from server
+const verifyChecksum = (data, providedChecksum) => {
+  // Remove checksum from data before verification
+  const { checksum, securityHash, ...dataWithoutChecksum } = data;
+  
+  // Generate new checksum and compare
+  const calculatedChecksum = generateChecksum(dataWithoutChecksum);
+  
+  // Return true if checksums match
+  return calculatedChecksum === (providedChecksum || securityHash);
+};
+
+const createIntegrityHash = (data) => {
+  return CryptoJS.SHA256(JSON.stringify(data)).toString();
+};
+
 const StyledTextField = styled(TextField)(({ theme }) => ({
   marginBottom: theme.spacing(2),
   '& .MuiOutlinedInput-root': {
@@ -169,6 +214,36 @@ const CustomStepIcon = (props) => {
       {completed ? <CheckCircle /> : icons[icon]}
     </StyledStepIcon>
   );
+};
+
+// Add this function to handle checking payment status with security
+const checkPaymentStatus = async (merchantOrderId, verificationData) => {
+  try {
+    // Generate checksum for verification data
+    const checksum = generateChecksum(verificationData);
+    
+    // Call payment status API with verification data
+    const response = await axios.post(`/api/payment-status/${merchantOrderId}`, {
+      merchantOrderId,
+      verificationData,
+      checksum
+    });
+    
+    // Verify response checksum
+    if (response.data && response.data.checksum) {
+      const isValid = verifyChecksum(response.data, response.data.checksum);
+      
+      if (!isValid) {
+        console.error('Security warning: Status response may have been tampered with');
+        throw new Error('Security verification failed');
+      }
+    }
+    
+    return response.data;
+  } catch (error) {
+    console.error('Error checking payment status:', error);
+    throw error;
+  }
 };
 
 // Define checkout steps
@@ -385,7 +460,7 @@ const CheckoutFlow = () => {
     fetchAll();
   }, [navigate, state]);
 
-  // Add this useEffect hook for handling payment returns
+// Modify the payment status handling in the useEffect
 useEffect(() => {
   // Check if returning from payment gateway (URL contains payment status info)
   const urlParams = new URLSearchParams(window.location.search);
@@ -396,13 +471,45 @@ useEffect(() => {
     const pendingOrderId = localStorage.getItem('pendingOrderId');
     const pendingOrderNumber = localStorage.getItem('pendingOrderNumber');
     
+    // Get verification data we stored before redirecting to payment gateway
+    let verificationData;
+    let verificationHash;
+    
+    try {
+      verificationData = JSON.parse(localStorage.getItem('paymentVerificationData') || '{}');
+      verificationHash = localStorage.getItem('paymentVerificationHash');
+      
+      // First verify our stored data hasn't been tampered with
+      const isStoredDataValid = verificationHash && generateChecksum(verificationData) === verificationHash;
+      
+      if (!isStoredDataValid) {
+        console.error('Security warning: Stored verification data may have been tampered with');
+        setSnackbarMessage('Security verification failed. Please contact support.');
+        setSnackbarSeverity('error');
+        setSnackbarOpen(true);
+        return;
+      }
+    } catch (error) {
+      console.error('Error parsing verification data:', error);
+    }
     
     if (pendingOrderId && pendingOrderNumber) {
-      // Don't clear localStorage here - let PaymentStatusPage handle it
-      
-      // Simple redirection for all payment statuses - let PaymentStatusPage component
-      // handle all the order updates and state management for better consistency
-      navigate(`/payment-status/${pendingOrderNumber}?status=${paymentStatus}`);
+      // Check payment status securely
+      if (verificationData && Object.keys(verificationData).length > 0) {
+        // Add the returned status to verification data
+        verificationData.returnedStatus = paymentStatus;
+        
+        // Navigate to payment status page with verification
+        navigate(`/payment-status/${pendingOrderNumber}?status=${paymentStatus}`, {
+          state: { 
+            verificationData,
+            verificationHash
+          }
+        });
+      } else {
+        // Fallback if verification data is missing
+        navigate(`/payment-status/${pendingOrderNumber}?status=${paymentStatus}`);
+      }
       
       // Show a brief notification based on status
       if (paymentStatus === 'COMPLETED' || paymentStatus === 'SUCCESS') {
@@ -1284,7 +1391,7 @@ useEffect(() => {
   setOrderPlaced,
   orderNumber,
   setOrderNumber}) => {
-const handlePaymentProcess = async () => {
+    const handlePaymentProcess = async () => {
   setPaymentProcessing(true);
   
   try {
@@ -1355,22 +1462,63 @@ const handlePaymentProcess = async () => {
 
     await Promise.all(orderItemsPromises);
     
-    // Call the payment API to create a payment request
-    const paymentData = {
+    // Security improvements - payment data with timestamp and checksum
+    const timestamp = Date.now();
+    const userId = auth.currentUser.uid;
+    
+    // Payment data object to be sent
+    const paymentDataObj = {
       amount: cartData.totalPrice,
-      merchantOrderId: generatedOrderNumber
+      merchantOrderId: generatedOrderNumber,
+      userId,
+      timestamp
     };
     
-    // Log the request for debugging
-    console.log('Initiating payment with data:', paymentData);
+    // Generate checksum for the payment data
+    const checksum = generateChecksum(paymentDataObj);
     
-    // Make the API call to your serverless function
+    // Add checksum to payment data
+    const paymentData = {
+      ...paymentDataObj,
+      checksum
+    };
+    
+    // Add integrity hash for order data (prevents tampering with cart data)
+    const orderIntegrityHash = createIntegrityHash({
+      items: orderItems.map(item => ({
+        id: item.productId,
+        qty: item.quantity,
+        price: item.price
+      })),
+      total: cartData.totalPrice,
+      timestamp
+    });
+    
+    // Store the integrity hash in Firebase for later verification
+    await updateDoc(doc(db, 'orders', orderRef.id), {
+      integrityHash: orderIntegrityHash
+    });
+    
+    // Log the request for debugging (in production, remove sensitive data)
+    console.log('Initiating payment with secure data');
+    
+    // Make the API call to your serverless function with secure data
     const response = await axios.post('/api/create-payment', paymentData);
     
-    console.log('Payment API response:', response.data);
+    // Verify server response integrity
+    if (response.data && response.data.securityHash) {
+      const isValid = verifyChecksum(response.data, response.data.securityHash);
+      
+      if (!isValid) {
+        console.error('Security warning: Response may have been tampered with');
+        throw new Error('Security verification failed');
+      }
+    }
+    
+    console.log('Payment API response verified');
     
     if (response.data && response.data.redirectUrl) {
-      // Create an initial transaction record
+      // Create an initial transaction record with improved security fields
       try {
         await addDoc(collection(db, 'transactions'), {
           orderId: orderRef.id,
@@ -1387,6 +1535,10 @@ const handlePaymentProcess = async () => {
           redirectUrl: response.data.redirectUrl,
           errorCode: '',
           detailedErrorCode: '',
+          // Security fields
+          requestChecksum: checksum,
+          responseHash: response.data.securityHash,
+          integrityHash: orderIntegrityHash,
           timestamp: Timestamp.now(),
           createdAt: Timestamp.now()
         });
@@ -1398,6 +1550,16 @@ const handlePaymentProcess = async () => {
       // Store order ID in localStorage for reference after payment
       localStorage.setItem('pendingOrderId', orderRef.id);
       localStorage.setItem('pendingOrderNumber', generatedOrderNumber);
+      
+      // Store verification data in localStorage to verify return response
+      const verificationData = {
+        orderNumber: generatedOrderNumber,
+        amount: cartData.totalPrice,
+        timestamp
+      };
+      
+      localStorage.setItem('paymentVerificationData', JSON.stringify(verificationData));
+      localStorage.setItem('paymentVerificationHash', generateChecksum(verificationData));
       
       // Redirect to the payment gateway
       window.location.href = response.data.redirectUrl;
@@ -1411,7 +1573,7 @@ const handlePaymentProcess = async () => {
     setSnackbarOpen(true);
     setPaymentProcessing(false);
   }
-};  
+};
     return (
       <StyledPaper elevation={0}>
         <SectionHeading>
