@@ -1,3 +1,4 @@
+//ordersummary.js but component name is checkoutflow 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { auth, db } from '../Firebase/Firebase';
@@ -140,27 +141,43 @@ const sortObjectKeys = (obj) => {
       return result;
     }, {});
 };
+// Update these utility functions in your client-side code (around line 90-100)
+
 // Utility function to generate checksums
 const generateChecksum = (data) => {
-  // Sort object keys for consistent results regardless of property order
-  const sortedData = sortObjectKeys(data);
-  
-  // Convert to string
-  const dataString = JSON.stringify(sortedData);
-  
-  // Create HMAC using SHA-256
-  return CryptoJS.HmacSHA256(dataString, SECRET_KEY).toString();
+  try {
+    // Sort object keys for consistent results regardless of property order
+    const sortedData = sortObjectKeys(data);
+    
+    // Convert to string
+    const dataString = JSON.stringify(sortedData);
+    
+    // Create HMAC using SHA-256
+    return CryptoJS.HmacSHA256(dataString, SECRET_KEY).toString();
+  } catch (error) {
+    console.error('Error generating checksum:', error);
+    // Return a fallback value in case of error
+    return '';
+  }
 };
-// Verify checksum received from server
+
+// Improved verify checksum function
 const verifyChecksum = (data, providedChecksum) => {
-  // Remove checksum from data before verification
-  const { checksum, securityHash, ...dataWithoutChecksum } = data;
-  
-  // Generate new checksum and compare
-  const calculatedChecksum = generateChecksum(dataWithoutChecksum);
-  
-  // Return true if checksums match
-  return calculatedChecksum === (providedChecksum || securityHash);
+  try {
+    // If the data already has a checksum/securityHash, remove it before verification
+    const dataToVerify = { ...data };
+    if (dataToVerify.checksum) delete dataToVerify.checksum;
+    if (dataToVerify.securityHash) delete dataToVerify.securityHash;
+    
+    // Generate checksum from the data
+    const calculatedChecksum = generateChecksum(dataToVerify);
+    
+    // Compare with provided checksum
+    return calculatedChecksum === providedChecksum;
+  } catch (error) {
+    console.error('Checksum verification error:', error);
+    return false;
+  }
 };
 
 const createIntegrityHash = (data) => {
@@ -1391,7 +1408,7 @@ useEffect(() => {
   setOrderPlaced,
   orderNumber,
   setOrderNumber}) => {
-    const handlePaymentProcess = async () => {
+const handlePaymentProcess = async () => {
   setPaymentProcessing(true);
   
   try {
@@ -1505,15 +1522,33 @@ useEffect(() => {
     // Make the API call to your serverless function with secure data
     const response = await axios.post('/api/create-payment', paymentData);
     
-    // Verify server response integrity
-    if (response.data && response.data.securityHash) {
-      const isValid = verifyChecksum(response.data, response.data.securityHash);
-      
-      if (!isValid) {
-        console.error('Security warning: Response may have been tampered with');
-        throw new Error('Security verification failed');
-      }
+// This is the section to update in your client-side CheckoutFlow.js file
+// Replace the verification part (around line 1510) with this updated code:
+
+// Verify server response integrity
+if (response.data && response.data.securityHash) {
+  try {
+    // Extract the securityHash for comparison
+    const { securityHash, ...dataToVerify } = response.data;
+    
+    // Generate a matching hash from the response data
+    const calculatedHash = generateChecksum(dataToVerify);
+    
+    // Compare the calculated hash with the one provided
+    const isValid = calculatedHash === securityHash;
+    
+    // For debugging, log the verification process
+    console.log('Security verification:', isValid ? 'PASSED' : 'FAILED');
+    
+    if (!isValid) {
+      console.error('Security warning: Response may have been tampered with');
+      throw new Error('Security verification failed');
     }
+  } catch (error) {
+    console.error('Error during security verification:', error);
+    throw new Error('Security verification failed');
+  }
+}
     
     console.log('Payment API response verified');
     

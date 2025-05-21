@@ -135,16 +135,26 @@ module.exports = async (req, res) => {
             }
         });
 
-        // Add our checksum to the response for frontend verification
+        // FIXED: Create a response that can be properly verified by the client
+        // First, create a data object with all fields needed for checksum generation
+        const securityData = {
+            ...response.data,
+            originalAmount: amount // Include original amount but NOT timestamp
+        };
+        
+        // Generate the security hash from this data
+        const securityHash = generateChecksum(securityData);
+        
+        // Create the response with both the security hash and the data needed to verify it
         const responseWithChecksum = {
             ...response.data,
-            securityHash: generateChecksum({
-                ...response.data,
-                originalAmount: amount,
-                timestamp: Date.now()
-            })
+            originalAmount: amount, // Include this field so client has all data needed for verification
+            securityHash: securityHash
         };
-
+        
+        // Log what we're returning (remove in production)
+        console.log('Payment response prepared with security hash');
+        
         return res.status(200).json(responseWithChecksum);
     } catch (error) {
         console.error('Error creating payment:', {
