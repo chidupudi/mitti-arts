@@ -1,6 +1,7 @@
 //ordersummary.js but component name is checkoutflow 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { updateInventoryAfterPayment } from '../components/inventoryUtils';
 import { auth, db } from '../Firebase/Firebase';
 import { 
   doc, 
@@ -532,6 +533,16 @@ useEffect(() => {
       if (paymentStatus === 'COMPLETED' || paymentStatus === 'SUCCESS') {
         setSnackbarMessage('Payment successful! Redirecting to order details...');
         setSnackbarSeverity('success');
+          if (pendingOrderId) {
+    (async () => {
+      try {
+        await updateInventoryAfterPayment(pendingOrderId);
+        console.log('Inventory updated successfully after payment');
+      } catch (error) {
+        console.error('Error updating inventory after payment:', error);
+      }
+    })(); // Immediately invoke the async function
+  }
       } else if (paymentStatus === 'FAILED' || paymentStatus === 'FAILURE') {
         setSnackbarMessage('Payment was not successful. Redirecting to details page...');
         setSnackbarSeverity('error');

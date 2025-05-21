@@ -13,7 +13,6 @@ import Profile from './pages/Profile';
 import Cart from './pages/Cart';
 import OrderSummary from './pages/OrderSummary';
 import OrderConfirmation from './pages/OrderConfirmations';
-import PaymentStatus from './pages/PaymentStatus';
 import WishList from './pages/WishList';
 import Dashboard from './adminpages/Dashboard';
 import Inventory from './adminpages/Inventory';
@@ -22,6 +21,7 @@ import Footer from './components/Footer';
 import PhonePePayment from './components/PhonePePayment';
 import PaymentStatusPage from './pages/PaymentStatusPage';
 import NotFound from './components/NotFound'; 
+import AdminOrders from './adminpages/adminorders';
 
 const App = () => {
   return (
@@ -39,12 +39,13 @@ const App = () => {
       <Route path="/cart" element={<Cart />} />
       <Route path="/order-summary" element={<OrderSummary />} />
       <Route path="/order-confirmation" element={<OrderConfirmation />} />
-      <Route path="/payment-status" element={<PaymentStatus />} />
+
       <Route path="/wishlist" element={<WishList />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/inventory" element={<Inventory />} />
       <Route path="/orders" element={<Order />} />
       <Route path="/phonepe" element={<PhonePePayment />} />
+      <Route path="/adminorders" element={<AdminOrders />} />
       <Route path="/payment-status/:orderId" element={<PaymentStatusPage />} />
 
 
