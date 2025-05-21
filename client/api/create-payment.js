@@ -40,7 +40,7 @@ module.exports = async (req, res) => {
                 message: "Payment for your order",
                 merchantUrls: {
                     // Important: This URL needs to be your actual deployed domain
-                    redirectUrl: `${req.headers.host.includes('localhost') ? 'http' : 'https'}://${req.headers.host}/api/payment-status/${merchantOrderId}`
+                   redirectUrl: `${req.headers.host.includes('localhost') ? 'http' : 'https'}://${req.headers.host}/api/payment-status/${merchantOrderId}`
                 }
             }
         };
