@@ -331,7 +331,7 @@ const CheckoutFlow = () => {
         
         // Calculate components matching Cart.js
         const subtotal = finalPrice;
-        const shippingCost = subtotal > 0 ? 99 : 0;
+        const shippingCost = subtotal > 0 ? 0 : 0;
         const discount = subtotal > 1000 ? 100 : 0;
         const totalPrice = subtotal + shippingCost - discount; // Calculate correctly
 
@@ -386,66 +386,71 @@ const CheckoutFlow = () => {
   }, [navigate, state]);
 
   // Add this useEffect hook for handling payment returns
-  useEffect(() => {
-    // Check if returning from payment gateway (URL contains payment status info)
-    const urlParams = new URLSearchParams(window.location.search);
-    const paymentStatus = urlParams.get('status');
+useEffect(() => {
+  // Check if returning from payment gateway (URL contains payment status info)
+  const urlParams = new URLSearchParams(window.location.search);
+  const paymentStatus = urlParams.get('status');
+  
+  if (paymentStatus) {
+    // Get the pending order info from localStorage
+    const pendingOrderId = localStorage.getItem('pendingOrderId');
+    const pendingOrderNumber = localStorage.getItem('pendingOrderNumber');
     
-    if (paymentStatus) {
-      // Get the pending order info from localStorage
-      const pendingOrderId = localStorage.getItem('pendingOrderId');
-      const pendingOrderNumber = localStorage.getItem('pendingOrderNumber');
+    if (pendingOrderId && pendingOrderNumber) {
+      // Clear localStorage
+      localStorage.removeItem('pendingOrderId');
+      localStorage.removeItem('pendingOrderNumber');
       
-      if (pendingOrderId && pendingOrderNumber) {
-        // Clear localStorage
-        localStorage.removeItem('pendingOrderId');
-        localStorage.removeItem('pendingOrderNumber');
+      if (paymentStatus === 'COMPLETED' || paymentStatus === 'SUCCESS') {
+        // Update order status in Firebase
+        const updateOrder = async () => {
+          try {
+            const orderRef = doc(db, 'orders', pendingOrderId);
+            await updateDoc(orderRef, {
+              status: 'CONFIRMED',
+              paymentStatus: 'COMPLETED',
+              updatedAt: Timestamp.now()
+            });
+            
+            // Set order as complete in component state
+            setOrderNumber(pendingOrderNumber);
+            setOrderPlaced(true);
+            
+            // Show success message
+            setSnackbarMessage('Payment successful! Your order has been confirmed.');
+            setSnackbarSeverity('success');
+            setSnackbarOpen(true);
+            
+            // Navigate to payment status page
+            navigate(`/payment-status/${pendingOrderNumber}?status=${paymentStatus}`);
+          } catch (error) {
+            console.error('Error updating order status:', error);
+            // Even if there's an error updating the database, still navigate to payment status
+            navigate(`/payment-status/${pendingOrderNumber}?status=${paymentStatus}`);
+          }
+        };
         
-        if (paymentStatus === 'COMPLETED' || paymentStatus === 'SUCCESS') {
-          // Update order status in Firebase
-          const updateOrder = async () => {
-            try {
-              const orderRef = doc(db, 'orders', pendingOrderId);
-              await updateDoc(orderRef, {
-                status: 'CONFIRMED',
-                paymentStatus: 'COMPLETED',
-                updatedAt: Timestamp.now()
-              });
-              
-              // Set order as complete in component state
-              setOrderNumber(pendingOrderNumber);
-              setOrderPlaced(true);
-              
-              // Show success message
-              setSnackbarMessage('Payment successful! Your order has been confirmed.');
-              setSnackbarSeverity('success');
-              setSnackbarOpen(true);
-              
-              // Redirect to order confirmation page
-              setTimeout(() => {
-                navigate('/order-confirmation', { 
-                  state: { 
-                    orderNumber: pendingOrderNumber,
-                    amount: urlParams.get('amount') || cartData.totalPrice,
-                    status: 'SUCCESS'
-                  } 
-                });
-              }, 3000);
-            } catch (error) {
-              console.error('Error updating order status:', error);
-            }
-          };
-          
-          updateOrder();
-        } else if (paymentStatus === 'FAILED' || paymentStatus === 'FAILURE') {
-          // Handle failed payment
-          setSnackbarMessage('Payment failed. Please try again or choose a different payment method.');
-          setSnackbarSeverity('error');
-          setSnackbarOpen(true);
-        }
+        updateOrder();
+      } else if (paymentStatus === 'FAILED' || paymentStatus === 'FAILURE') {
+        // Handle failed payment
+        setSnackbarMessage('Payment failed. Please try again or choose a different payment method.');
+        setSnackbarSeverity('error');
+        setSnackbarOpen(true);
+        
+        // Navigate to payment status page for failed payments
+        navigate(`/payment-status/${pendingOrderNumber}?status=${paymentStatus}`);
+      } else {
+        // For PENDING or other statuses
+        setSnackbarMessage('Payment status: ' + paymentStatus);
+        setSnackbarSeverity('info');
+        setSnackbarOpen(true);
+        
+        // Navigate to payment status page
+        navigate(`/payment-status/${pendingOrderNumber}?status=${paymentStatus}`);
       }
     }
-  }, [navigate, cartData.totalPrice]);
+  }
+}, [navigate, cartData.totalPrice]);
 
   // Handle input changes for personal info
   const handlePersonalInfoChange = (e) => {

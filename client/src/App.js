@@ -20,6 +20,7 @@ import Inventory from './adminpages/Inventory';
 import Order from './pages/Orders';
 import Footer from './components/Footer';
 import PhonePePayment from './components/PhonePePayment';
+import PaymentStatusPage from './pages/PaymentStatusPage';
 // import Footer from './components/Footer';
 
 const App = () => {
@@ -44,6 +45,7 @@ const App = () => {
       <Route path="/inventory" element={<Inventory />} />
       <Route path="/orders" element={<Order />} />
       <Route path="/phonepe" element={<PhonePePayment />} />
+      <Route path="/payment-status/:orderId" element={<PaymentStatusPage />} />
       </Routes>
       <Footer/>
       {/* <Footer/> */}
