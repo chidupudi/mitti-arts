@@ -396,61 +396,29 @@ useEffect(() => {
     const pendingOrderId = localStorage.getItem('pendingOrderId');
     const pendingOrderNumber = localStorage.getItem('pendingOrderNumber');
     
+    
     if (pendingOrderId && pendingOrderNumber) {
-      // Clear localStorage
-      localStorage.removeItem('pendingOrderId');
-      localStorage.removeItem('pendingOrderNumber');
+      // Don't clear localStorage here - let PaymentStatusPage handle it
       
+      // Simple redirection for all payment statuses - let PaymentStatusPage component
+      // handle all the order updates and state management for better consistency
+      navigate(`/payment-status/${pendingOrderNumber}?status=${paymentStatus}`);
+      
+      // Show a brief notification based on status
       if (paymentStatus === 'COMPLETED' || paymentStatus === 'SUCCESS') {
-        // Update order status in Firebase
-        const updateOrder = async () => {
-          try {
-            const orderRef = doc(db, 'orders', pendingOrderId);
-            await updateDoc(orderRef, {
-              status: 'CONFIRMED',
-              paymentStatus: 'COMPLETED',
-              updatedAt: Timestamp.now()
-            });
-            
-            // Set order as complete in component state
-            setOrderNumber(pendingOrderNumber);
-            setOrderPlaced(true);
-            
-            // Show success message
-            setSnackbarMessage('Payment successful! Your order has been confirmed.');
-            setSnackbarSeverity('success');
-            setSnackbarOpen(true);
-            
-            // Navigate to payment status page
-            navigate(`/payment-status/${pendingOrderNumber}?status=${paymentStatus}`);
-          } catch (error) {
-            console.error('Error updating order status:', error);
-            // Even if there's an error updating the database, still navigate to payment status
-            navigate(`/payment-status/${pendingOrderNumber}?status=${paymentStatus}`);
-          }
-        };
-        
-        updateOrder();
+        setSnackbarMessage('Payment successful! Redirecting to order details...');
+        setSnackbarSeverity('success');
       } else if (paymentStatus === 'FAILED' || paymentStatus === 'FAILURE') {
-        // Handle failed payment
-        setSnackbarMessage('Payment failed. Please try again or choose a different payment method.');
+        setSnackbarMessage('Payment was not successful. Redirecting to details page...');
         setSnackbarSeverity('error');
-        setSnackbarOpen(true);
-        
-        // Navigate to payment status page for failed payments
-        navigate(`/payment-status/${pendingOrderNumber}?status=${paymentStatus}`);
       } else {
-        // For PENDING or other statuses
-        setSnackbarMessage('Payment status: ' + paymentStatus);
+        setSnackbarMessage('Payment status: ' + paymentStatus + '. Redirecting...');
         setSnackbarSeverity('info');
-        setSnackbarOpen(true);
-        
-        // Navigate to payment status page
-        navigate(`/payment-status/${pendingOrderNumber}?status=${paymentStatus}`);
       }
+      setSnackbarOpen(true);
     }
   }
-}, [navigate, cartData.totalPrice]);
+}, [navigate]);
 
   // Handle input changes for personal info
   const handlePersonalInfoChange = (e) => {
@@ -1316,8 +1284,6 @@ useEffect(() => {
   setOrderPlaced,
   orderNumber,
   setOrderNumber}) => {
-
-   // Replace the existing handleSubmitOrder function with this implementation
 const handlePaymentProcess = async () => {
   setPaymentProcessing(true);
   
@@ -1340,10 +1306,14 @@ const handlePaymentProcess = async () => {
       };
     });
     
-    // Save order to Firebase with PENDING status
+    // Save order to Firebase with PENDING status with all customer details
     const orderRef = await addDoc(collection(db, 'orders'), {
       userId: auth.currentUser.uid,
       orderNumber: generatedOrderNumber,
+      customerName: personalInfo.fullName,
+      customerEmail: personalInfo.email,
+      customerPhone: personalInfo.phone,
+      alternatePhone: personalInfo.alternatePhone || '',
       orderDetails: {
         personalInfo,
         deliveryAddress,
@@ -1358,7 +1328,12 @@ const handlePaymentProcess = async () => {
       status: 'PENDING',
       paymentStatus: 'INITIATED',
       paymentMethod: 'ONLINE',
+      // Fields to store transaction details
+      transactionId: '',
+      paymentDetails: [],
+      rawTransactionData: {},
       createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
       notes: "Payment in process via PhonePe gateway."
     });
 
@@ -1395,6 +1370,31 @@ const handlePaymentProcess = async () => {
     console.log('Payment API response:', response.data);
     
     if (response.data && response.data.redirectUrl) {
+      // Create an initial transaction record
+      try {
+        await addDoc(collection(db, 'transactions'), {
+          orderId: orderRef.id,
+          orderNumber: generatedOrderNumber,
+          userId: auth.currentUser.uid,
+          transactionId: response.data.orderId || '',
+          gatewayOrderId: response.data.orderId || '',
+          paymentMode: 'INITIATED',
+          amount: cartData.totalPrice,
+          payableAmount: cartData.totalPrice,
+          feeAmount: 0,
+          state: 'INITIATED',
+          stage: 'PAYMENT_INITIATED',
+          redirectUrl: response.data.redirectUrl,
+          errorCode: '',
+          detailedErrorCode: '',
+          timestamp: Timestamp.now(),
+          createdAt: Timestamp.now()
+        });
+      } catch (err) {
+        console.error('Error creating transaction record:', err);
+        // Continue even if transaction record creation fails
+      }
+      
       // Store order ID in localStorage for reference after payment
       localStorage.setItem('pendingOrderId', orderRef.id);
       localStorage.setItem('pendingOrderNumber', generatedOrderNumber);
@@ -1411,8 +1411,7 @@ const handlePaymentProcess = async () => {
     setSnackbarOpen(true);
     setPaymentProcessing(false);
   }
-};
-  
+};  
     return (
       <StyledPaper elevation={0}>
         <SectionHeading>

@@ -39,8 +39,8 @@ module.exports = async (req, res) => {
                 type: "PG_CHECKOUT",
                 message: "Payment for your order",
                 merchantUrls: {
-                    // Important: This URL needs to be your actual deployed domain
-                   redirectUrl: `https://mittiarts.com/payment-status/${merchantOrderId}`
+                    // CRITICAL: Redirect to the React route, not the API endpoint
+                    redirectUrl: `https://mittiarts.com/payment-status/${merchantOrderId}`
                 }
             }
         };

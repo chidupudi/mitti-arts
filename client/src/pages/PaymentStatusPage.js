@@ -9,7 +9,8 @@ import {
   collection, 
   query, 
   where, 
-  getDocs 
+  getDocs,
+  addDoc 
 } from 'firebase/firestore';
 import axios from 'axios';
 
@@ -150,11 +151,11 @@ const PaymentDetailItem = styled(ListItem)(({ theme }) => ({
 
 // Enhanced PaymentStatusPage Component
 const PaymentStatusPage = () => {
-  // Theme and responsive setup
+  // Theme and responsive setup (keep as is)
   const theme = useTheme();
   theme.palette.primary = {
     ...theme.palette.primary,
-    main: '#E07A5F', // Terracotta primary color (match your CheckoutFlow)
+    main: '#E07A5F', // Terracotta primary color 
     light: '#F2D0C2',
     dark: '#C85A3D',
     contrastText: '#FFFFFF'
@@ -233,13 +234,75 @@ const PaymentStatusPage = () => {
       const firebaseOrderId = localStorage.getItem('pendingOrderId');
       
       if (firebaseOrderId) {
-        // Update Firebase order status
-        await updateDoc(doc(db, 'orders', firebaseOrderId), {
-          status: statusNormalized === 'SUCCESS' ? 'CONFIRMED' : 
-                  statusNormalized === 'FAILED' ? 'CANCELLED' : 'PENDING',
-          paymentStatus: statusNormalized,
-          updatedAt: Timestamp.now()
-        });
+        try {
+          // First fetch payment details from API to get complete transaction info
+          const response = await axios.get(`/api/payment-status/${orderId}`);
+          
+          if (response.data && response.data.data) {
+            const paymentData = response.data.data;
+            const transactionDetails = paymentData.paymentDetails || [];
+            
+            // Update Firebase order status with transaction details
+            await updateDoc(doc(db, 'orders', firebaseOrderId), {
+              status: statusNormalized === 'SUCCESS' || statusNormalized === 'COMPLETED' ? 'CONFIRMED' : 
+                      statusNormalized === 'FAILED' || statusNormalized === 'FAILURE' ? 'CANCELLED' : 'PENDING',
+              paymentStatus: statusNormalized,
+              transactionId: paymentData.transactionId || '',
+              paymentDetails: transactionDetails,
+              rawTransactionData: paymentData.fullResponse || {},
+              updatedAt: Timestamp.now()
+            });
+            
+            // Store detailed transaction information in a separate collection
+            if (transactionDetails && transactionDetails.length > 0) {
+              try {
+                await Promise.all(transactionDetails.map(async (detail) => {
+                  await addDoc(collection(db, 'transactions'), {
+                    orderId: firebaseOrderId,
+                    orderNumber: orderId,
+                    userId: auth.currentUser?.uid || '',
+                    transactionId: detail.transactionId || '',
+                    paymentMode: detail.paymentMode || '',
+                    amount: detail.amount || 0,
+                    payableAmount: detail.payableAmount || 0,
+                    feeAmount: detail.feeAmount || 0,
+                    state: detail.state || '',
+                    errorCode: detail.errorCode || '',
+                    detailedErrorCode: detail.detailedErrorCode || '',
+                    timestamp: detail.timestamp ? new Date(detail.timestamp) : Timestamp.now(),
+                    createdAt: Timestamp.now()
+                  });
+                }));
+              } catch (err) {
+                console.error('Error storing transaction details:', err);
+              }
+            }
+            
+            // Set transaction details for UI
+            setTransactionDetails(transactionDetails);
+            
+            if (statusNormalized === 'FAILED' && (paymentData.fullResponse || paymentData.paymentDetails?.[0])) {
+              // Extract error details for failed payments
+              const errorSource = paymentData.paymentDetails?.[0] || paymentData.fullResponse;
+              setErrorDetails({
+                errorCode: errorSource.errorCode || '',
+                detailedErrorCode: errorSource.detailedErrorCode || '',
+                message: response.data.message || 'Payment failed'
+              });
+            }
+            
+            // Set payment info from the response
+            setPaymentInfo({
+              amount: paymentData.amount || 0,
+              transactionId: paymentData.transactionId || '',
+              orderId: paymentData.orderId || orderId,
+              merchantOrderId: paymentData.merchantOrderId || orderId,
+              timestamp: paymentData.updatedAt ? new Date(paymentData.updatedAt) : new Date()
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching payment details:', error);
+        }
         
         // Fetch order details from Firebase
         const orderDoc = await getDoc(doc(db, 'orders', firebaseOrderId));
@@ -247,14 +310,17 @@ const PaymentStatusPage = () => {
           const data = orderDoc.data();
           setOrderDetails(data);
           
-          // Set payment info
-          setPaymentInfo({
-            amount: data.orderDetails?.totalAmount || 0,
-            transactionId: orderId,
-            orderId: data.orderNumber,
-            merchantOrderId: orderId,
-            timestamp: data.updatedAt
-          });
+          // Update payment info with order data if API data not available
+          if (!paymentInfo.amount) {
+            setPaymentInfo(prev => ({
+              ...prev,
+              amount: data.orderDetails?.totalAmount || 0,
+              transactionId: data.transactionId || orderId,
+              orderId: data.orderNumber,
+              merchantOrderId: orderId,
+              timestamp: data.updatedAt
+            }));
+          }
         }
       } else {
         // If no Firebase orderId, just set basic info
@@ -270,8 +336,12 @@ const PaymentStatusPage = () => {
       localStorage.removeItem('pendingOrderId');
       localStorage.removeItem('pendingOrderNumber');
       
-      // Now fetch more details from API
-      fetchPaymentStatus(orderId);
+      // Now fetch more details from API if needed
+      if (!transactionDetails.length) {
+        fetchPaymentStatus(orderId);
+      } else {
+        setLoading(false);
+      }
     } catch (error) {
       console.error('Error handling payment status:', error);
       setErrorMessage('Error updating order status');
@@ -287,7 +357,8 @@ const PaymentStatusPage = () => {
       
       if (response.data) {
         // Set payment status
-        setPaymentStatus(response.data.data.status);
+        const status = response.data.data.status;
+        setPaymentStatus(status);
         
         // Set payment info
         setPaymentInfo({
@@ -305,7 +376,7 @@ const PaymentStatusPage = () => {
         }
         
         // Set error details if payment failed
-        if (response.data.data.status === 'FAILED') {
+        if (status === 'FAILED') {
           // Extract error details from the first payment detail
           const paymentDetail = response.data.data.paymentDetails?.[0] || {};
           setErrorDetails({
@@ -317,7 +388,7 @@ const PaymentStatusPage = () => {
         
         // Fetch order details from Firebase
         if (!orderDetails) {
-          fetchOrderFromFirebase(orderId, response.data.data.status);
+          fetchOrderFromFirebase(orderId, status, response.data.data);
         } else {
           setLoading(false);
         }
@@ -333,7 +404,7 @@ const PaymentStatusPage = () => {
   };
   
   // Fetch order details from Firebase
-  const fetchOrderFromFirebase = async (orderId, status) => {
+  const fetchOrderFromFirebase = async (orderId, status, paymentData) => {
     try {
       // Query orders collection for the order number
       const ordersQuery = await getDocs(
@@ -344,13 +415,44 @@ const PaymentStatusPage = () => {
         const orderDoc = ordersQuery.docs[0];
         const orderData = orderDoc.data();
         
-        // Update order status in Firebase
+        // Extract transaction details
+        const transactionDetails = paymentData?.paymentDetails || [];
+        
+        // Update order status in Firebase with transaction details
         await updateDoc(doc(db, 'orders', orderDoc.id), {
-          status: status === 'SUCCESS' ? 'CONFIRMED' : 
-                 status === 'FAILED' ? 'CANCELLED' : 'PENDING',
+          status: status === 'SUCCESS' || status === 'COMPLETED' ? 'CONFIRMED' : 
+                 status === 'FAILED' || status === 'FAILURE' ? 'CANCELLED' : 'PENDING',
           paymentStatus: status,
+          transactionId: paymentData?.transactionId || '',
+          paymentDetails: transactionDetails,
+          rawTransactionData: paymentData?.fullResponse || {},
           updatedAt: Timestamp.now()
         });
+        
+        // Store detailed transaction information in a separate collection
+        if (transactionDetails && transactionDetails.length > 0) {
+          try {
+            await Promise.all(transactionDetails.map(async (detail) => {
+              await addDoc(collection(db, 'transactions'), {
+                orderId: orderDoc.id,
+                orderNumber: orderId,
+                userId: orderData.userId || auth.currentUser?.uid || '',
+                transactionId: detail.transactionId || '',
+                paymentMode: detail.paymentMode || '',
+                amount: detail.amount || 0,
+                payableAmount: detail.payableAmount || 0,
+                feeAmount: detail.feeAmount || 0,
+                state: detail.state || '',
+                errorCode: detail.errorCode || '',
+                detailedErrorCode: detail.detailedErrorCode || '',
+                timestamp: detail.timestamp ? new Date(detail.timestamp) : Timestamp.now(),
+                createdAt: Timestamp.now()
+              });
+            }));
+          } catch (err) {
+            console.error('Error storing transaction details:', err);
+          }
+        }
         
         setOrderDetails(orderData);
       }
@@ -422,7 +524,7 @@ const PaymentStatusPage = () => {
     });
     
     // Add payment status step
-    if (paymentStatus === 'SUCCESS') {
+    if (paymentStatus === 'SUCCESS' || paymentStatus === 'COMPLETED') {
       steps.push({
         label: 'Payment Successful',
         description: 'Your payment was processed successfully',
@@ -443,7 +545,7 @@ const PaymentStatusPage = () => {
         description: 'Your order will be shipped soon',
         completed: false
       });
-    } else if (paymentStatus === 'FAILED') {
+    } else if (paymentStatus === 'FAILED' || paymentStatus === 'FAILURE') {
       steps.push({
         label: 'Payment Failed',
         description: errorDetails?.message || 'Your payment could not be processed',
@@ -481,23 +583,24 @@ const PaymentStatusPage = () => {
     );
   }
   
+  // The complete render method remains the same as you provided
   return (
     <Fade in={true}>
       <Container maxWidth="md" sx={{ py: 4 }}>
         <StyledPaper>
           {/* Status Banner */}
           <StatusBanner status={paymentStatus}>
-            {paymentStatus === 'SUCCESS' ? (
+            {paymentStatus === 'SUCCESS' || paymentStatus === 'COMPLETED' ? (
               <CheckCircle sx={{ fontSize: 28 }} />
-            ) : paymentStatus === 'FAILED' ? (
+            ) : paymentStatus === 'FAILED' || paymentStatus === 'FAILURE' ? (
               <Error sx={{ fontSize: 28 }} />
             ) : (
               <AccessTime sx={{ fontSize: 28 }} />
             )}
             <Box>
               <Typography variant="h6" fontWeight={600} sx={{ lineHeight: 1.2 }}>
-                {paymentStatus === 'SUCCESS' ? 'Payment Successful' : 
-                paymentStatus === 'FAILED' ? 'Payment Failed' : 
+                {paymentStatus === 'SUCCESS' || paymentStatus === 'COMPLETED' ? 'Payment Successful' : 
+                paymentStatus === 'FAILED' || paymentStatus === 'FAILURE' ? 'Payment Failed' : 
                 'Payment Processing'}
               </Typography>
               <Typography variant="body2" sx={{ opacity: 0.9 }}>
@@ -507,7 +610,7 @@ const PaymentStatusPage = () => {
           </StatusBanner>
           
           {/* Error Details for Failed Payments */}
-          {paymentStatus === 'FAILED' && errorDetails && (
+          {(paymentStatus === 'FAILED' || paymentStatus === 'FAILURE') && errorDetails && (
             <ErrorDetailCard variant="outlined">
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
@@ -570,8 +673,8 @@ const PaymentStatusPage = () => {
                       label={paymentStatus} 
                       size="small"
                       color={
-                        paymentStatus === 'SUCCESS' ? 'success' : 
-                        paymentStatus === 'FAILED' ? 'error' : 'warning'
+                        paymentStatus === 'SUCCESS' || paymentStatus === 'COMPLETED' ? 'success' : 
+                        paymentStatus === 'FAILED' || paymentStatus === 'FAILURE' ? 'error' : 'warning'
                       }
                       sx={{ fontWeight: 600 }}
                     />
@@ -588,6 +691,7 @@ const PaymentStatusPage = () => {
             </CardContent>
           </Card>
           
+          {/* Keep the rest of the render method as is */}
           {/* Transaction Timeline */}
           <Box sx={{ mb: 4 }}>
             <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2 }}>
@@ -645,7 +749,7 @@ const PaymentStatusPage = () => {
                               size="small"
                               color={
                                 detail.state === 'SUCCESS' || detail.state === 'COMPLETED' ? 'success' :
-                                detail.state === 'FAILED' ? 'error' : 'warning'
+                                detail.state === 'FAILED' || detail.state === 'FAILURE' ? 'error' : 'warning'
                               }
                               sx={{ fontWeight: 500, fontSize: '0.7rem' }}
                             />
@@ -722,7 +826,7 @@ const PaymentStatusPage = () => {
             </Button>
             
             <Box sx={{ display: 'flex', gap: 2 }}>
-              {paymentStatus === 'SUCCESS' ? (
+              {paymentStatus === 'SUCCESS' || paymentStatus === 'COMPLETED' ? (
                 <Button
                   variant="contained"
                   startIcon={<ShoppingBag />}
@@ -756,8 +860,9 @@ const PaymentStatusPage = () => {
         </StyledPaper>
         
         {/* Order Details - Only show for successful payments */}
-        {orderDetails && orderDetails.orderDetails && paymentStatus === 'SUCCESS' && (
+        {orderDetails && orderDetails.orderDetails && (paymentStatus === 'SUCCESS' || paymentStatus === 'COMPLETED') && (
           <StyledPaper sx={{ mt: 3 }}>
+            {/* Keep the order details section as is */}
             <SectionHeading>Order Details</SectionHeading>
             
             {/* Display order items if available */}
@@ -900,9 +1005,9 @@ const PaymentStatusPage = () => {
                   Need Assistance?
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  {paymentStatus === 'FAILED' 
+                  {paymentStatus === 'FAILED' || paymentStatus === 'FAILURE'
                     ? 'If you faced issues with the payment, please try again or use a different payment method. You can also contact our support team for help.'
-                    : paymentStatus === 'SUCCESS'
+                    : paymentStatus === 'SUCCESS' || paymentStatus === 'COMPLETED'
                     ? 'If you have any questions about your order, our customer support team is here to help.'
                     : 'If your payment status is still pending, please wait a while and refresh this page. Feel free to contact our support if the issue persists.'
                   }
