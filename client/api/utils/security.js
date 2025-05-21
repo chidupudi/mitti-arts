@@ -6,7 +6,7 @@ require('dotenv').config();
 const SECRET_KEY = process.env.SECRET_KEY || 'your-very-strong-secret-key-min-32-chars';
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS ? 
     process.env.ALLOWED_ORIGINS.split(',') : 
-    ['https://mittiarts.com'];
+    ['https://mittiarts.com', 'https://www.mittiarts.com', 'http://localhost:3000']; // Added common development domain
 
 // Generate HMAC checksum for data integrity
 function generateChecksum(data) {
@@ -23,17 +23,23 @@ function generateChecksum(data) {
         .digest('hex');
 }
 
-// Verify checksum
+// Verify checksum - FIXED to handle separate data and checksum parameters
 function verifyChecksum(data, providedChecksum) {
-    // Remove checksum from data before verification
-    const { checksum, ...dataWithoutChecksum } = data;
+    // Generate new checksum from the provided data
+    const calculatedChecksum = generateChecksum(data);
     
-    // Generate new checksum and compare
-    const calculatedChecksum = generateChecksum(dataWithoutChecksum);
-    return crypto.timingSafeEqual(
-        Buffer.from(calculatedChecksum, 'hex'),
-        Buffer.from(providedChecksum, 'hex')
-    );
+    // Comparing checksums securely with constant-time comparison to prevent timing attacks
+    try {
+        // Use timingSafeEqual for secure comparison
+        return crypto.timingSafeEqual(
+            Buffer.from(calculatedChecksum, 'hex'),
+            Buffer.from(providedChecksum, 'hex')
+        );
+    } catch (error) {
+        // If buffers are of different length or format issues
+        console.error('Checksum comparison error:', error.message);
+        return false;
+    }
 }
 
 // Sort object keys recursively for consistent checksum generation
@@ -96,14 +102,26 @@ const rateLimiter = {
         // Increment and check
         this.requests[ip].count++;
         return this.requests[ip].count <= limit;
+    },
+    
+    // Cleanup method to prevent memory leaks (call periodically)
+    cleanup(maxAge = 3600000) { // 1 hour default
+        const now = Date.now();
+        Object.keys(this.requests).forEach(ip => {
+            if (now - this.requests[ip].firstRequest > maxAge) {
+                delete this.requests[ip];
+            }
+        });
     }
 };
 
+// Export everything including SECRET_KEY for internal use
 module.exports = {
     generateChecksum,
     verifyChecksum,
     isValidOrigin,
     validateAmount,
     generateSecureOrderId,
-    rateLimiter
+    rateLimiter,
+    SECRET_KEY
 };

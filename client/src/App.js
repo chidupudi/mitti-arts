@@ -21,7 +21,7 @@ import Order from './pages/Orders';
 import Footer from './components/Footer';
 import PhonePePayment from './components/PhonePePayment';
 import PaymentStatusPage from './pages/PaymentStatusPage';
-// import Footer from './components/Footer';
+import NotFound from './components/NotFound'; 
 
 const App = () => {
   return (
@@ -46,6 +46,9 @@ const App = () => {
       <Route path="/orders" element={<Order />} />
       <Route path="/phonepe" element={<PhonePePayment />} />
       <Route path="/payment-status/:orderId" element={<PaymentStatusPage />} />
+
+
+       <Route path="*" element={<NotFound />} />
       </Routes>
       <Footer/>
       {/* <Footer/> */}

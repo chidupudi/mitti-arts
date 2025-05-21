@@ -1,12 +1,17 @@
 // api/create-payment.js
 const axios = require('axios');
+const crypto = require('crypto'); // Add this for crypto operations
 const { getAuthToken, PAYMENT_API } = require('./utils/auth');
 const { 
     generateChecksum, 
+    verifyChecksum, // Import the verifyChecksum function
     isValidOrigin, 
     validateAmount,
     rateLimiter 
 } = require('./utils/security');
+
+// If SECRET_KEY isn't exported from utils/security, define it here
+const SECRET_KEY = process.env.SECRET_KEY || 'your-very-strong-secret-key-min-32-chars'; // Use environment variable for security
 
 module.exports = async (req, res) => {
     // Improved CORS - only allow specific origins
