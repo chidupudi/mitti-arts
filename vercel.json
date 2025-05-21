@@ -1,0 +1,26 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "server/api/phonepe.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "client/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "build"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/phonepe/(.*)",
+      "dest": "server/api/phonepe.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "client"
+    }
+  ]
+}

@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Status | PhonePe Test</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .status-card {
+            max-width: 500px;
+            width: 100%;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 4px 25px rgba(0, 0, 0, 0.1);
+        }
+        .status-header {
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .success-header {
+            background: linear-gradient(135deg, #28a745, #20c997);
+        }
+        .failure-header {
+            background: linear-gradient(135deg, #dc3545, #f76464);
+        }
+        .pending-header {
+            background: linear-gradient(135deg, #ffc107, #ffcd39);
+        }
+        .unknown-header {
+            background: linear-gradient(135deg, #6c757d, #868e96);
+        }
+        .status-body {
+            padding: 30px;
+            background-color: white;
+            text-align: center;
+        }
+        .status-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+        .success-icon {
+            color: #28a745;
+        }
+        .failure-icon {
+            color: #dc3545;
+        }
+        .pending-icon {
+            color: #ffc107;
+        }
+        .unknown-icon {
+            color: #6c757d;
+        }
+        .transaction-details {
+            background-color: #f0f0f0;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .transaction-details p {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        .transaction-details p strong {
+            color: #5F259F;
+        }
+        .btn-back {
+            background-color: #5F259F;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-back:hover {
+            background-color: #7426B3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(95, 37, 159, 0.3);
+        }
+        #loader {
+            text-align: center;
+            padding: 20px;
+        }
+        .spinner-border {
+            color: #5F259F;
+        }
+        .debug-panel {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="status-card">
+        <div id="loader">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p>Checking payment status...</p>
+        </div>
+        
+        <div id="statusContent" style="display: none;">
+            <div id="statusHeader" class="status-header">
+                <h2 id="statusTitle">Payment Status</h2>
+                <p id="statusSubtitle" class="mb-0">Your payment has been processed</p>
+            </div>
+            
+            <div class="status-body">
+                <div id="statusIcon" class="status-icon"></div>
+                <h3 id="statusMessage">Processing your payment</h3>
+                <p id="statusDescription">We're checking the status of your transaction.</p>
+                
+                <div class="transaction-details">
+                    <p>
+                        <span>Amount</span>
+                        <strong>₹2.00</strong>
+                    </p>
+                    <p>
+                        <span>Transaction ID</span>
+                        <strong id="transactionId">-</strong>
+                    </p>
+                    <p>
+                        <span>Status</span>
+                        <strong id="paymentStatus">-</strong>
+                    </p>
+                    <p>
+                        <span>Date & Time</span>
+                        <strong id="dateTime">-</strong>
+                    </p>
+                </div>
+                
+                <a href="/" class="btn btn-back">Back to Home</a>
+                
+                <div class="debug-panel mt-4">
+                    <strong>Merchant ID:</strong> TEST-M23HHH5J0FX15_25051<br>
+                    <div id="debugResponse"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Check URL parameters for status
+        const urlParams = new URLSearchParams(window.location.search);
+        const merchantId = urlParams.get('merchantId');
+        const transactionId = urlParams.get('transactionId') || urlParams.get('merchantTransactionId') || sessionStorage.getItem('transactionId');
+        const status = urlParams.get('status') || urlParams.get('code');
+        
+        document.getElementById('transactionId').textContent = transactionId || 'Unknown';
+        document.getElementById('dateTime').textContent = new Date().toLocaleString();
+        
+        // For debugging
+        document.getElementById('debugResponse').innerHTML = 
+            `<strong>URL Parameters:</strong><br>` +
+            `${Array.from(urlParams.entries()).map(entry => entry[0] + ': ' + entry[1]).join('<br>')}`;
+        
+        async function checkPaymentStatus() {
+            try {
+                if (!transactionId) {
+                    document.getElementById('debugResponse').innerHTML += 
+                        `<br><br><strong>Error:</strong> No transaction ID found`;
+                    showStatus('unknown');
+                    return;
+                }
+                
+                const response = await fetch(`/api/payment/status/${transactionId}`);
+                const data = await response.json();
+                
+                console.log('Payment status response:', data);
+                document.getElementById('debugResponse').innerHTML += 
+                    `<br><br><strong>Status Check Response:</strong><br>` +
+                    `${JSON.stringify(data, null, 2).replace(/\n/g, '<br>').replace(/ /g, '&nbsp;')}`;
+                
+                if (data.success) {
+                    const paymentStatus = data.data.code;
+                    document.getElementById('paymentStatus').textContent = paymentStatus;
+                    
+                    if (paymentStatus === 'PAYMENT_SUCCESS') {
+                        showStatus('success');
+                    } else if (paymentStatus === 'PAYMENT_ERROR' || paymentStatus === 'PAYMENT_DECLINED') {
+                        showStatus('failure');
+                    } else if (paymentStatus === 'PAYMENT_PENDING') {
+                        showStatus('pending');
+                    } else {
+                        showStatus('unknown');
+                    }
+                } else {
+                    showStatus('unknown');
+                }
+            } catch (error) {
+                console.error('Error checking payment status:', error);
+                document.getElementById('debugResponse').innerHTML += 
+                    `<br><br><strong>Error:</strong><br>${error.toString()}`;
+                showStatus('unknown');
+            }
+        }
+        
+        function showStatus(type) {
+            const header = document.getElementById('statusHeader');
+            const icon = document.getElementById('statusIcon');
+            const title = document.getElementById('statusTitle');
+            const subtitle = document.getElementById('statusSubtitle');
+            const message = document.getElementById('statusMessage');
+            const description = document.getElementById('statusDescription');
+            
+            switch (type) {
+                case 'success':
+                    header.className = 'status-header success-header';
+                    icon.className = 'status-icon success-icon';
+                    icon.innerHTML = '<i class="bi bi-check-circle-fill"></i>';
+                    title.textContent = 'Payment Successful';
+                    subtitle.textContent = 'Your transaction has been completed';
+                    message.textContent = 'Thank you for your payment!';
+                    description.textContent = 'Your payment has been successfully processed.';
+                    break;
+                    
+                case 'failure':
+                    header.className = 'status-header failure-header';
+                    icon.className = 'status-icon failure-icon';
+                    icon.innerHTML = '<i class="bi bi-x-circle-fill"></i>';
+                    title.textContent = 'Payment Failed';
+                    subtitle.textContent = 'We couldn\'t process your payment';
+                    message.textContent = 'Your payment was unsuccessful';
+                    description.textContent = 'Please try again or use a different payment method.';
+                    break;
+                    
+                case 'pending':
+                    header.className = 'status-header pending-header';
+                    icon.className = 'status-icon pending-icon';
+                    icon.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+                    title.textContent = 'Payment Pending';
+                    subtitle.textContent = 'Your payment is being processed';
+                    message.textContent = 'We\'re waiting for confirmation';
+                    description.textContent = 'Please check your PhonePe app for the latest status.';
+                    break;
+                    
+                default:
+                    header.className = 'status-header unknown-header';
+                    icon.className = 'status-icon unknown-icon';
+                    icon.innerHTML = '<i class="bi bi-question-circle-fill"></i>';
+                    title.textContent = 'Status Unknown';
+                    subtitle.textContent = 'We couldn\'t determine the payment status';
+                    message.textContent = 'Payment status is unknown';
+                    description.textContent = 'Please check your PhonePe app or contact support.';
+            }
+            
+            document.getElementById('loader').style.display = 'none';
+            document.getElementById('statusContent').style.display = 'block';
+        }
+        
+        // Check payment status on page load
+        window.addEventListener('load', function() {
+            if (status) {
+                document.getElementById('paymentStatus').textContent = status;
+                
+                if (status === 'SUCCESS' || status === 'PAYMENT_SUCCESS') {
+                    showStatus('success');
+                } else if (status === 'FAILURE' || status === 'ERROR' || status === 'PAYMENT_ERROR') {
+                    showStatus('failure');
+                } else if (status === 'PENDING' || status === 'PAYMENT_PENDING') {
+                    showStatus('pending');
+                } else {
+                    checkPaymentStatus();
+                }
+            } else {
+                checkPaymentStatus();
+            }
+        });
+    </script>
+</body>
+</html>

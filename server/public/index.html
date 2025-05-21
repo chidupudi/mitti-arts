@@ -1,0 +1,155 @@
+<!-- public/index.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PhonePe Payment Gateway</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .form-container {
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #5c2d91;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #4a2377;
+        }
+        #loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+        .phonepe-logo {
+            max-width: 150px;
+            display: block;
+            margin-bottom: 20px;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            margin-left: 15px;
+        }
+    </style>
+    <!-- PhonePe checkout.js script (PRODUCTION) -->
+    <script src="https://mercury.phonepe.com/web/bundle/checkout.js"></script>
+</head>
+<body>
+    <div class="header">
+        <img src="https://www.phonepe.com/images/PhonePe-Logo.svg" alt="PhonePe Logo" class="phonepe-logo">
+        <h1>Payment Gateway</h1>
+    </div>
+    
+    <div class="form-container">
+        <h2>Enter Payment Details</h2>
+        <form id="payment-form">
+            <div class="form-group">
+                <label for="amount">Amount (₹)</label>
+                <input type="number" id="amount" min="1" value="10" required>
+            </div>
+            <div class="form-group">
+                <label for="merchantOrderId">Order ID</label>
+                <input type="text" id="merchantOrderId" required>
+            </div>
+            <button type="submit">Pay Now</button>
+        </form>
+    </div>
+    
+    <div id="loading">
+        <p>Processing your payment...</p>
+    </div>
+    
+    <div id="payment-container">
+        <!-- Payment iframe will be inserted here -->
+    </div>
+
+    <script>
+        document.getElementById('payment-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const amount = document.getElementById('amount').value;
+            const merchantOrderId = document.getElementById('merchantOrderId').value;
+            
+            document.getElementById('loading').style.display = 'block';
+            
+            try {
+                // Call server to create payment
+                const response = await fetch('/create-payment', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ amount, merchantOrderId })
+                });
+                
+                const data = await response.json();
+                
+                if (data.redirectUrl) {
+                    // Handle payment in iframe
+                    document.getElementById('loading').style.display = 'none';
+                    
+                    // Define the callback function
+                    function paymentCallback(response) {
+                        if (response === 'USER_CANCEL') {
+                            alert('Payment was cancelled.');
+                            window.location.href = '/';
+                        } else if (response === 'CONCLUDED') {
+                            window.location.href = `/payment-status/${merchantOrderId}`;
+                        }
+                    }
+                    
+                    // Open the payment page in iframe
+                    PhonePeCheckout.transact({
+                        tokenUrl: data.redirectUrl,
+                        callback: paymentCallback,
+                        type: "IFRAME"
+                    });
+                } else {
+                    alert('Failed to create payment. Please try again.');
+                    document.getElementById('loading').style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+                document.getElementById('loading').style.display = 'none';
+            }
+        });
+        
+        // Generate a random order ID when the page loads
+        window.onload = function() {
+            const randomOrderId = 'ORDER' + Math.floor(Math.random() * 1000000);
+            document.getElementById('merchantOrderId').value = randomOrderId;
+        };
+    </script>
+</body>
+</html>
