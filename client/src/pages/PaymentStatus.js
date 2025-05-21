@@ -7,7 +7,7 @@ import {
   updateDoc, 
   Timestamp, 
   collection, 
-  query, 
+  query as firestoreQuery, // Renamed to avoid conflicts
   where, 
   getDocs 
 } from 'firebase/firestore';
@@ -208,7 +208,7 @@ const PaymentStatus = () => {
     try {
       // Try to get order by merchantOrderId
       const ordersQuery = await getDocs(
-        query(collection(db, 'orders'), where('orderNumber', '==', orderId))
+        firestoreQuery(collection(db, 'orders'), where('orderNumber', '==', orderId))
       );
       
       if (!ordersQuery.empty) {
