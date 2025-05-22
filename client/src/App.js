@@ -22,37 +22,58 @@ import PhonePePayment from './components/PhonePePayment';
 import PaymentStatusPage from './pages/PaymentStatusPage';
 import NotFound from './components/NotFound'; 
 import AdminOrders from './adminpages/adminorders';
+import AdminProtectedRoute from './components/AdminProctectedRoutes'; // Import the AdminProtectedRoute
 
 const App = () => {
   return (
     <Router>
       <Header />
       <Routes>
-       <Route path="/" element={<Welcome />} />
-       <Route path="/products" element={<Products />} />
-      <Route path="/product/:id" element={<ProductDetail />} />
-      <Route path="/about" element={<About />} />
-      <Route path="/policies" element={<Policies />} />
-      <Route path="/contactus" element={<ContactUs />} />
-      <Route path="/auth" element={<AuthForm />} />
-      <Route path="/profile" element={<Profile />} />
-      <Route path="/cart" element={<Cart />} />
-      <Route path="/order-summary" element={<OrderSummary />} />
-      <Route path="/order-confirmation" element={<OrderConfirmation />} />
+        <Route path="/" element={<Welcome />} />
+        <Route path="/products" element={<Products />} />
+        <Route path="/product/:id" element={<ProductDetail />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/policies" element={<Policies />} />
+        <Route path="/contactus" element={<ContactUs />} />
+        <Route path="/auth" element={<AuthForm />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/cart" element={<Cart />} />
+        <Route path="/order-summary" element={<OrderSummary />} />
+        <Route path="/order-confirmation" element={<OrderConfirmation />} />
+        <Route path="/wishlist" element={<WishList />} />
+        <Route path="/orders" element={<Order />} />
+        <Route path="/phonepe" element={<PhonePePayment />} />
+        <Route path="/payment-status/:orderId" element={<PaymentStatusPage />} />
 
-      <Route path="/wishlist" element={<WishList />} />
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/inventory" element={<Inventory />} />
-      <Route path="/orders" element={<Order />} />
-      <Route path="/phonepe" element={<PhonePePayment />} />
-      <Route path="/adminorders" element={<AdminOrders />} />
-      <Route path="/payment-status/:orderId" element={<PaymentStatusPage />} />
+        {/* Admin Protected Routes */}
+        <Route 
+          path="/dashboard" 
+          element={
+            <AdminProtectedRoute requiredRole="admin">
+              <Dashboard />
+            </AdminProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/inventory" 
+          element={
+            <AdminProtectedRoute requiredRole="admin">
+              <Inventory />
+            </AdminProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/adminorders" 
+          element={
+            <AdminProtectedRoute requiredRole="moderator">
+              <AdminOrders />
+            </AdminProtectedRoute>
+          } 
+        />
 
-
-       <Route path="*" element={<NotFound />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
       <Footer/>
-      {/* <Footer/> */}
       <Analytics />
     </Router>
   );

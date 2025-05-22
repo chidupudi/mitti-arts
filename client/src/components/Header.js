@@ -201,7 +201,9 @@ const Header = (props) => {
         localStorage.removeItem('authToken');
         localStorage.removeItem('userEmail');
         localStorage.removeItem('userName');
-        
+         localStorage.removeItem('adminToken'); // Add this line
+    localStorage.removeItem('adminUser'); // Add this line
+    localStorage.removeItem('isAdmin'); // Add this line
         if (location.pathname === '/profile') {
           navigate('/auth');
         }
@@ -240,6 +242,9 @@ const Header = (props) => {
       localStorage.removeItem('userEmail');
       localStorage.removeItem('userName');
       localStorage.removeItem('cart');
+      localStorage.removeItem('adminToken'); // Add this line
+    localStorage.removeItem('adminUser'); // Add this line
+    localStorage.removeItem('isAdmin'); // Add this line
       setUserInitial(null);
       setIsLoggedIn(false);
       handleMenuClose();

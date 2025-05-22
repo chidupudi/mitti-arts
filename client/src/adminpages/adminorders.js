@@ -36,7 +36,10 @@ import {
   InputAdornment,
   Snackbar,
   Alert,
-  TablePagination
+  TablePagination,
+  Avatar,
+  AppBar,
+  Toolbar
 } from '@mui/material';
 
 import {
@@ -58,16 +61,210 @@ import {
   Close,
   KeyboardArrowRight,
   OpenInNew,
-  ArrowBack
+  ArrowBack,
+  Dashboard as DashboardIcon,
+  InventoryRounded,
+  AssignmentTurnedIn,
+  Inventory2,
+  Store,
+  ShoppingCart
 } from '@mui/icons-material';
 
 import { DatePicker, Space } from 'antd';
 import moment from 'moment';
-import { styled } from '@mui/material/styles';
+import { createTheme, ThemeProvider, styled } from '@mui/material/styles';
 import { db } from '../Firebase/Firebase';
-import { collection, getDocs, query, orderBy, doc, updateDoc, where, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, doc, updateDoc, where, Timestamp, writeBatch, getDoc, increment } from 'firebase/firestore';
 
-// Styled components
+// Terracotta Theme (matching dashboard and inventory)
+const terracottaTheme = createTheme({
+  palette: {
+    primary: {
+      main: '#D2691E',
+      light: '#F4A460',
+      dark: '#A0522D',
+      contrastText: '#FFFFFF',
+    },
+    secondary: {
+      main: '#8B4513',
+      light: '#CD853F',
+      dark: '#654321',
+      contrastText: '#FFFFFF',
+    },
+    background: {
+      default: '#FAF0E6',
+      paper: '#FFFFFF',
+    },
+    text: {
+      primary: '#3E2723',
+      secondary: '#5D4037',
+    },
+    success: {
+      main: '#6B7821',
+      light: '#8BC34A',
+    },
+    warning: {
+      main: '#FF8F00',
+      light: '#FFB74D',
+    },
+    error: {
+      main: '#C62828',
+      light: '#EF5350',
+    },
+    info: {
+      main: '#0277BD',
+      light: '#29B6F6',
+    },
+    grey: {
+      50: '#FAF0E6',
+      100: '#F5EBE0',
+      200: '#E8D5C4',
+      300: '#DCC5A7',
+      400: '#C4A47C',
+      500: '#8B7355',
+      600: '#6D5B47',
+      700: '#5D4E42',
+      800: '#3E2723',
+      900: '#2E1A16',
+    },
+  },
+  typography: {
+    fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+    h1: {
+      fontSize: '2.5rem',
+      fontWeight: 700,
+      lineHeight: 1.2,
+    },
+    h2: {
+      fontSize: '2rem',
+      fontWeight: 600,
+      lineHeight: 1.3,
+    },
+    h3: {
+      fontSize: '1.75rem',
+      fontWeight: 600,
+      lineHeight: 1.3,
+    },
+    h4: {
+      fontSize: '1.5rem',
+      fontWeight: 600,
+      lineHeight: 1.4,
+    },
+    h5: {
+      fontSize: '1.25rem',
+      fontWeight: 600,
+      lineHeight: 1.4,
+    },
+    h6: {
+      fontSize: '1.125rem',
+      fontWeight: 600,
+      lineHeight: 1.4,
+    },
+    body1: {
+      fontSize: '1rem',
+      lineHeight: 1.6,
+    },
+    body2: {
+      fontSize: '0.875rem',
+      lineHeight: 1.5,
+    },
+  },
+  shape: {
+    borderRadius: 12,
+  },
+  components: {
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          boxShadow: '0 4px 20px rgba(210, 105, 30, 0.08)',
+          borderRadius: 16,
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          '&:hover': {
+            transform: 'translateY(-4px)',
+            boxShadow: '0 8px 40px rgba(210, 105, 30, 0.12)',
+          },
+        },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          backgroundImage: 'none',
+        },
+      },
+    },
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          textTransform: 'none',
+          fontWeight: 600,
+          borderRadius: 10,
+        },
+      },
+    },
+    MuiTextField: {
+      styleOverrides: {
+        root: {
+          '& .MuiOutlinedInput-root': {
+            borderRadius: 8,
+            backgroundColor: '#FFFFFF',
+            '&:hover': {
+              '& .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#D2691E',
+              },
+            },
+          },
+        },
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          borderRadius: 6,
+          fontWeight: 500,
+          fontSize: '0.75rem',
+        },
+      },
+    },
+  },
+});
+
+// Styled Components with Terracotta Theme
+const HeaderToolbar = styled(Toolbar)(({ theme }) => ({
+  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`,
+  color: '#FFFFFF',
+  minHeight: 80,
+  borderRadius: '0 0 24px 24px',
+  marginBottom: theme.spacing(3),
+  [theme.breakpoints.down('md')]: {
+    minHeight: 70,
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    padding: theme.spacing(2),
+  },
+}));
+
+const NavigationButton = styled(Button)(({ theme, active }) => ({
+  color: '#FFFFFF',
+  backgroundColor: active ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.1)',
+  '&:hover': {
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    transform: 'translateY(-1px)',
+  },
+  borderRadius: 12,
+  padding: '8px 20px',
+  fontWeight: 600,
+  fontSize: '0.9rem',
+  textTransform: 'none',
+  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+  border: active ? '2px solid rgba(255,255,255,0.3)' : '2px solid transparent',
+  [theme.breakpoints.down('sm')]: {
+    fontSize: '0.8rem',
+    padding: '6px 12px',
+    minWidth: 'auto',
+  },
+}));
+
 const PageHeader = styled(Box)(({ theme }) => ({
   display: 'flex',
   justifyContent: 'space-between',
@@ -81,10 +278,11 @@ const PageHeader = styled(Box)(({ theme }) => ({
 }));
 
 const FilterSection = styled(Paper)(({ theme }) => ({
-  padding: theme.spacing(2),
+  padding: theme.spacing(3),
   marginBottom: theme.spacing(3),
-  borderRadius: theme.shape.borderRadius,
-  boxShadow: theme.shadows[1],
+  borderRadius: 16,
+  boxShadow: '0 4px 20px rgba(210, 105, 30, 0.08)',
+  background: '#FFFFFF',
 }));
 
 const ActionButton = styled(Button)(({ theme }) => ({
@@ -104,11 +302,148 @@ const CardStyled = styled(Card)(({ theme, status }) => ({
           : theme.palette.warning.main
   }`,
   transition: 'all 0.3s ease',
+  borderRadius: 16,
   '&:hover': {
-    boxShadow: theme.shadows[4],
+    boxShadow: '0 8px 40px rgba(210, 105, 30, 0.12)',
     transform: 'translateY(-3px)'
   }
 }));
+
+// Admin Header Component
+const AdminHeader = ({ currentPage = 'adminorders' }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isSmallMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  const navigationItems = [
+    {
+      label: 'Dashboard',
+      icon: <DashboardIcon />,
+      path: '/dashboard',
+      key: 'dashboard'
+    },
+    {
+      label: 'Inventory',
+      icon: <InventoryRounded />,
+      path: '/inventory',
+      key: 'inventory'
+    },
+    {
+      label: 'Admin Orders',
+      icon: <AssignmentTurnedIn />,
+      path: '/adminorders',
+      key: 'adminorders'
+    }
+  ];
+
+  const handleNavigation = (path) => {
+    window.location.href = path;
+  };
+
+  const getPageTitle = () => {
+    switch (currentPage) {
+      case 'inventory':
+        return 'Inventory Management';
+      case 'adminorders':
+        return 'Order Management';
+      default:
+        return 'Admin Dashboard';
+    }
+  };
+
+  const getPageDescription = () => {
+    switch (currentPage) {
+      case 'inventory':
+        return 'Manage your product inventory and stock levels';
+      case 'adminorders':
+        return 'Track and manage customer orders';
+      default:
+        return "Welcome back! Here's what's happening with your store today.";
+    }
+  };
+
+  return (
+    <AppBar position="static" elevation={0} sx={{ background: 'transparent' }}>
+      <Container maxWidth="xl">
+        <HeaderToolbar>
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: isMobile ? 'flex-start' : 'center',
+            flexDirection: isMobile ? 'column' : 'row',
+            width: '100%',
+            gap: isMobile ? 1 : 0
+          }}>
+            <Box sx={{ 
+              flexGrow: 1,
+              mb: isMobile ? 2 : 0
+            }}>
+              <Typography 
+                variant={isMobile ? 'h5' : 'h4'} 
+                fontWeight="bold"
+                sx={{ 
+                  fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' }
+                }}
+              >
+                {getPageTitle()}
+              </Typography>
+              <Typography 
+                variant="body1" 
+                sx={{ 
+                  opacity: 0.9, 
+                  mt: 0.5,
+                  fontSize: { xs: '0.85rem', sm: '0.95rem' },
+                  display: isSmallMobile ? 'none' : 'block'
+                }}
+              >
+                {getPageDescription()}
+              </Typography>
+            </Box>
+
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: { xs: 1, sm: 1.5, md: 2 },
+              flexWrap: isMobile ? 'wrap' : 'nowrap',
+              width: isMobile ? '100%' : 'auto',
+              justifyContent: isMobile ? 'flex-start' : 'flex-end'
+            }}>
+              {navigationItems.map((item) => (
+                <NavigationButton
+                  key={item.key}
+                  startIcon={!isSmallMobile ? item.icon : null}
+                  onClick={() => handleNavigation(item.path)}
+                  active={currentPage === item.key}
+                  size={isSmallMobile ? 'small' : 'medium'}
+                >
+                  {isSmallMobile ? item.icon : item.label}
+                </NavigationButton>
+              ))}
+              
+              <Tooltip title="Refresh Data">
+                <IconButton 
+                  color="inherit" 
+                  onClick={() => window.location.reload()}
+                  size={isSmallMobile ? 'small' : 'medium'}
+                  sx={{ 
+                    bgcolor: 'rgba(255,255,255,0.1)', 
+                    '&:hover': { 
+                      bgcolor: 'rgba(255,255,255,0.2)',
+                      transform: 'translateY(-1px)'
+                    },
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    ml: 1
+                  }}
+                >
+                  <Refresh />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          </Box>
+        </HeaderToolbar>
+      </Container>
+    </AppBar>
+  );
+};
 
 const getOrderDate = (order) => {
   try {
@@ -163,11 +498,16 @@ const DeliveryDetailsDialog = ({ open, onClose, orderId, onSave, initialData }) 
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>
-        {initialData ? 'Update Delivery Details' : 'Add Delivery Details'}
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth
+      PaperProps={{ sx: { borderRadius: 3 } }}
+    >
+      <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white', p: 3 }}>
+        <Typography variant="h6" component="div" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <LocalShipping />
+          {initialData ? 'Update Delivery Details' : 'Add Delivery Details'}
+        </Typography>
       </DialogTitle>
-      <DialogContent dividers>
+      <DialogContent dividers sx={{ p: 3 }}>
         <Grid container spacing={2} sx={{ mt: 1 }}>
           <Grid item xs={12} md={6}>
             <TextField
@@ -225,11 +565,20 @@ const DeliveryDetailsDialog = ({ open, onClose, orderId, onSave, initialData }) 
           </Grid>
         </Grid>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} color="secondary">
+      <DialogActions sx={{ p: 3, gap: 1 }}>
+        <Button onClick={onClose} variant="outlined">
           Cancel
         </Button>
-        <Button onClick={handleSubmit} color="primary" variant="contained">
+        <Button 
+          onClick={handleSubmit} 
+          variant="contained"
+          sx={{ 
+            background: 'linear-gradient(135deg, #D2691E 0%, #F4A460 100%)',
+            '&:hover': {
+              background: 'linear-gradient(135deg, #A0522D 0%, #D2691E 100%)',
+            },
+          }}
+        >
           {initialData ? 'Update' : 'Save'} Details
         </Button>
       </DialogActions>
@@ -252,17 +601,25 @@ const OrderDetailsDialog = ({ open, onClose, order, searchQuery }) => {
       fullWidth 
       fullScreen={fullScreen}
       scroll="paper"
+      PaperProps={{ sx: { borderRadius: fullScreen ? 0 : 3 } }}
     >
-      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <DialogTitle sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        bgcolor: 'primary.main',
+        color: 'white',
+        p: 3
+      }}>
         <Box display="flex" alignItems="center">
-          <ReceiptLong sx={{ mr: 1, color: theme.palette.primary.main }} />
+          <ReceiptLong sx={{ mr: 1 }} />
           Order Details #{order.orderNumber}
         </Box>
-        <IconButton onClick={onClose}>
+        <IconButton onClick={onClose} sx={{ color: 'white' }}>
           <Close />
         </IconButton>
       </DialogTitle>
-      <DialogContent dividers>
+      <DialogContent dividers sx={{ p: 3 }}>
         <Grid container spacing={3}>
           {/* Order Summary */}
           <Grid item xs={12} md={6}>
@@ -302,6 +659,23 @@ const OrderDetailsDialog = ({ open, onClose, order, searchQuery }) => {
                   }
                   size="small"
                 />
+                {/* Delivery Status Chip */}
+                {order.deliveryStatus && (
+                  <Chip 
+                    label={`Delivery: ${order.deliveryStatus}`} 
+                    color={
+                      order.deliveryStatus === 'DELIVERED' 
+                        ? 'success' 
+                        : order.deliveryStatus === 'IN_TRANSIT' 
+                          ? 'info'
+                          : order.deliveryStatus === 'DISPATCHED'
+                            ? 'warning'
+                            : 'default'
+                    }
+                    size="small"
+                    icon={<LocalShipping />}
+                  />
+                )}
               </Box>
             </Box>
 
@@ -338,7 +712,7 @@ const OrderDetailsDialog = ({ open, onClose, order, searchQuery }) => {
               variant="outlined" 
               sx={{ 
                 p: 2, 
-                borderRadius: 1,
+                borderRadius: 2,
                 backgroundColor: searchQuery && order.orderDetails?.deliveryAddress && 
                   Object.values(order.orderDetails.deliveryAddress).some(
                     value => typeof value === 'string' && value.toLowerCase().includes(searchQuery.toLowerCase())
@@ -438,6 +812,26 @@ const OrderDetailsDialog = ({ open, onClose, order, searchQuery }) => {
                     <b>Remarks:</b> {order.deliveryDetails.remarks}
                   </Typography>
                 )}
+                {/* Display Delivery Status */}
+                {order.deliveryStatus && (
+                  <Typography variant="body2">
+                    <b>Delivery Status:</b> 
+                    <Chip 
+                      label={order.deliveryStatus} 
+                      color={
+                        order.deliveryStatus === 'DELIVERED' 
+                          ? 'success' 
+                          : order.deliveryStatus === 'IN_TRANSIT' 
+                            ? 'info'
+                            : order.deliveryStatus === 'DISPATCHED'
+                              ? 'warning'
+                              : 'default'
+                      }
+                      size="small"
+                      sx={{ ml: 1 }}
+                    />
+                  </Typography>
+                )}
                 {order.deliveryStatus === 'DELIVERED' && order.deliveredAt && (
                   <Typography variant="body2" color="success.main">
                     <b>Delivered on:</b> {
@@ -460,7 +854,7 @@ const OrderDetailsDialog = ({ open, onClose, order, searchQuery }) => {
           {/* Order Details Section */}
           <Grid item xs={12} md={6}>
             <Typography variant="h6" gutterBottom>Order Details</Typography>
-            <TableContainer component={Paper} variant="outlined">
+            <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
               <Table size="small">
                 <TableBody>
                   {(order.orderDetails?.items || []).map((item, index) => (
@@ -551,8 +945,8 @@ const OrderDetailsDialog = ({ open, onClose, order, searchQuery }) => {
           </Grid>
         </Grid>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} color="primary">
+      <DialogActions sx={{ p: 3 }}>
+        <Button onClick={onClose} variant="contained" color="primary">
           Close
         </Button>
       </DialogActions>
@@ -774,12 +1168,12 @@ const AdminOrders = () => {
     }
   };
 
-  // Handle delivery details update
+  // Handle delivery details update - Only saves delivery details
   const handleSaveDeliveryDetails = async (orderId, details) => {
     try {
       const orderRef = doc(db, 'orders', orderId);
       
-      // Update in Firestore
+      // Update in Firestore - only delivery details, no status change
       await updateDoc(orderRef, {
         deliveryDetails: details,
         updatedAt: Timestamp.now()
@@ -793,7 +1187,10 @@ const AdminOrders = () => {
       
       setOrders(prevOrders => 
         prevOrders.map(order => 
-          order.id === orderId ? { ...order, deliveryDetails: details } : order
+          order.id === orderId ? { 
+            ...order, 
+            deliveryDetails: details
+          } : order
         )
       );
       
@@ -807,6 +1204,109 @@ const AdminOrders = () => {
       setSnackbar({
         open: true,
         message: 'Error saving delivery details',
+        severity: 'error'
+      });
+    }
+  };
+
+  // Handle mark as delivered - Similar to dashboard functionality
+  const handleMarkDelivered = async (orderId) => {
+    try {
+      // Get the order data
+      const orderRef = doc(db, 'orders', orderId);
+      const orderSnap = await getDocs(query(collection(db, 'orders'), where('__name__', '==', orderId)));
+      
+      if (orderSnap.empty) {
+        throw new Error('Order not found');
+      }
+      
+      const orderData = orderSnap.docs[0].data();
+      
+      // Check for items in the order
+      let items = [];
+      if (orderData.orderDetails?.items && orderData.orderDetails.items.length > 0) {
+        items = orderData.orderDetails.items;
+      } else if (orderData.orderDetails?.cartData?.items && orderData.orderDetails.cartData.items.length > 0) {
+        items = orderData.orderDetails.cartData.items;
+      } else if (orderData.items && orderData.items.length > 0) {
+        items = orderData.items;
+      }
+      
+      if (items.length === 0) {
+        throw new Error('No items found in this order');
+      }
+      
+      // Use batch write to update product stock for all items in the order
+      const batch = writeBatch(db);
+      
+      // Flag to check if any stock updates were needed
+      let hasUpdates = false;
+      
+      // Process each item in the order
+      for (const item of items) {
+        // Try to get product ID from either id or productId field
+        const productId = item.id || item.productId;
+        
+        // Skip if no product ID is found
+        if (!productId) {
+          console.warn('Product ID not found for item:', item);
+          continue;
+        }
+        
+        // Reference to the product
+        const productRef = doc(db, 'products', productId);
+        
+        // Verify the product exists before updating
+        const productSnap = await getDoc(productRef);
+        if (!productSnap.exists()) {
+          console.warn(`Product ${productId} not found in database`);
+          continue;
+        }
+        
+        // Update stock by decrementing the quantity
+        batch.update(productRef, {
+          stock: increment(-item.quantity) // Decrement stock by the quantity ordered
+        });
+        
+        console.log(`Updating stock for product ${productId}, decreasing by ${item.quantity}`);
+        hasUpdates = true;
+      }
+      
+      // Update order to mark as delivered
+      batch.update(orderRef, {
+        deliveryStatus: 'DELIVERED',
+        deliveredAt: Timestamp.now(),
+        updatedAt: Timestamp.now()
+      });
+      
+      // Commit all updates
+      await batch.commit();
+      
+      // Update local state
+      setOrders(prevOrders => 
+        prevOrders.map(order => 
+          order.id === orderId ? { 
+            ...order, 
+            deliveryStatus: 'DELIVERED',
+            deliveredAt: Timestamp.now()
+          } : order
+        )
+      );
+      
+      // Show success message
+      setSnackbar({
+        open: true,
+        message: hasUpdates 
+          ? 'Order marked as delivered and product stock updated' 
+          : 'Order marked as delivered',
+        severity: 'success'
+      });
+      
+    } catch (error) {
+      console.error('Error marking order as delivered:', error);
+      setSnackbar({
+        open: true,
+        message: `Error: ${error.message || 'Failed to mark as delivered'}`,
         severity: 'error'
       });
     }
@@ -851,11 +1351,15 @@ const AdminOrders = () => {
       case 'PENDING':
       case 'INITIATED':
       case 'PROCESSING':
+      case 'DISPATCHED':
         color = 'warning';
         break;
       case 'FAILED':
       case 'CANCELLED':
         color = 'error';
+        break;
+      case 'IN_TRANSIT':
+        color = 'info';
         break;
       default:
         color = 'default';
@@ -894,7 +1398,7 @@ const AdminOrders = () => {
     
     return (
       <CardStyled status={order.status}>
-        <CardContent>
+        <CardContent sx={{ p: 3 }}>
           {/* Order header with basic info */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <Box>
@@ -911,7 +1415,7 @@ const AdminOrders = () => {
           </Box>
           
           {/* Customer info */}
-          <Box sx={{ mt: 1 }}>
+          <Box sx={{ mt: 2 }}>
             <Typography variant="body2">
               <b>Customer:</b> {order.orderDetails?.personalInfo?.fullName || order.customerName || 'N/A'}
             </Typography>
@@ -950,19 +1454,37 @@ const AdminOrders = () => {
               sx={{ fontWeight: 500 }}
             />
             
-            {/* Delivery indicator */}
-            {hasDeliveryDetails ? (
+            {/* Delivery Status indicator */}
+            {order.deliveryStatus && (
+              <Chip 
+                icon={<LocalShipping />}
+                label={`Delivery: ${order.deliveryStatus}`}
+                color={
+                  order.deliveryStatus === 'DELIVERED' 
+                    ? 'success' 
+                    : order.deliveryStatus === 'IN_TRANSIT' 
+                      ? 'info'
+                      : order.deliveryStatus === 'DISPATCHED'
+                        ? 'warning'
+                        : 'default'
+                }
+                size="small"
+              />
+            )}
+            
+            {/* Delivery details indicator */}
+            {hasDeliveryDetails && !order.deliveryStatus && (
               <Chip 
                 icon={<LocalShipping />}
                 label="Delivery Set"
                 color="info"
                 size="small"
               />
-            ) : null}
+            )}
           </Box>
           
           {/* Actions Row */}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2, alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3, alignItems: 'center' }}>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <FormControlLabel
                 control={
@@ -981,6 +1503,7 @@ const AdminOrders = () => {
                 size="small"
                 startIcon={isExpanded ? <ExpandLess /> : <ExpandMore />}
                 onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}
+                sx={{ mr: 1 }}
               >
                 {isExpanded ? 'Less' : 'More'}
               </Button>
@@ -997,22 +1520,27 @@ const AdminOrders = () => {
           
           {/* Expanded content */}
           <Collapse in={isExpanded}>
-            <Box sx={{ mt: 2, pt: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
+            <Box sx={{ mt: 3, pt: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
               {/* Delivery Details */}
-              <Typography variant="subtitle2" gutterBottom>
+              <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
                 Delivery Information
               </Typography>
               
               {hasDeliveryDetails ? (
-                <Box sx={{ mb: 2 }}>
+                <Box sx={{ mb: 3, p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
                   <Typography variant="body2">
                     <b>Company:</b> {order.deliveryDetails.company}
                   </Typography>
                   <Typography variant="body2">
                     <b>Tracking:</b> {order.deliveryDetails.consignmentNumber}
                   </Typography>
+                  {order.deliveryStatus && (
+                    <Typography variant="body2">
+                      <b>Status:</b> {getStatusChip(order.deliveryStatus)}
+                    </Typography>
+                  )}
                   
-                  <Box sx={{ mt: 1 }}>
+                  <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                     <Button
                       variant="outlined"
                       size="small"
@@ -1021,12 +1549,39 @@ const AdminOrders = () => {
                         setDeliveryDialogOpen(true);
                       }}
                     >
-                      Update Delivery
+                      Update Address
                     </Button>
+                    
+                    {order.deliveryStatus !== 'DELIVERED' && (
+                      <Button
+                        variant="contained"
+                        size="small"
+                        color="success"
+                        startIcon={<CheckCircle />}
+                        onClick={() => handleMarkDelivered(order.id)}
+                        sx={{ 
+                          background: 'linear-gradient(135deg, #6B7821 0%, #8BC34A 100%)',
+                          '&:hover': {
+                            background: 'linear-gradient(135deg, #5D4E42 0%, #6B7821 100%)',
+                          },
+                        }}
+                      >
+                        Mark Delivered
+                      </Button>
+                    )}
+                    
+                    {order.deliveryStatus === 'DELIVERED' && (
+                      <Chip 
+                        label="Delivered" 
+                        color="success"
+                        icon={<CheckCircle />}
+                        sx={{ fontWeight: 'bold' }}
+                      />
+                    )}
                   </Box>
                 </Box>
               ) : (
-                <Box sx={{ mb: 2 }}>
+                <Box sx={{ mb: 3, p: 2, bgcolor: 'warning.50', borderRadius: 2, border: '1px dashed', borderColor: 'warning.main' }}>
                   <Typography variant="body2" color="text.secondary" gutterBottom>
                     No delivery details added yet
                   </Typography>
@@ -1039,39 +1594,45 @@ const AdminOrders = () => {
                       setSelectedOrderForDelivery(order.id);
                       setDeliveryDialogOpen(true);
                     }}
+                    sx={{ 
+                      background: 'linear-gradient(135deg, #D2691E 0%, #F4A460 100%)',
+                      '&:hover': {
+                        background: 'linear-gradient(135deg, #A0522D 0%, #D2691E 100%)',
+                      },
+                    }}
                   >
-                    Add Delivery Details
+                    Set Delivery Address
                   </Button>
                 </Box>
               )}
               
               {/* Items Summary */}
-              <Typography variant="subtitle2" gutterBottom sx={{ mt: 2 }}>
+              <Typography variant="subtitle2" gutterBottom sx={{ mt: 2, fontWeight: 600 }}>
                 Order Items
               </Typography>
-              <Box>
+              <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
                 {(order.orderDetails?.items || []).map((item, idx) => (
                   <Box key={idx} sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                     <Typography variant="body2">
                       {item.quantity} x {item.name}
                     </Typography>
-                    <Typography variant="body2">
+                    <Typography variant="body2" fontWeight="medium">
                       ₹{(item.price * item.quantity).toFixed(2)}
                     </Typography>
                   </Box>
                 ))}
-              </Box>
+              </Paper>
               
               {/* Search Match Highlights */}
               {searchQuery && (
-                <Box sx={{ mt: 2, p: 1, backgroundColor: 'rgba(66, 165, 245, 0.1)', borderRadius: 1, borderLeft: '3px solid #42A5F5' }}>
-                  <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 'bold' }}>
+                <Box sx={{ mt: 2, p: 2, backgroundColor: 'primary.50', borderRadius: 2, borderLeft: '4px solid', borderColor: 'primary.main' }}>
+                  <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 'bold', mb: 1 }}>
                     Search Results
                   </Typography>
                   
                   {/* Item matches */}
                   {((order.orderDetails?.items || []).some(item => item.name && item.name.toLowerCase().includes(searchQuery.toLowerCase()))) && (
-                    <Box sx={{ mt: 0.5 }}>
+                    <Box sx={{ mb: 1 }}>
                       <Typography variant="body2">
                         <b>Matching Items:</b> {(order.orderDetails?.items || [])
                           .filter(item => item.name && item.name.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -1085,7 +1646,7 @@ const AdminOrders = () => {
                   {order.orderDetails?.deliveryAddress && Object.entries(order.orderDetails.deliveryAddress)
                     .filter(([key, value]) => typeof value === 'string' && value.toLowerCase().includes(searchQuery.toLowerCase()))
                     .length > 0 && (
-                    <Box sx={{ mt: 0.5 }}>
+                    <Box>
                       <Typography variant="body2">
                         <b>Address Match:</b> {Object.entries(order.orderDetails.deliveryAddress)
                           .filter(([key, value]) => typeof value === 'string' && value.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -1097,50 +1658,30 @@ const AdminOrders = () => {
                 </Box>
               )}
               
-              {/* Item Search Results */}
-              {searchQuery && expandedOrderId === order.id && (
-                <Box sx={{ mt: 1, p: 1, backgroundColor: '#f5f5f5', borderRadius: 1 }}>
-                  <Typography variant="caption" color="primary" sx={{ fontWeight: 'bold' }}>
-                    Search matched:
-                  </Typography>
-                  {((order.orderDetails?.items || []).some(item => item.name && item.name.toLowerCase().includes(searchQuery.toLowerCase()))) && (
-                    <Box>
-                      <Typography variant="caption" color="text.secondary">
-                        Items: {(order.orderDetails?.items || [])
-                          .filter(item => item.name && item.name.toLowerCase().includes(searchQuery.toLowerCase()))
-                          .map(item => item.name)
-                          .join(", ")}
-                      </Typography>
-                    </Box>
-                  )}
-                  {order.orderDetails?.deliveryAddress && Object.values(order.orderDetails.deliveryAddress).some(value => 
-                      typeof value === 'string' && value.toLowerCase().includes(searchQuery.toLowerCase())
-                    ) && (
-                    <Box>
-                      <Typography variant="caption" color="text.secondary">
-                        Address matched your search
-                      </Typography>
-                    </Box>
-                  )}
-                </Box>
-              )}
+              {order.transactionId && (
                 <Box sx={{ mt: 2 }}>
-                  <Typography variant="subtitle2" gutterBottom>
+                  <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
                     Transaction Details
                   </Typography>
-                  <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
+                  <Typography variant="body2" sx={{ wordBreak: 'break-all', p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
                     <b>ID:</b> {order.transactionId}
                   </Typography>
                 </Box>
               )}
               
               {/* View Full Details Button */}
-              <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
+              <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
                 <Button
                   variant="contained"
                   color="primary"
                   fullWidth
                   onClick={() => handleViewOrderDetails(order)}
+                  sx={{ 
+                    background: 'linear-gradient(135deg, #D2691E 0%, #F4A460 100%)',
+                    '&:hover': {
+                      background: 'linear-gradient(135deg, #A0522D 0%, #D2691E 100%)',
+                    },
+                  }}
                 >
                   View Full Details
                 </Button>
@@ -1153,404 +1694,449 @@ const AdminOrders = () => {
   };
 
   return (
-    <Container maxWidth="xl" sx={{ py: { xs: 2, md: 4 } }}>
-      <PageHeader>
-        <Typography variant="h4" component="h1" fontWeight="bold">
-          Orders Management
-        </Typography>
-        
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<Refresh />}
-          onClick={() => window.location.reload()}
-        >
-          Refresh
-        </Button>
-      </PageHeader>
-      
-      {/* Filters Section */}
-      <FilterSection>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center' }}>
-            <FilterList sx={{ mr: 1 }} /> 
-            Filters & Sorting
-          </Typography>
-          
-          <Box>
-            <Button
-              size="small"
-              startIcon={filtersOpen ? <ExpandLess /> : <ExpandMore />}
-              onClick={() => setFiltersOpen(!filtersOpen)}
-              sx={{ mr: 1 }}
-            >
-              {filtersOpen ? 'Hide' : 'Show'} Filters
-            </Button>
-            
-            <Button
-              size="small"
-              color="error"
-              variant="outlined"
-              onClick={handleResetFilters}
-              startIcon={<Close />}
-            >
-              Clear
-            </Button>
-          </Box>
-        </Box>
-        
-        <Collapse in={filtersOpen}>
-          <Grid container spacing={2}>
-            {/* Search */}
-            <Grid item xs={12} md={4}>
-              <TextField
-                fullWidth
-                placeholder="Search by order #, customer, items, address or phone"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                variant="outlined"
-                size="small"
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Search />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            </Grid>
-            
-            {/* Sort By */}
-            <Grid item xs={12} sm={6} md={2}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Sort By</InputLabel>
-                <Select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  label="Sort By"
-                  startAdornment={
-                    <InputAdornment position="start">
-                      <Sort />
-                    </InputAdornment>
-                  }
-                >
-                  <MenuItem value="latest">Latest</MenuItem>
-                  <MenuItem value="oldest">Oldest</MenuItem>
-                  <MenuItem value="highest">Highest Amount</MenuItem>
-                  <MenuItem value="lowest">Lowest Amount</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            
-            {/* Date Range */}
-            <Grid item xs={12} sm={6} md={2}>
-              <Button
-                fullWidth
-                variant={showDateRange ? "contained" : "outlined"}
-                color="primary"
-                startIcon={<CalendarMonth />}
-                onClick={() => setShowDateRange(!showDateRange)}
-                size="medium"
-                sx={{ height: '40px' }}
-              >
-                {dateRange[0] && dateRange[1] 
-                  ? `${dateRange[0].format('DD/MM/YY')} - ${dateRange[1].format('DD/MM/YY')}` 
-                  : "Date Range"}
-              </Button>
-            </Grid>
-            
-            {/* Delivery Filter */}
-            <Grid item xs={12} sm={6} md={2}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Delivery Status</InputLabel>
-                <Select
-                  value={deliveryFilter}
-                  onChange={(e) => setDeliveryFilter(e.target.value)}
-                  label="Delivery Status"
-                >
-                  <MenuItem value="all">All Orders</MenuItem>
-                  <MenuItem value="added">Delivery Set</MenuItem>
-                  <MenuItem value="notadded">No Delivery</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            
-            {/* Payment Status Filter */}
-            <Grid item xs={12} sm={6} md={2}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Payment Status</InputLabel>
-                <Select
-                  value={paymentStatusFilter}
-                  onChange={(e) => setPaymentStatusFilter(e.target.value)}
-                  label="Payment Status"
-                >
-                  <MenuItem value="all">All</MenuItem>
-                  <MenuItem value="COMPLETED">Completed</MenuItem>
-                  <MenuItem value="SUCCESS">Success</MenuItem>
-                  <MenuItem value="PENDING">Pending</MenuItem>
-                  <MenuItem value="FAILED">Failed</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            
-            {showDateRange && (
-              <Grid item xs={12}>
-                <Paper sx={{ p: 2 }}>
-                  <Typography variant="subtitle2" gutterBottom>Select Date Range</Typography>
-                  <Space direction="vertical" size={12}>
-                    <DatePicker.RangePicker
-                      value={dateRange[0] && dateRange[1] ? [dateRange[0], dateRange[1]] : null}
-                      onChange={(dates) => setDateRange(dates)}
-                      style={{ width: '100%' }}
-                    />
-                  </Space>
-                </Paper>
-              </Grid>
-            )}
-          </Grid>
-        </Collapse>
-      </FilterSection>
-      
-      {/* Results Summary */}
-      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="body2" color="text.secondary">
-          Showing {filteredOrders.length} of {orders.length} orders
-        </Typography>
-        
-        <Box>
-          <Tooltip title="Latest Orders">
-            <IconButton 
-              color={sortBy === 'latest' ? 'primary' : 'default'}
-              onClick={() => setSortBy('latest')}
-              size="small"
-            >
-              <ArrowDownward />
-            </IconButton>
-          </Tooltip>
-          
-          <Tooltip title="Oldest Orders">
-            <IconButton 
-              color={sortBy === 'oldest' ? 'primary' : 'default'}
-              onClick={() => setSortBy('oldest')}
-              size="small"
-            >
-              <ArrowUpward />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      </Box>
-      
-      {/* Loading State */}
-      {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
-          <CircularProgress size={60} />
-        </Box>
-      ) : error ? (
-        <Alert severity="error" sx={{ my: 2 }}>
-          {error}
-        </Alert>
-      ) : filteredOrders.length === 0 ? (
-        <Alert severity="info" sx={{ my: 2 }}>
-          No orders found matching the current filters.
-        </Alert>
-      ) : (
-        <>
-          {/* Mobile/Tablet View - Card Layout */}
-          {isMedium ? (
-            <Box>
-              {filteredOrders
-                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                .map(order => (
-                  <OrderCard key={order.id} order={order} />
-                ))}
+    <ThemeProvider theme={terracottaTheme}>
+      <Box sx={{ 
+        backgroundColor: 'background.default', 
+        minHeight: '100vh',
+        pb: 4
+      }}>
+        {/* Admin Header Component */}
+        <AdminHeader currentPage="adminorders" />
+
+        <Container maxWidth="xl" sx={{ py: { xs: 2, md: 4 } }}>
+          {/* Filters Section */}
+          <FilterSection>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+              <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', fontWeight: 600 }}>
+                <FilterList sx={{ mr: 1, color: 'primary.main' }} /> 
+                Filters & Sorting
+              </Typography>
               
-              <TablePagination
-                component="div"
-                count={filteredOrders.length}
-                page={page}
-                onPageChange={handleChangePage}
-                rowsPerPage={rowsPerPage}
-                onRowsPerPageChange={handleChangeRowsPerPage}
-                rowsPerPageOptions={[5, 10, 25, 50]}
-              />
+              <Box>
+                <Button
+                  size="small"
+                  startIcon={filtersOpen ? <ExpandLess /> : <ExpandMore />}
+                  onClick={() => setFiltersOpen(!filtersOpen)}
+                  sx={{ mr: 1 }}
+                >
+                  {filtersOpen ? 'Hide' : 'Show'} Filters
+                </Button>
+                
+                <Button
+                  size="small"
+                  color="error"
+                  variant="outlined"
+                  onClick={handleResetFilters}
+                  startIcon={<Close />}
+                >
+                  Clear
+                </Button>
+              </Box>
             </Box>
-          ) : (
-            /* Desktop View - Table Layout */
-            <Paper sx={{ width: '100%', overflow: 'hidden' }}>
-              <TableContainer>
-                <Table stickyHeader aria-label="orders table">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Order #</TableCell>
-                      <TableCell>Date</TableCell>
-                      <TableCell>Customer</TableCell>
-                      <TableCell>Amount</TableCell>
-                      <TableCell align="center">Status</TableCell>
-                      <TableCell align="center">Payment</TableCell>
-                      <TableCell align="center">Delivery</TableCell>
-                      <TableCell align="right">Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {filteredOrders
-                      .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                      .map((order) => (
-                        <TableRow 
-                          key={order.id}
-                          hover
-                          sx={{ 
-                            cursor: 'pointer',
-                            '&:hover': { backgroundColor: theme.palette.action.hover }
-                          }}
-                          onClick={() => handleViewOrderDetails(order)}
-                        >
-                          <TableCell>
-                            <Typography variant="body2" fontWeight="medium">
-                              {order.orderNumber}
-                            </Typography>
-                          </TableCell>
-                          <TableCell>
-                            <Typography variant="body2">
-                              {getOrderDate(order).toLocaleDateString()}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {getOrderDate(order).toLocaleTimeString()}
-                            </Typography>
-                          </TableCell>
-                          <TableCell>
-                            <Typography variant="body2">
-                              {order.orderDetails?.personalInfo?.fullName || order.customerName || 'N/A'}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {order.orderDetails?.personalInfo?.phone || order.customerPhone || 'N/A'}
-                            </Typography>
-                          </TableCell>
-                          <TableCell>
-                            <Typography variant="body2" fontWeight="medium">
-                              ₹{order.orderDetails?.totalAmount?.toFixed(2) || '0.00'}
-                            </Typography>
-                          </TableCell>
-                          <TableCell align="center">
-                            {/* Display paymentStatus as status (swapped as requested) */}
-                            {getStatusChip(order.paymentStatus || 'PENDING')}
-                          </TableCell>
-                          <TableCell align="center">
-                            {/* Display status as paymentStatus (swapped as requested) */}
-                            {getStatusChip(order.status || 'PENDING')}
-                          </TableCell>
-                          <TableCell align="center">
-                            {order.deliveryDetails ? (
-                              <Tooltip title={`${order.deliveryDetails.company} - ${order.deliveryDetails.consignmentNumber}`}>
-                                <Chip 
-                                  icon={<LocalShipping />} 
-                                  label="Set" 
-                                  color="info" 
-                                  size="small"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedOrderForDelivery(order.id);
-                                    setDeliveryDialogOpen(true);
-                                  }} 
-                                />
-                              </Tooltip>
-                            ) : (
-                              <Button
-                                variant="outlined"
-                                size="small"
-                                startIcon={<LocalShipping />}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedOrderForDelivery(order.id);
-                                  setDeliveryDialogOpen(true);
-                                }}
-                              >
-                                Add
-                              </Button>
-                            )}
-                          </TableCell>
-                          <TableCell align="right">
-                            <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                              <FormControlLabel
-                                control={
-                                  <Switch
-                                    checked={order.paymentStatus === 'COMPLETED' || order.paymentStatus === 'SUCCESS'}
-                                    onChange={(e) => {
-                                      e.stopPropagation();
-                                      handlePaymentToggle(order.id, order.paymentStatus);
-                                    }}
-                                    color="success"
-                                    size="small"
-                                  />
-                                }
-                                label="Paid"
-                                onClick={(e) => e.stopPropagation()}
-                              />
-                              
-                              <IconButton 
-                                color="primary"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleViewOrderDetails(order);
-                                }}
-                                size="small"
-                              >
-                                <KeyboardArrowRight />
-                              </IconButton>
-                            </Box>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-              <TablePagination
-                component="div"
-                count={filteredOrders.length}
-                page={page}
-                onPageChange={handleChangePage}
-                rowsPerPage={rowsPerPage}
-                onRowsPerPageChange={handleChangeRowsPerPage}
-                rowsPerPageOptions={[10, 25, 50, 100]}
-              />
+            
+            <Collapse in={filtersOpen}>
+              <Grid container spacing={2}>
+                {/* Search */}
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    placeholder="Search by order #, customer, items, address or phone"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    variant="outlined"
+                    size="small"
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <Search />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                </Grid>
+                
+                {/* Sort By */}
+                <Grid item xs={12} sm={6} md={2}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Sort By</InputLabel>
+                    <Select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                      label="Sort By"
+                      startAdornment={
+                        <InputAdornment position="start">
+                          <Sort />
+                        </InputAdornment>
+                      }
+                    >
+                      <MenuItem value="latest">Latest</MenuItem>
+                      <MenuItem value="oldest">Oldest</MenuItem>
+                      <MenuItem value="highest">Highest Amount</MenuItem>
+                      <MenuItem value="lowest">Lowest Amount</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                
+                {/* Date Range */}
+                <Grid item xs={12} sm={6} md={2}>
+                  <Button
+                    fullWidth
+                    variant={showDateRange ? "contained" : "outlined"}
+                    color="primary"
+                    startIcon={<CalendarMonth />}
+                    onClick={() => setShowDateRange(!showDateRange)}
+                    size="medium"
+                    sx={{ height: '40px' }}
+                  >
+                    {dateRange[0] && dateRange[1] 
+                      ? `${dateRange[0].format('DD/MM/YY')} - ${dateRange[1].format('DD/MM/YY')}` 
+                      : "Date Range"}
+                  </Button>
+                </Grid>
+                
+                {/* Delivery Filter */}
+                <Grid item xs={12} sm={6} md={2}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Delivery Status</InputLabel>
+                    <Select
+                      value={deliveryFilter}
+                      onChange={(e) => setDeliveryFilter(e.target.value)}
+                      label="Delivery Status"
+                    >
+                      <MenuItem value="all">All Orders</MenuItem>
+                      <MenuItem value="added">Delivery Set</MenuItem>
+                      <MenuItem value="notadded">No Delivery</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                
+                {/* Payment Status Filter */}
+                <Grid item xs={12} sm={6} md={2}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Payment Status</InputLabel>
+                    <Select
+                      value={paymentStatusFilter}
+                      onChange={(e) => setPaymentStatusFilter(e.target.value)}
+                      label="Payment Status"
+                    >
+                      <MenuItem value="all">All</MenuItem>
+                      <MenuItem value="COMPLETED">Completed</MenuItem>
+                      <MenuItem value="SUCCESS">Success</MenuItem>
+                      <MenuItem value="PENDING">Pending</MenuItem>
+                      <MenuItem value="FAILED">Failed</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                
+                {showDateRange && (
+                  <Grid item xs={12}>
+                    <Paper sx={{ p: 2, borderRadius: 2 }}>
+                      <Typography variant="subtitle2" gutterBottom>Select Date Range</Typography>
+                      <Space direction="vertical" size={12}>
+                        <DatePicker.RangePicker
+                          value={dateRange[0] && dateRange[1] ? [dateRange[0], dateRange[1]] : null}
+                          onChange={(dates) => setDateRange(dates)}
+                          style={{ width: '100%' }}
+                        />
+                      </Space>
+                    </Paper>
+                  </Grid>
+                )}
+              </Grid>
+            </Collapse>
+          </FilterSection>
+          
+          {/* Results Summary */}
+          <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 500 }}>
+              Showing {filteredOrders.length} of {orders.length} orders
+            </Typography>
+            
+            <Box>
+              <Tooltip title="Latest Orders">
+                <IconButton 
+                  color={sortBy === 'latest' ? 'primary' : 'default'}
+                  onClick={() => setSortBy('latest')}
+                  size="small"
+                >
+                  <ArrowDownward />
+                </IconButton>
+              </Tooltip>
+              
+              <Tooltip title="Oldest Orders">
+                <IconButton 
+                  color={sortBy === 'oldest' ? 'primary' : 'default'}
+                  onClick={() => setSortBy('oldest')}
+                  size="small"
+                >
+                  <ArrowUpward />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          </Box>
+          
+          {/* Loading State */}
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
+              <CircularProgress size={60} sx={{ color: 'primary.main' }} />
+            </Box>
+          ) : error ? (
+            <Alert severity="error" sx={{ my: 2, borderRadius: 2 }}>
+              {error}
+            </Alert>
+          ) : filteredOrders.length === 0 ? (
+            <Paper sx={{ p: 8, textAlign: 'center', borderRadius: 3, border: '2px dashed', borderColor: 'grey.300' }}>
+              <ShoppingCart sx={{ fontSize: 80, color: 'grey.400', mb: 2 }} />
+              <Typography variant="h5" color="text.secondary" gutterBottom>
+                No orders found matching the current filters
+              </Typography>
+              <Typography variant="body1" color="text.secondary">
+                Try adjusting your search criteria or filters to find orders.
+              </Typography>
             </Paper>
+          ) : (
+            <>
+              {/* Mobile/Tablet View - Card Layout */}
+              {isMedium ? (
+                <Box>
+                  {filteredOrders
+                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                    .map(order => (
+                      <OrderCard key={order.id} order={order} />
+                    ))}
+                  
+                  <TablePagination
+                    component="div"
+                    count={filteredOrders.length}
+                    page={page}
+                    onPageChange={handleChangePage}
+                    rowsPerPage={rowsPerPage}
+                    onRowsPerPageChange={handleChangeRowsPerPage}
+                    rowsPerPageOptions={[5, 10, 25, 50]}
+                  />
+                </Box>
+              ) : (
+                /* Desktop View - Table Layout */
+                <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: 3 }}>
+                  <TableContainer>
+                    <Table stickyHeader aria-label="orders table">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell sx={{ fontWeight: 600, bgcolor: 'grey.50' }}>Order #</TableCell>
+                          <TableCell sx={{ fontWeight: 600, bgcolor: 'grey.50' }}>Date</TableCell>
+                          <TableCell sx={{ fontWeight: 600, bgcolor: 'grey.50' }}>Customer</TableCell>
+                          <TableCell sx={{ fontWeight: 600, bgcolor: 'grey.50' }}>Amount</TableCell>
+                          <TableCell align="center" sx={{ fontWeight: 600, bgcolor: 'grey.50' }}>Status</TableCell>
+                          <TableCell align="center" sx={{ fontWeight: 600, bgcolor: 'grey.50' }}>Payment</TableCell>
+                          <TableCell align="center" sx={{ fontWeight: 600, bgcolor: 'grey.50' }}>Delivery</TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 600, bgcolor: 'grey.50' }}>Actions</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {filteredOrders
+                          .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                          .map((order) => (
+                            <TableRow 
+                              key={order.id}
+                              hover
+                              sx={{ 
+                                cursor: 'pointer',
+                                '&:hover': { backgroundColor: 'rgba(210, 105, 30, 0.04)' }
+                              }}
+                              onClick={() => handleViewOrderDetails(order)}
+                            >
+                              <TableCell>
+                                <Typography variant="body2" fontWeight="medium">
+                                  {order.orderNumber}
+                                </Typography>
+                              </TableCell>
+                              <TableCell>
+                                <Typography variant="body2">
+                                  {getOrderDate(order).toLocaleDateString()}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {getOrderDate(order).toLocaleTimeString()}
+                                </Typography>
+                              </TableCell>
+                              <TableCell>
+                                <Typography variant="body2">
+                                  {order.orderDetails?.personalInfo?.fullName || order.customerName || 'N/A'}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {order.orderDetails?.personalInfo?.phone || order.customerPhone || 'N/A'}
+                                </Typography>
+                              </TableCell>
+                              <TableCell>
+                                <Typography variant="body2" fontWeight="medium" color="primary.main">
+                                  ₹{order.orderDetails?.totalAmount?.toFixed(2) || '0.00'}
+                                </Typography>
+                              </TableCell>
+                              <TableCell align="center">
+                                {/* Display paymentStatus as status (swapped as requested) */}
+                                {getStatusChip(order.paymentStatus || 'PENDING')}
+                              </TableCell>
+                              <TableCell align="center">
+                                {/* Display status as paymentStatus (swapped as requested) */}
+                                {getStatusChip(order.status || 'PENDING')}
+                              </TableCell>
+                              <TableCell align="center">
+                                {order.deliveryDetails ? (
+                                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
+                                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                      <Tooltip title={`${order.deliveryDetails.company} - ${order.deliveryDetails.consignmentNumber}`}>
+                                        <Chip 
+                                          icon={<LocalShipping />} 
+                                          label="Set" 
+                                          color="info" 
+                                          size="small"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setSelectedOrderForDelivery(order.id);
+                                            setDeliveryDialogOpen(true);
+                                          }} 
+                                        />
+                                      </Tooltip>
+                                      
+                                      {order.deliveryStatus !== 'DELIVERED' ? (
+                                        <Tooltip title="Mark as Delivered">
+                                          <IconButton
+                                            size="small"
+                                            color="success"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleMarkDelivered(order.id);
+                                            }}
+                                          >
+                                            <CheckCircle />
+                                          </IconButton>
+                                        </Tooltip>
+                                      ) : (
+                                        <Chip 
+                                          label="Delivered" 
+                                          color="success"
+                                          icon={<CheckCircle />}
+                                          size="small"
+                                        />
+                                      )}
+                                    </Box>
+                                    
+                                    {order.deliveryStatus && (
+                                      <Chip 
+                                        label={order.deliveryStatus} 
+                                        color={
+                                          order.deliveryStatus === 'DELIVERED' 
+                                            ? 'success' 
+                                            : order.deliveryStatus === 'IN_TRANSIT' 
+                                              ? 'info'
+                                              : order.deliveryStatus === 'DISPATCHED'
+                                                ? 'warning'
+                                                : 'default'
+                                        }
+                                        size="small"
+                                      />
+                                    )}
+                                  </Box>
+                                ) : (
+                                  <Button
+                                    variant="outlined"
+                                    size="small"
+                                    startIcon={<LocalShipping />}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedOrderForDelivery(order.id);
+                                      setDeliveryDialogOpen(true);
+                                    }}
+                                  >
+                                    Set Address
+                                  </Button>
+                                )}
+                              </TableCell>
+                              <TableCell align="right">
+                                <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+                                  <FormControlLabel
+                                    control={
+                                      <Switch
+                                        checked={order.paymentStatus === 'COMPLETED' || order.paymentStatus === 'SUCCESS'}
+                                        onChange={(e) => {
+                                          e.stopPropagation();
+                                          handlePaymentToggle(order.id, order.paymentStatus);
+                                        }}
+                                        color="success"
+                                        size="small"
+                                      />
+                                    }
+                                    label="Paid"
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                  
+                                  <IconButton 
+                                    color="primary"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleViewOrderDetails(order);
+                                    }}
+                                    size="small"
+                                  >
+                                    <KeyboardArrowRight />
+                                  </IconButton>
+                                </Box>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                  <TablePagination
+                    component="div"
+                    count={filteredOrders.length}
+                    page={page}
+                    onPageChange={handleChangePage}
+                    rowsPerPage={rowsPerPage}
+                    onRowsPerPageChange={handleChangeRowsPerPage}
+                    rowsPerPageOptions={[10, 25, 50, 100]}
+                  />
+                </Paper>
+              )}
+            </>
           )}
-        </>
-      )}
-      
-      {/* Delivery Details Dialog */}
-      <DeliveryDetailsDialog
-        open={deliveryDialogOpen}
-        onClose={() => setDeliveryDialogOpen(false)}
-        orderId={selectedOrderForDelivery}
-        onSave={handleSaveDeliveryDetails}
-        initialData={selectedOrderForDelivery ? deliveryDetailsMap[selectedOrderForDelivery] : null}
-      />
-      
-      {/* Order Details Dialog */}
-      <OrderDetailsDialog
-        open={detailsDialogOpen}
-        onClose={() => setDetailsDialogOpen(false)}
-        order={selectedOrderForDetails}
-        searchQuery={searchQuery}
-      />
-      
-      {/* Notification Snackbar */}
-      <Snackbar 
-        open={snackbar.open} 
-        autoHideDuration={6000} 
-        onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      >
-        <Alert 
-          onClose={handleCloseSnackbar} 
-          severity={snackbar.severity} 
-          elevation={6} 
-          variant="filled"
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </Container>
+          
+          {/* Delivery Details Dialog */}
+          <DeliveryDetailsDialog
+            open={deliveryDialogOpen}
+            onClose={() => setDeliveryDialogOpen(false)}
+            orderId={selectedOrderForDelivery}
+            onSave={handleSaveDeliveryDetails}
+            initialData={selectedOrderForDelivery ? deliveryDetailsMap[selectedOrderForDelivery] : null}
+          />
+          
+          {/* Order Details Dialog */}
+          <OrderDetailsDialog
+            open={detailsDialogOpen}
+            onClose={() => setDetailsDialogOpen(false)}
+            order={selectedOrderForDetails}
+            searchQuery={searchQuery}
+          />
+          
+          {/* Notification Snackbar */}
+          <Snackbar 
+            open={snackbar.open} 
+            autoHideDuration={6000} 
+            onClose={handleCloseSnackbar}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+          >
+            <Alert 
+              onClose={handleCloseSnackbar} 
+              severity={snackbar.severity} 
+              elevation={6} 
+              variant="filled"
+              sx={{ borderRadius: 2 }}
+            >
+              {snackbar.message}
+            </Alert>
+          </Snackbar>
+        </Container>
+      </Box>
+    </ThemeProvider>
   );
 };
 

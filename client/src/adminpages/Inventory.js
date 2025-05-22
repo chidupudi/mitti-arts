@@ -19,18 +19,37 @@ import {
   CircularProgress,
   Fab,
   Avatar,
-  CardActions,
-  Divider,
   Container,
   Paper,
   Zoom,
-  Slide,
   Alert,
   Snackbar,
   useTheme,
   useMediaQuery,
   Stack,
   Badge,
+  AppBar,
+  Toolbar,
+  Drawer,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  Divider,
+  Menu,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TablePagination,
+  Switch,
+  FormControlLabel,
 } from '@mui/material';
 import {
   Add,
@@ -49,6 +68,27 @@ import {
   FilterList,
   Search,
   Warning,
+  Dashboard as DashboardIcon,
+  Analytics,
+  Settings,
+  ViewList,
+  ViewModule,
+  MoreVert,
+  TrendingUp,
+  TrendingDown,
+  GridView,
+  Refresh,
+  Export,
+  Import,
+  Sort,
+  AssignmentTurnedIn,
+  InventoryRounded,
+  Schedule,
+  CheckCircle,
+  Favorite,
+  People,
+  Store,
+  NotificationsActive,
 } from '@mui/icons-material';
 import { createTheme, ThemeProvider, styled } from '@mui/material/styles';
 import { db } from '../Firebase/Firebase';
@@ -62,79 +102,129 @@ import {
 } from 'firebase/firestore';
 import { uploadToCloudinary, validateImageFile } from '../utils/cloudinary';
 
-// Custom theme with terracotta colors
+// Terracotta Theme (matching dashboard)
 const terracottaTheme = createTheme({
   palette: {
     primary: {
-      main: '#CD853F', // Terracotta
-      light: '#E4A05F',
-      dark: '#8B4513',
+      main: '#D2691E',
+      light: '#F4A460',
+      dark: '#A0522D',
       contrastText: '#FFFFFF',
     },
     secondary: {
-      main: '#D2691E', // Chocolate
-      light: '#E6924E',
-      dark: '#A0522D',
-    },
-    accent: {
-      main: '#F4A460', // Sandy Brown
-      light: '#F7C280',
-      dark: '#C17030',
+      main: '#8B4513',
+      light: '#CD853F',
+      dark: '#654321',
+      contrastText: '#FFFFFF',
     },
     background: {
-      default: '#FFF8F5',
+      default: '#FAF0E6',
       paper: '#FFFFFF',
     },
     text: {
-      primary: '#5D4037',
-      secondary: '#8D6E63',
+      primary: '#3E2723',
+      secondary: '#5D4037',
     },
     success: {
-      main: '#8BC34A',
-    },
-    error: {
-      main: '#E57373',
+      main: '#6B7821',
+      light: '#8BC34A',
     },
     warning: {
-      main: '#FFB74D',
+      main: '#FF8F00',
+      light: '#FFB74D',
+    },
+    error: {
+      main: '#C62828',
+      light: '#EF5350',
+    },
+    info: {
+      main: '#0277BD',
+      light: '#29B6F6',
+    },
+    grey: {
+      50: '#FAF0E6',
+      100: '#F5EBE0',
+      200: '#E8D5C4',
+      300: '#DCC5A7',
+      400: '#C4A47C',
+      500: '#8B7355',
+      600: '#6D5B47',
+      700: '#5D4E42',
+      800: '#3E2723',
+      900: '#2E1A16',
     },
   },
   typography: {
     fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
-    h4: {
+    h1: {
+      fontSize: '2.5rem',
       fontWeight: 700,
+      lineHeight: 1.2,
+    },
+    h2: {
       fontSize: '2rem',
-      color: '#5D4037',
+      fontWeight: 600,
+      lineHeight: 1.3,
+    },
+    h3: {
+      fontSize: '1.75rem',
+      fontWeight: 600,
+      lineHeight: 1.3,
+    },
+    h4: {
+      fontSize: '1.5rem',
+      fontWeight: 600,
+      lineHeight: 1.4,
+    },
+    h5: {
+      fontSize: '1.25rem',
+      fontWeight: 600,
+      lineHeight: 1.4,
     },
     h6: {
+      fontSize: '1.125rem',
       fontWeight: 600,
-      color: '#5D4037',
+      lineHeight: 1.4,
+    },
+    body1: {
+      fontSize: '1rem',
+      lineHeight: 1.6,
+    },
+    body2: {
+      fontSize: '0.875rem',
+      lineHeight: 1.5,
     },
   },
   shape: {
-    borderRadius: 16,
+    borderRadius: 12,
   },
   components: {
     MuiCard: {
       styleOverrides: {
         root: {
-          borderRadius: 20,
-          boxShadow: '0 8px 32px rgba(205, 133, 63, 0.1)',
+          boxShadow: '0 4px 20px rgba(210, 105, 30, 0.08)',
+          borderRadius: 16,
           transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           '&:hover': {
-            transform: 'translateY(-8px)',
-            boxShadow: '0 16px 48px rgba(205, 133, 63, 0.2)',
+            transform: 'translateY(-4px)',
+            boxShadow: '0 8px 40px rgba(210, 105, 30, 0.12)',
           },
+        },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          backgroundImage: 'none',
         },
       },
     },
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: 12,
           textTransform: 'none',
           fontWeight: 600,
-          padding: '10px 24px',
+          borderRadius: 10,
         },
       },
     },
@@ -142,56 +232,97 @@ const terracottaTheme = createTheme({
       styleOverrides: {
         root: {
           '& .MuiOutlinedInput-root': {
-            borderRadius: 12,
+            borderRadius: 8,
+            backgroundColor: '#FFFFFF',
+            '&:hover': {
+              '& .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#D2691E',
+              },
+            },
           },
         },
       },
     },
-    MuiDialog: {
+    MuiChip: {
       styleOverrides: {
-        paper: {
-          borderRadius: 24,
+        root: {
+          borderRadius: 6,
+          fontWeight: 500,
+          fontSize: '0.75rem',
         },
       },
     },
   },
 });
 
-// Styled components
-const StyledContainer = styled(Container)(({ theme }) => ({
-  minHeight: '100vh',
-  background: `linear-gradient(135deg, ${theme.palette.background.default} 0%, #FFF5F0 100%)`,
-  paddingTop: theme.spacing(4),
-  paddingBottom: theme.spacing(4),
+// Styled Components with Terracotta Theme
+const HeaderToolbar = styled(Toolbar)(({ theme }) => ({
+  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`,
+  color: '#FFFFFF',
+  minHeight: 80,
+  borderRadius: '0 0 24px 24px',
+  marginBottom: theme.spacing(3),
+  [theme.breakpoints.down('md')]: {
+    minHeight: 70,
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    padding: theme.spacing(2),
+  },
 }));
 
-const HeroSection = styled(Box)(({ theme }) => ({
-  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`,
-  borderRadius: 24,
-  padding: theme.spacing(4),
-  marginBottom: theme.spacing(4),
+const NavigationButton = styled(Button)(({ theme, active }) => ({
+  color: '#FFFFFF',
+  backgroundColor: active ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.1)',
+  '&:hover': {
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    transform: 'translateY(-1px)',
+  },
+  borderRadius: 12,
+  padding: '8px 20px',
+  fontWeight: 600,
+  fontSize: '0.9rem',
+  textTransform: 'none',
+  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+  border: active ? '2px solid rgba(255,255,255,0.3)' : '2px solid transparent',
+  [theme.breakpoints.down('sm')]: {
+    fontSize: '0.8rem',
+    padding: '6px 12px',
+    minWidth: 'auto',
+  },
+}));
+
+const StyledContainer = styled(Container)(({ theme }) => ({
+  minHeight: '100vh',
+  backgroundColor: theme.palette.background.default,
+  paddingTop: theme.spacing(3),
+  paddingBottom: theme.spacing(3),
+}));
+
+const StatCard = styled(Card)(({ theme }) => ({
+  background: 'linear-gradient(135deg, #D2691E 0%, #F4A460 100%)',
   color: 'white',
+  minHeight: 140,
   position: 'relative',
   overflow: 'hidden',
   '&::before': {
     content: '""',
     position: 'absolute',
-    top: '-50%',
-    right: '-20%',
-    width: '200px',
-    height: '200px',
-    borderRadius: '50%',
+    top: 0,
+    right: 0,
+    width: '100px',
+    height: '100px',
     background: 'rgba(255, 255, 255, 0.1)',
-  },
-  '&::after': {
-    content: '""',
-    position: 'absolute',
-    bottom: '-30%',
-    left: '-10%',
-    width: '150px',
-    height: '150px',
     borderRadius: '50%',
-    background: 'rgba(255, 255, 255, 0.05)',
+    transform: 'translate(30px, -30px)',
+  },
+  '&.success': {
+    background: 'linear-gradient(135deg, #6B7821 0%, #8BC34A 100%)',
+  },
+  '&.warning': {
+    background: 'linear-gradient(135deg, #FF8F00 0%, #FFB74D 100%)',
+  },
+  '&.info': {
+    background: 'linear-gradient(135deg, #0277BD 0%, #29B6F6 100%)',
   },
 }));
 
@@ -201,65 +332,167 @@ const ProductCard = styled(Card)(({ theme, isHidden }) => ({
   flexDirection: 'column',
   position: 'relative',
   opacity: isHidden ? 0.7 : 1,
-  border: `2px solid ${isHidden ? theme.palette.warning.light : 'transparent'}`,
-  '&::before': {
+  border: isHidden ? `2px solid ${theme.palette.warning.light}` : `1px solid ${theme.palette.grey[200]}`,
+  '&::before': isHidden ? {
     content: '""',
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     height: '4px',
-    background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-    borderRadius: '20px 20px 0 0',
-  },
+    background: theme.palette.warning.main,
+    borderRadius: '16px 16px 0 0',
+    zIndex: 1,
+  } : {},
 }));
 
-const ImageContainer = styled(Box)(({ theme }) => ({
-  position: 'relative',
-  width: '100%',
-  height: 200,
-  backgroundColor: theme.palette.grey[100],
-  borderRadius: 16,
-  overflow: 'hidden',
-  border: `2px dashed ${theme.palette.primary.light}`,
+const FilterPanel = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(2),
+  marginBottom: theme.spacing(3),
   display: 'flex',
+  gap: theme.spacing(2),
   alignItems: 'center',
-  justifyContent: 'center',
-  cursor: 'pointer',
-  transition: 'all 0.3s ease',
-  '&:hover': {
-    borderColor: theme.palette.primary.main,
-    backgroundColor: theme.palette.primary.light + '10',
-  },
+  flexWrap: 'wrap',
+  background: '#FFFFFF',
+  border: `1px solid ${theme.palette.grey[200]}`,
+  borderRadius: 16,
 }));
 
-const StyledFab = styled(Fab)(({ theme }) => ({
-  position: 'fixed',
-  bottom: theme.spacing(3),
-  right: theme.spacing(3),
-  background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-  '&:hover': {
-    background: `linear-gradient(135deg, ${theme.palette.primary.dark}, ${theme.palette.secondary.dark})`,
-  },
-  zIndex: 1000,
-}));
+// Admin Header Component
+const AdminHeader = ({ currentPage = 'inventory' }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isSmallMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-const StatsChip = styled(Chip)(({ theme, variant }) => ({
-  borderRadius: 8,
-  fontWeight: 600,
-  ...(variant === 'price' && {
-    background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.primary.light})`,
-    color: 'white',
-  }),
-  ...(variant === 'stock' && {
-    background: `linear-gradient(45deg, ${theme.palette.success.main}, ${theme.palette.success.light})`,
-    color: 'white',
-  }),
-  ...(variant === 'code' && {
-    background: `linear-gradient(45deg, ${theme.palette.secondary.main}, ${theme.palette.secondary.light})`,
-    color: 'white',
-  }),
-}));
+  const navigationItems = [
+    {
+      label: 'Dashboard',
+      icon: <DashboardIcon />,
+      path: '/dashboard',
+      key: 'dashboard'
+    },
+    {
+      label: 'Inventory',
+      icon: <InventoryRounded />,
+      path: '/inventory',
+      key: 'inventory'
+    },
+    {
+      label: 'Admin Orders',
+      icon: <AssignmentTurnedIn />,
+      path: '/adminorders',
+      key: 'adminorders'
+    }
+  ];
+
+  const handleNavigation = (path) => {
+    window.location.href = path;
+  };
+
+  const getPageTitle = () => {
+    switch (currentPage) {
+      case 'inventory':
+        return 'Inventory Management';
+      case 'adminorders':
+        return 'Order Management';
+      default:
+        return 'Admin Dashboard';
+    }
+  };
+
+  const getPageDescription = () => {
+    switch (currentPage) {
+      case 'inventory':
+        return 'Manage your product inventory and stock levels';
+      case 'adminorders':
+        return 'Track and manage customer orders';
+      default:
+        return "Welcome back! Here's what's happening with your store today.";
+    }
+  };
+
+  return (
+    <AppBar position="static" elevation={0} sx={{ background: 'transparent' }}>
+      <Container maxWidth="xl">
+        <HeaderToolbar>
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: isMobile ? 'flex-start' : 'center',
+            flexDirection: isMobile ? 'column' : 'row',
+            width: '100%',
+            gap: isMobile ? 1 : 0
+          }}>
+            <Box sx={{ 
+              flexGrow: 1,
+              mb: isMobile ? 2 : 0
+            }}>
+              <Typography 
+                variant={isMobile ? 'h5' : 'h4'} 
+                fontWeight="bold"
+                sx={{ 
+                  fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' }
+                }}
+              >
+                {getPageTitle()}
+              </Typography>
+              <Typography 
+                variant="body1" 
+                sx={{ 
+                  opacity: 0.9, 
+                  mt: 0.5,
+                  fontSize: { xs: '0.85rem', sm: '0.95rem' },
+                  display: isSmallMobile ? 'none' : 'block'
+                }}
+              >
+                {getPageDescription()}
+              </Typography>
+            </Box>
+
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: { xs: 1, sm: 1.5, md: 2 },
+              flexWrap: isMobile ? 'wrap' : 'nowrap',
+              width: isMobile ? '100%' : 'auto',
+              justifyContent: isMobile ? 'flex-start' : 'flex-end'
+            }}>
+              {navigationItems.map((item) => (
+                <NavigationButton
+                  key={item.key}
+                  startIcon={!isSmallMobile ? item.icon : null}
+                  onClick={() => handleNavigation(item.path)}
+                  active={currentPage === item.key}
+                  size={isSmallMobile ? 'small' : 'medium'}
+                >
+                  {isSmallMobile ? item.icon : item.label}
+                </NavigationButton>
+              ))}
+              
+              <Tooltip title="Refresh Data">
+                <IconButton 
+                  color="inherit" 
+                  onClick={() => window.location.reload()}
+                  size={isSmallMobile ? 'small' : 'medium'}
+                  sx={{ 
+                    bgcolor: 'rgba(255,255,255,0.1)', 
+                    '&:hover': { 
+                      bgcolor: 'rgba(255,255,255,0.2)',
+                      transform: 'translateY(-1px)'
+                    },
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    ml: 1
+                  }}
+                >
+                  <Refresh />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          </Box>
+        </HeaderToolbar>
+      </Container>
+    </AppBar>
+  );
+};
 
 const Inventory = () => {
   const theme = useTheme();
@@ -272,6 +505,11 @@ const Inventory = () => {
   const [productToDelete, setProductToDelete] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'table'
+  const [sortBy, setSortBy] = useState('name');
+  const [filterCategory, setFilterCategory] = useState('all');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(12);
   
   const [newProduct, setNewProduct] = useState({
     name: '',
@@ -280,6 +518,7 @@ const Inventory = () => {
     price: '',
     code: '',
     stock: 50,
+    category: '',
   });
   const [editProduct, setEditProduct] = useState(null);
 
@@ -340,6 +579,7 @@ const Inventory = () => {
         price: '',
         code: '',
         stock: 50,
+        category: '',
       });
       setAddDialogOpen(false);
       showSnackbar('Product added successfully!', 'success');
@@ -388,7 +628,7 @@ const Inventory = () => {
       ));
       
       showSnackbar(
-        `Product ${!product.hidden ? 'hidden' : 'unhidden'} successfully!`, 
+        `Product ${!product.hidden ? 'hidden' : 'shown'} successfully!`, 
         'success'
       );
     } catch (error) {
@@ -532,53 +772,174 @@ const Inventory = () => {
     }
   };
 
-  // Filter products based on search
-  const filteredProducts = products.filter(product =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.code.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter and sort products
+  const filteredProducts = products
+    .filter(product => {
+      const matchesSearch = 
+        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.code.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesFilter = filterCategory === 'all' || 
+        (filterCategory === 'hidden' && product.hidden) ||
+        (filterCategory === 'visible' && !product.hidden) ||
+        (filterCategory === 'low-stock' && product.stock < 10);
+      
+      return matchesSearch && matchesFilter;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'name':
+          return a.name.localeCompare(b.name);
+        case 'price':
+          return a.price - b.price;
+        case 'stock':
+          return a.stock - b.stock;
+        case 'created':
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        default:
+          return 0;
+      }
+    });
 
   // Statistics
   const totalProducts = products.length;
   const hiddenProducts = products.filter(p => p.hidden).length;
   const lowStockProducts = products.filter(p => p.stock < 10).length;
+  const totalValue = products.reduce((sum, p) => sum + (p.price * p.stock), 0);
+
+  // Pagination
+  const paginatedProducts = filteredProducts.slice(
+    page * rowsPerPage,
+    page * rowsPerPage + rowsPerPage
+  );
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
 
   return (
     <ThemeProvider theme={terracottaTheme}>
-      <StyledContainer maxWidth="xl">
-        {/* Hero Section */}
-        <HeroSection>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, position: 'relative', zIndex: 1 }}>
-            <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', width: 64, height: 64 }}>
-              <Inventory2 sx={{ fontSize: 32 }} />
-            </Avatar>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="h4" sx={{ color: 'white', mb: 1 }}>
-                Inventory Management
-              </Typography>
-              <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.9)' }}>
-                Manage your products with style and efficiency
-              </Typography>
-            </Box>
-            {!isMobile && (
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <Paper sx={{ p: 2, bgcolor: 'rgba(255,255,255,0.9)', borderRadius: 3 }}>
-                  <Typography variant="h6" color="primary.main">{totalProducts}</Typography>
-                  <Typography variant="body2" color="text.secondary">Total Products</Typography>
-                </Paper>
-                <Paper sx={{ p: 2, bgcolor: 'rgba(255,255,255,0.9)', borderRadius: 3 }}>
-                  <Typography variant="h6" color="warning.main">{lowStockProducts}</Typography>
-                  <Typography variant="body2" color="text.secondary">Low Stock</Typography>
-                </Paper>
-              </Box>
-            )}
-          </Box>
-        </HeroSection>
+      <Box sx={{ 
+        backgroundColor: 'background.default', 
+        minHeight: '100vh',
+        pb: 4
+      }}>
+        {/* Admin Header Component */}
+        <AdminHeader currentPage="inventory" />
 
-        {/* Search and Filter Section */}
-        <Paper sx={{ p: 3, mb: 4, borderRadius: 3 }}>
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+        <StyledContainer maxWidth="xl">
+          {/* Statistics Cards */}
+          <Grid container spacing={3} sx={{ mb: 4 }}>
+            <Grid item xs={12} sm={6} lg={3}>
+              <StatCard>
+                <CardContent sx={{ display: 'flex', alignItems: 'center', p: 3 }}>
+                  <Avatar sx={{ 
+                    bgcolor: 'rgba(255,255,255,0.2)', 
+                    width: 64, 
+                    height: 64,
+                    mr: 2
+                  }}>
+                    <Inventory2 sx={{ fontSize: 32 }} />
+                  </Avatar>
+                  <Box>
+                    <Typography variant="h3" fontWeight="bold">
+                      {totalProducts}
+                    </Typography>
+                    <Typography variant="body1" sx={{ opacity: 0.9 }}>
+                      Total Products
+                    </Typography>
+                    <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                      In inventory
+                    </Typography>
+                  </Box>
+                </CardContent>
+              </StatCard>
+            </Grid>
+            <Grid item xs={12} sm={6} lg={3}>
+              <StatCard className="success">
+                <CardContent sx={{ display: 'flex', alignItems: 'center', p: 3 }}>
+                  <Avatar sx={{ 
+                    bgcolor: 'rgba(255,255,255,0.2)', 
+                    width: 64, 
+                    height: 64,
+                    mr: 2
+                  }}>
+                    <AttachMoney sx={{ fontSize: 32 }} />
+                  </Avatar>
+                  <Box>
+                    <Typography variant="h3" fontWeight="bold">
+                      ₹{totalValue.toLocaleString()}
+                    </Typography>
+                    <Typography variant="body1" sx={{ opacity: 0.9 }}>
+                      Total Value
+                    </Typography>
+                    <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                      Inventory worth
+                    </Typography>
+                  </Box>
+                </CardContent>
+              </StatCard>
+            </Grid>
+            <Grid item xs={12} sm={6} lg={3}>
+              <StatCard className="warning">
+                <CardContent sx={{ display: 'flex', alignItems: 'center', p: 3 }}>
+                  <Avatar sx={{ 
+                    bgcolor: 'rgba(255,255,255,0.2)', 
+                    width: 64, 
+                    height: 64,
+                    mr: 2
+                  }}>
+                    <Warning sx={{ fontSize: 32 }} />
+                  </Avatar>
+                  <Box>
+                    <Typography variant="h3" fontWeight="bold">
+                      {lowStockProducts}
+                    </Typography>
+                    <Typography variant="body1" sx={{ opacity: 0.9 }}>
+                      Low Stock Items
+                    </Typography>
+                    <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                      Need attention
+                    </Typography>
+                  </Box>
+                </CardContent>
+              </StatCard>
+            </Grid>
+            <Grid item xs={12} sm={6} lg={3}>
+              <StatCard className="info">
+                <CardContent sx={{ display: 'flex', alignItems: 'center', p: 3 }}>
+                  <Avatar sx={{ 
+                    bgcolor: 'rgba(255,255,255,0.2)', 
+                    width: 64, 
+                    height: 64,
+                    mr: 2
+                  }}>
+                    <VisibilityOff sx={{ fontSize: 32 }} />
+                  </Avatar>
+                  <Box>
+                    <Typography variant="h3" fontWeight="bold">
+                      {hiddenProducts}
+                    </Typography>
+                    <Typography variant="body1" sx={{ opacity: 0.9 }}>
+                      Hidden Products
+                    </Typography>
+                    <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                      Not visible to customers
+                    </Typography>
+                  </Box>
+                </CardContent>
+              </StatCard>
+            </Grid>
+          </Grid>
+
+          {/* Filter and Search Panel */}
+          <FilterPanel>
             <TextField
               placeholder="Search products..."
               variant="outlined"
@@ -592,174 +953,359 @@ const Inventory = () => {
                   </InputAdornment>
                 ),
               }}
-              sx={{ minWidth: 300, flex: 1 }}
+              sx={{ minWidth: 250 }}
             />
-            <Typography variant="body2" color="text.secondary">
-              {filteredProducts.length} of {totalProducts} products
-            </Typography>
-          </Box>
-        </Paper>
+            
+            <FormControl size="small" sx={{ minWidth: 120 }}>
+              <InputLabel>Filter</InputLabel>
+              <Select
+                value={filterCategory}
+                label="Filter"
+                onChange={(e) => setFilterCategory(e.target.value)}
+              >
+                <MenuItem value="all">All Products</MenuItem>
+                <MenuItem value="visible">Visible Only</MenuItem>
+                <MenuItem value="hidden">Hidden Only</MenuItem>
+                <MenuItem value="low-stock">Low Stock</MenuItem>
+              </Select>
+            </FormControl>
 
-        {/* Products Grid */}
-        <Grid container spacing={3}>
-          {filteredProducts.map((product) => (
-            <Grid item xs={12} sm={6} lg={4} key={product.id}>
-              <Zoom in timeout={300}>
-                <ProductCard isHidden={product.hidden}>
-                  {product.images && product.images.length > 0 && product.images[0] ? (
-                    <CardMedia
-                      component="img"
-                      height="200"
-                      image={product.images[0]}
-                      alt={product.name}
-                      sx={{ borderRadius: '16px 16px 0 0' }}
-                    />
-                  ) : (
-                    <Box
-                      sx={{
-                        height: 200,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        bgcolor: 'grey.100',
-                        borderRadius: '16px 16px 0 0',
-                      }}
-                    >
-                      <ImageIcon sx={{ fontSize: 64, color: 'grey.400' }} />
-                    </Box>
-                  )}
-                  
-                  <CardContent sx={{ flexGrow: 1, p: 3 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                      <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                        {product.name}
-                      </Typography>
-                      <Box sx={{ display: 'flex', gap: 0.5 }}>
-                        <Tooltip title={product.hidden ? "Show Product" : "Hide Product"}>
-                          <IconButton 
-                            size="small" 
-                            onClick={() => handleToggleHide(product.id)}
-                            sx={{ color: product.hidden ? 'warning.main' : 'text.secondary' }}
-                          >
-                            {product.hidden ? <VisibilityOff /> : <Visibility />}
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Edit Product">
-                          <IconButton 
-                            size="small" 
-                            onClick={() => handleEditProduct(product)}
-                            sx={{ color: 'primary.main' }}
-                          >
-                            <Edit />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Delete Product">
-                          <IconButton 
-                            size="small" 
-                            onClick={() => handleDeleteClick(product)}
-                            sx={{ color: 'error.main' }}
-                          >
-                            <Delete />
-                          </IconButton>
-                        </Tooltip>
-                      </Box>
-                    </Box>
-                    
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                      {product.description}
-                    </Typography>
+            <FormControl size="small" sx={{ minWidth: 120 }}>
+              <InputLabel>Sort By</InputLabel>
+              <Select
+                value={sortBy}
+                label="Sort By"
+                onChange={(e) => setSortBy(e.target.value)}
+              >
+                <MenuItem value="name">Name</MenuItem>
+                <MenuItem value="price">Price</MenuItem>
+                <MenuItem value="stock">Stock</MenuItem>
+                <MenuItem value="created">Created Date</MenuItem>
+              </Select>
+            </FormControl>
 
-                    {/* Additional Images */}
-                    {product.images && product.images.length > 1 && (
-                      <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
-                        {product.images.slice(1, 4).map((img, idx) => (
-                          <img
-                            key={idx}
-                            src={img}
-                            alt={`${product.name}-${idx + 1}`}
-                            style={{
-                              width: 48,
-                              height: 48,
-                              objectFit: 'cover',
-                              borderRadius: 8,
-                              border: '2px solid #f0f0f0',
-                            }}
+            <Button
+              variant="contained"
+              startIcon={<Add />}
+              onClick={() => setAddDialogOpen(true)}
+              sx={{ 
+                ml: 'auto',
+                background: 'linear-gradient(135deg, #D2691E 0%, #F4A460 100%)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #A0522D 0%, #D2691E 100%)',
+                },
+              }}
+            >
+              Add Product
+            </Button>
+
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Tooltip title="Grid View">
+                <IconButton
+                  color={viewMode === 'grid' ? 'primary' : 'default'}
+                  onClick={() => setViewMode('grid')}
+                >
+                  <GridView />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Table View">
+                <IconButton
+                  color={viewMode === 'table' ? 'primary' : 'default'}
+                  onClick={() => setViewMode('table')}
+                >
+                  <ViewList />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          </FilterPanel>
+
+          {/* Products Display */}
+          {viewMode === 'grid' ? (
+            <>
+              <Grid container spacing={3}>
+                {paginatedProducts.map((product) => (
+                  <Grid item xs={12} sm={6} lg={4} xl={3} key={product.id}>
+                    <Zoom in timeout={300}>
+                      <ProductCard isHidden={product.hidden}>
+                        {/* Product Image */}
+                        {product.images && product.images.length > 0 && product.images[0] ? (
+                          <CardMedia
+                            component="img"
+                            height="200"
+                            image={product.images[0]}
+                            alt={product.name}
+                            sx={{ objectFit: 'cover' }}
                           />
-                        ))}
-                        {product.images.length > 4 && (
+                        ) : (
                           <Box
                             sx={{
-                              width: 48,
-                              height: 48,
-                              borderRadius: 1,
-                              bgcolor: 'grey.100',
+                              height: 200,
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              border: '2px solid #f0f0f0',
+                              bgcolor: 'grey.100',
                             }}
                           >
-                            <Typography variant="caption" color="text.secondary">
-                              +{product.images.length - 4}
-                            </Typography>
+                            <ImageIcon sx={{ fontSize: 64, color: 'grey.400' }} />
                           </Box>
                         )}
-                      </Box>
-                    )}
+                        
+                        <CardContent sx={{ flexGrow: 1, p: 2 }}>
+                          {/* Product Header */}
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                            <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
+                              {product.name}
+                            </Typography>
+                            <IconButton
+                              size="small"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // Handle menu open
+                              }}
+                            >
+                              <MoreVert />
+                            </IconButton>
+                          </Box>
+                          
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                            {product.description || 'No description available'}
+                          </Typography>
 
-                    <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
-                      <StatsChip 
-                        label={`₹${product.price}`} 
-                        variant="price"
-                        size="small"
-                        icon={<AttachMoney />}
-                      />
-                      <StatsChip 
-                        label={product.code} 
-                        variant="code"
-                        size="small"
-                        icon={<QrCode />}
-                      />
-                      <Badge 
-                        badgeContent={product.stock < 10 ? <Warning sx={{ fontSize: 12 }} /> : null}
-                        color="warning"
-                      >
-                        <StatsChip 
-                          label={`Stock: ${product.stock}`} 
-                          variant="stock"
-                          size="small"
-                          color={product.stock > 10 ? "success" : "error"}
-                        />
-                      </Badge>
-                      {product.hidden && (
+                          {/* Price and Stock */}
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                            <Typography variant="h6" color="primary.main" sx={{ fontWeight: 700 }}>
+                              ₹{product.price?.toLocaleString()}
+                            </Typography>
+                            <Chip 
+                              label={`Stock: ${product.stock}`}
+                              size="small"
+                              color={product.stock > 10 ? "success" : product.stock > 0 ? "warning" : "error"}
+                              variant="outlined"
+                            />
+                          </Box>
+
+                          {/* Product Code */}
+                          {product.code && (
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                              Code: {product.code}
+                            </Typography>
+                          )}
+
+                          {/* Status Chips */}
+                          <Stack direction="row" spacing={1} flexWrap="wrap" gap={0.5}>
+                            {product.hidden && (
+                              <Chip 
+                                label="Hidden" 
+                                size="small"
+                                color="warning" 
+                                variant="filled"
+                              />
+                            )}
+                            <Chip 
+                              label={product.inStock ? "In Stock" : "Out of Stock"} 
+                              size="small"
+                              color={product.inStock ? "success" : "error"}
+                              variant="outlined"
+                            />
+                          </Stack>
+
+                          {/* Action Buttons */}
+                          <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+                            <Button
+                              size="small"
+                              startIcon={<Edit />}
+                              onClick={() => handleEditProduct(product)}
+                              sx={{ flex: 1 }}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              size="small"
+                              color={product.hidden ? "success" : "warning"}
+                              startIcon={product.hidden ? <Visibility /> : <VisibilityOff />}
+                              onClick={() => handleToggleHide(product.id)}
+                              sx={{ flex: 1 }}
+                            >
+                              {product.hidden ? 'Show' : 'Hide'}
+                            </Button>
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => handleDeleteClick(product)}
+                            >
+                              <Delete />
+                            </IconButton>
+                          </Box>
+                        </CardContent>
+                      </ProductCard>
+                    </Zoom>
+                  </Grid>
+                ))}
+              </Grid>
+
+              {/* Pagination */}
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+                <TablePagination
+                  component="div"
+                  count={filteredProducts.length}
+                  page={page}
+                  onPageChange={handleChangePage}
+                  rowsPerPage={rowsPerPage}
+                  onRowsPerPageChange={handleChangeRowsPerPage}
+                  rowsPerPageOptions={[12, 24, 48, 96]}
+                />
+              </Box>
+            </>
+          ) : (
+            /* Table View */
+            <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
+              <Table>
+                <TableHead>
+                  <TableRow sx={{ bgcolor: 'grey.50' }}>
+                    <TableCell sx={{ fontWeight: 600 }}>Product</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Code</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Price</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Stock</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {paginatedProducts.map((product) => (
+                    <TableRow key={product.id} hover>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                          {product.images?.[0] ? (
+                            <Avatar
+                              src={product.images[0]}
+                              alt={product.name}
+                              sx={{ width: 48, height: 48, borderRadius: 2 }}
+                              variant="rounded"
+                            />
+                          ) : (
+                            <Avatar
+                              sx={{ width: 48, height: 48, borderRadius: 2, bgcolor: 'grey.100' }}
+                              variant="rounded"
+                            >
+                              <ImageIcon color="disabled" />
+                            </Avatar>
+                          )}
+                          <Box>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                              {product.name}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {product.description?.substring(0, 50)}...
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary">
+                          {product.code || '-'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="subtitle2" color="primary.main" sx={{ fontWeight: 600 }}>
+                          ₹{product.price?.toLocaleString()}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
                         <Chip 
-                          label="Hidden" 
+                          label={product.stock}
                           size="small"
-                          color="warning" 
-                          variant="outlined"
+                          color={product.stock > 10 ? "success" : product.stock > 0 ? "warning" : "error"}
                         />
-                      )}
-                      <Chip 
-                        label={product.inStock ? "In Stock" : "Out of Stock"} 
-                        size="small"
-                        color={product.inStock ? "success" : "error"}
-                        variant="outlined"
-                      />
-                    </Stack>
-                  </CardContent>
-                </ProductCard>
-              </Zoom>
-            </Grid>
-          ))}
-        </Grid>
+                      </TableCell>
+                      <TableCell>
+                        <Stack direction="row" spacing={1}>
+                          {product.hidden && (
+                            <Chip label="Hidden" size="small" color="warning" variant="outlined" />
+                          )}
+                          <Chip 
+                            label={product.inStock ? "In Stock" : "Out of Stock"} 
+                            size="small"
+                            color={product.inStock ? "success" : "error"}
+                            variant="outlined"
+                          />
+                        </Stack>
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', gap: 0.5 }}>
+                          <Tooltip title="Edit">
+                            <IconButton size="small" onClick={() => handleEditProduct(product)}>
+                              <Edit />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title={product.hidden ? "Show" : "Hide"}>
+                            <IconButton size="small" onClick={() => handleToggleHide(product.id)}>
+                              {product.hidden ? <Visibility /> : <VisibilityOff />}
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Delete">
+                            <IconButton size="small" color="error" onClick={() => handleDeleteClick(product)}>
+                              <Delete />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <TablePagination
+                component="div"
+                count={filteredProducts.length}
+                page={page}
+                onPageChange={handleChangePage}
+                rowsPerPage={rowsPerPage}
+                onRowsPerPageChange={handleChangeRowsPerPage}
+                rowsPerPageOptions={[12, 24, 48, 96]}
+              />
+            </TableContainer>
+          )}
 
-        {/* Floating Action Button */}
-        <StyledFab
-          onClick={() => setAddDialogOpen(true)}
-          aria-label="add product"
-        >
-          <Add />
-        </StyledFab>
+          {/* Empty State */}
+          {filteredProducts.length === 0 && (
+            <Paper 
+              sx={{ 
+                p: 8, 
+                textAlign: 'center', 
+                borderRadius: 3,
+                border: '2px dashed',
+                borderColor: 'grey.300',
+                bgcolor: 'grey.50',
+              }}
+            >
+              <Inventory2 sx={{ fontSize: 80, color: 'grey.400', mb: 2 }} />
+              <Typography variant="h5" color="text.secondary" gutterBottom>
+                {searchTerm ? 'No products found' : 'No products yet'}
+              </Typography>
+              <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+                {searchTerm 
+                  ? `No products match "${searchTerm}". Try adjusting your search.`
+                  : 'Start building your inventory by adding your first product.'
+                }
+              </Typography>
+              {!searchTerm && (
+                <Button
+                  variant="contained"
+                  size="large"
+                  startIcon={<Add />}
+                  onClick={() => setAddDialogOpen(true)}
+                  sx={{ 
+                    background: 'linear-gradient(135deg, #D2691E 0%, #F4A460 100%)',
+                    '&:hover': {
+                      background: 'linear-gradient(135deg, #A0522D 0%, #D2691E 100%)',
+                    },
+                  }}
+                >
+                  Add Your First Product
+                </Button>
+              )}
+            </Paper>
+          )}
+        </StyledContainer>
 
         {/* Add Product Dialog */}
         <Dialog 
@@ -767,9 +1313,7 @@ const Inventory = () => {
           onClose={() => setAddDialogOpen(false)} 
           maxWidth="md" 
           fullWidth
-          PaperProps={{
-            sx: { borderRadius: 3, overflow: 'hidden' }
-          }}
+          PaperProps={{ sx: { borderRadius: 3 } }}
         >
           <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white', p: 3 }}>
             <Typography variant="h5" component="div" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -778,12 +1322,13 @@ const Inventory = () => {
             </Typography>
           </DialogTitle>
           <DialogContent sx={{ p: 3 }}>
-            <Grid container spacing={2}>
+            <Grid container spacing={3}>
               <Grid item xs={12} md={6}>
                 <TextField
-                  label="Product Name *"
+                  label="Product Name"
                   fullWidth
                   margin="normal"
+                  required
                   value={newProduct.name}
                   onChange={e => setNewProduct({ ...newProduct, name: e.target.value })}
                   error={!newProduct.name}
@@ -797,6 +1342,7 @@ const Inventory = () => {
                   margin="normal"
                   value={newProduct.code}
                   onChange={e => setNewProduct({ ...newProduct, code: e.target.value })}
+                  placeholder="SKU or product code"
                 />
               </Grid>
               <Grid item xs={12}>
@@ -808,14 +1354,16 @@ const Inventory = () => {
                   rows={3}
                   value={newProduct.description}
                   onChange={e => setNewProduct({ ...newProduct, description: e.target.value })}
+                  placeholder="Detailed product description..."
                 />
               </Grid>
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={4}>
                 <TextField
-                  label="Price *"
+                  label="Price"
                   fullWidth
                   margin="normal"
                   type="number"
+                  required
                   value={newProduct.price}
                   onChange={e => setNewProduct({ ...newProduct, price: e.target.value })}
                   InputProps={{
@@ -825,7 +1373,7 @@ const Inventory = () => {
                   helperText={!newProduct.price ? "Price is required" : ""}
                 />
               </Grid>
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={4}>
                 <TextField
                   label="Stock Quantity"
                   fullWidth
@@ -833,26 +1381,50 @@ const Inventory = () => {
                   type="number"
                   value={newProduct.stock}
                   onChange={e => setNewProduct({ ...newProduct, stock: Number(e.target.value) })}
-                  InputProps={{
-                    inputProps: { min: 0 }
-                  }}
+                />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <TextField
+                  label="Category"
+                  fullWidth
+                  margin="normal"
+                  value={newProduct.category}
+                  onChange={e => setNewProduct({ ...newProduct, category: e.target.value })}
+                  placeholder="Product category"
                 />
               </Grid>
             </Grid>
 
-            <Box sx={{ mt: 3 }}>
+            {/* Image Upload Section */}
+            <Box sx={{ mt: 4 }}>
               <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                 <PhotoCamera />
-                Product Images (Up to 8)
+                Product Images
               </Typography>
               <Grid container spacing={2}>
-                {newProduct.images.map((url, index) => (
-                  <Grid item xs={6} sm={4} md={3} key={index}>
-                    <ImageContainer>
+                {newProduct.images.slice(0, 4).map((url, index) => (
+                  <Grid item xs={6} sm={3} key={index}>
+                    <Paper
+                      sx={{
+                        width: '100%',
+                        height: 120,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: '2px dashed',
+                        borderColor: 'grey.300',
+                        cursor: 'pointer',
+                        position: 'relative',
+                        '&:hover': {
+                          borderColor: 'primary.main',
+                          bgcolor: 'primary.50',
+                        },
+                      }}
+                    >
                       {url === 'loading' ? (
-                        <CircularProgress />
+                        <CircularProgress size={24} />
                       ) : url ? (
-                        <Box sx={{ position: 'relative', width: '100%', height: '100%' }}>
+                        <>
                           <img
                             src={url}
                             alt={`Product ${index + 1}`}
@@ -860,16 +1432,16 @@ const Inventory = () => {
                               width: '100%',
                               height: '100%',
                               objectFit: 'cover',
-                              borderRadius: 12,
+                              borderRadius: 8,
                             }}
                           />
                           <IconButton
                             sx={{ 
                               position: 'absolute', 
-                              top: 8, 
-                              right: 8, 
+                              top: 4, 
+                              right: 4, 
                               bgcolor: 'white',
-                              '&:hover': { bgcolor: 'grey.100' }
+                              boxShadow: 1,
                             }}
                             size="small"
                             onClick={() => {
@@ -880,7 +1452,7 @@ const Inventory = () => {
                           >
                             <Cancel color="error" />
                           </IconButton>
-                        </Box>
+                        </>
                       ) : (
                         <label style={{ width: '100%', height: '100%', cursor: 'pointer' }}>
                           <input
@@ -896,16 +1468,15 @@ const Inventory = () => {
                             justifyContent: 'center',
                             height: '100%',
                             textAlign: 'center',
-                            p: 2,
                           }}>
-                            <CloudUpload sx={{ fontSize: 32, color: 'primary.main', mb: 1 }} />
+                            <CloudUpload sx={{ fontSize: 32, color: 'grey.400', mb: 1 }} />
                             <Typography variant="caption" color="text.secondary">
-                              Upload Image {index + 1}
+                              Upload Image
                             </Typography>
                           </Box>
                         </label>
                       )}
-                    </ImageContainer>
+                    </Paper>
                   </Grid>
                 ))}
               </Grid>
@@ -916,7 +1487,6 @@ const Inventory = () => {
               onClick={() => setAddDialogOpen(false)} 
               startIcon={<Cancel />}
               variant="outlined"
-              sx={{ borderRadius: 3 }}
             >
               Cancel
             </Button>
@@ -924,7 +1494,12 @@ const Inventory = () => {
               onClick={handleAddProduct} 
               variant="contained" 
               startIcon={<Save />}
-              sx={{ borderRadius: 3 }}
+              sx={{ 
+                background: 'linear-gradient(135deg, #D2691E 0%, #F4A460 100%)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #A0522D 0%, #D2691E 100%)',
+                },
+              }}
             >
               Add Product
             </Button>
@@ -937,9 +1512,7 @@ const Inventory = () => {
           onClose={() => setEditDialogOpen(false)} 
           maxWidth="md" 
           fullWidth
-          PaperProps={{
-            sx: { borderRadius: 3, overflow: 'hidden' }
-          }}
+          PaperProps={{ sx: { borderRadius: 3 } }}
         >
           <DialogTitle sx={{ bgcolor: 'secondary.main', color: 'white', p: 3 }}>
             <Typography variant="h5" component="div" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -948,12 +1521,13 @@ const Inventory = () => {
             </Typography>
           </DialogTitle>
           <DialogContent sx={{ p: 3 }}>
-            <Grid container spacing={2}>
+            <Grid container spacing={3}>
               <Grid item xs={12} md={6}>
                 <TextField
-                  label="Product Name *"
+                  label="Product Name"
                   fullWidth
                   margin="normal"
+                  required
                   value={editProduct?.name || ''}
                   onChange={e => handleEditChange('name', e.target.value)}
                   error={!editProduct?.name}
@@ -980,12 +1554,13 @@ const Inventory = () => {
                   onChange={e => handleEditChange('description', e.target.value)}
                 />
               </Grid>
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={4}>
                 <TextField
-                  label="Price *"
+                  label="Price"
                   fullWidth
                   margin="normal"
                   type="number"
+                  required
                   value={editProduct?.price || ''}
                   onChange={e => handleEditChange('price', e.target.value)}
                   InputProps={{
@@ -995,7 +1570,7 @@ const Inventory = () => {
                   helperText={!editProduct?.price ? "Price is required" : ""}
                 />
               </Grid>
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={4}>
                 <TextField
                   label="Stock Quantity"
                   fullWidth
@@ -1003,26 +1578,49 @@ const Inventory = () => {
                   type="number"
                   value={editProduct?.stock || 0}
                   onChange={e => handleEditChange('stock', Number(e.target.value))}
-                  InputProps={{
-                    inputProps: { min: 0 }
-                  }}
+                />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <TextField
+                  label="Category"
+                  fullWidth
+                  margin="normal"
+                  value={editProduct?.category || ''}
+                  onChange={e => handleEditChange('category', e.target.value)}
                 />
               </Grid>
             </Grid>
 
-            <Box sx={{ mt: 3 }}>
+            {/* Image Upload Section */}
+            <Box sx={{ mt: 4 }}>
               <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                 <PhotoCamera />
-                Product Images (Up to 8)
+                Product Images
               </Typography>
               <Grid container spacing={2}>
-                {editProduct?.images?.map((url, index) => (
-                  <Grid item xs={6} sm={4} md={3} key={index}>
-                    <ImageContainer>
+                {editProduct?.images?.slice(0, 4).map((url, index) => (
+                  <Grid item xs={6} sm={3} key={index}>
+                    <Paper
+                      sx={{
+                        width: '100%',
+                        height: 120,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: '2px dashed',
+                        borderColor: 'grey.300',
+                        cursor: 'pointer',
+                        position: 'relative',
+                        '&:hover': {
+                          borderColor: 'primary.main',
+                          bgcolor: 'primary.50',
+                        },
+                      }}
+                    >
                       {url === 'loading' ? (
-                        <CircularProgress />
+                        <CircularProgress size={24} />
                       ) : url ? (
-                        <Box sx={{ position: 'relative', width: '100%', height: '100%' }}>
+                        <>
                           <img
                             src={url}
                             alt={`Product ${index + 1}`}
@@ -1030,27 +1628,27 @@ const Inventory = () => {
                               width: '100%',
                               height: '100%',
                               objectFit: 'cover',
-                              borderRadius: 12,
+                              borderRadius: 8,
                             }}
                           />
                           <IconButton
                             sx={{ 
                               position: 'absolute', 
-                              top: 8, 
-                              right: 8, 
+                              top: 4, 
+                              right: 4, 
                               bgcolor: 'white',
-                              '&:hover': { bgcolor: 'grey.100' }
+                              boxShadow: 1,
                             }}
                             size="small"
                             onClick={() => {
-                              const newImages = [...editProduct.images];
+                              const newImages = [...(editProduct.images || [])];
                               newImages[index] = '';
                               handleEditChange('images', newImages);
                             }}
                           >
                             <Cancel color="error" />
                           </IconButton>
-                        </Box>
+                        </>
                       ) : (
                         <label style={{ width: '100%', height: '100%', cursor: 'pointer' }}>
                           <input
@@ -1066,16 +1664,15 @@ const Inventory = () => {
                             justifyContent: 'center',
                             height: '100%',
                             textAlign: 'center',
-                            p: 2,
                           }}>
-                            <CloudUpload sx={{ fontSize: 32, color: 'primary.main', mb: 1 }} />
+                            <CloudUpload sx={{ fontSize: 32, color: 'grey.400', mb: 1 }} />
                             <Typography variant="caption" color="text.secondary">
-                              Upload Image {index + 1}
+                              Upload Image
                             </Typography>
                           </Box>
                         </label>
                       )}
-                    </ImageContainer>
+                    </Paper>
                   </Grid>
                 ))}
               </Grid>
@@ -1086,7 +1683,6 @@ const Inventory = () => {
               onClick={() => setEditDialogOpen(false)} 
               startIcon={<Cancel />}
               variant="outlined"
-              sx={{ borderRadius: 3 }}
             >
               Cancel
             </Button>
@@ -1094,7 +1690,12 @@ const Inventory = () => {
               onClick={handleSaveEdit} 
               variant="contained" 
               startIcon={<Save />}
-              sx={{ borderRadius: 3 }}
+              sx={{ 
+                background: 'linear-gradient(135deg, #8B4513 0%, #CD853F 100%)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #654321 0%, #8B4513 100%)',
+                },
+              }}
             >
               Save Changes
             </Button>
@@ -1107,13 +1708,11 @@ const Inventory = () => {
           onClose={() => setDeleteDialogOpen(false)}
           maxWidth="xs"
           fullWidth
-          PaperProps={{
-            sx: { borderRadius: 3, overflow: 'hidden' }
-          }}
+          PaperProps={{ sx: { borderRadius: 3 } }}
         >
-          <DialogTitle sx={{ bgcolor: 'error.main', color: 'white', p: 3 }}>
+          <DialogTitle sx={{ p: 3 }}>
             <Typography variant="h6" component="div" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Warning />
+              <Warning color="error" />
               Confirm Delete
             </Typography>
           </DialogTitle>
@@ -1133,7 +1732,6 @@ const Inventory = () => {
             <Button 
               onClick={() => setDeleteDialogOpen(false)}
               variant="outlined"
-              sx={{ borderRadius: 3 }}
             >
               Cancel
             </Button>
@@ -1141,7 +1739,6 @@ const Inventory = () => {
               onClick={handleConfirmDelete}
               variant="contained"
               color="error"
-              sx={{ borderRadius: 3 }}
             >
               Delete Product
             </Button>
@@ -1153,7 +1750,7 @@ const Inventory = () => {
           open={snackbar.open}
           autoHideDuration={4000}
           onClose={() => setSnackbar({ ...snackbar, open: false })}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
         >
           <Alert 
             onClose={() => setSnackbar({ ...snackbar, open: false })} 
@@ -1163,43 +1760,7 @@ const Inventory = () => {
             {snackbar.message}
           </Alert>
         </Snackbar>
-
-        {/* Empty State */}
-        {filteredProducts.length === 0 && (
-          <Paper 
-            sx={{ 
-              p: 8, 
-              textAlign: 'center', 
-              borderRadius: 3,
-              bgcolor: 'background.paper',
-              border: '2px dashed',
-              borderColor: 'primary.light',
-            }}
-          >
-            <Inventory2 sx={{ fontSize: 80, color: 'primary.light', mb: 2 }} />
-            <Typography variant="h5" color="text.secondary" gutterBottom>
-              {searchTerm ? 'No products found' : 'No products yet'}
-            </Typography>
-            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-              {searchTerm 
-                ? `No products match "${searchTerm}". Try adjusting your search.`
-                : 'Start building your inventory by adding your first product.'
-              }
-            </Typography>
-            {!searchTerm && (
-              <Button
-                variant="contained"
-                size="large"
-                startIcon={<Add />}
-                onClick={() => setAddDialogOpen(true)}
-                sx={{ borderRadius: 3 }}
-              >
-                Add Your First Product
-              </Button>
-            )}
-          </Paper>
-        )}
-      </StyledContainer>
+      </Box>
     </ThemeProvider>
   );
 };
