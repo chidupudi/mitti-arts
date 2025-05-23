@@ -8,7 +8,7 @@ import ProductDetail from './pages/ProductDetail';
 import About from './pages/aboutus';
 import Policies from './pages/Policies';
 import ContactUs from './pages/Contact';
-import AuthForm from './components/AuthForm';
+import AuthForm , {ProtectedRoute} from './components/AuthForm';
 import Profile from './pages/Profile';
 import Cart from './pages/Cart';
 import OrderSummary from './pages/OrderSummary';
@@ -22,20 +22,26 @@ import PhonePePayment from './components/PhonePePayment';
 import PaymentStatusPage from './pages/PaymentStatusPage';
 import NotFound from './components/NotFound'; 
 import AdminOrders from './adminpages/adminorders';
-import AdminProtectedRoute from './components/AdminProctectedRoutes'; // Import the AdminProtectedRoute
+import AdminProtectedRoute from './components/AdminProctectedRoutes'; // Your existing file name
 
 const App = () => {
   return (
     <Router>
       <Header />
       <Routes>
+        {/* 🌍 Public Routes */}
         <Route path="/" element={<Welcome />} />
         <Route path="/products" element={<Products />} />
         <Route path="/product/:id" element={<ProductDetail />} />
         <Route path="/about" element={<About />} />
         <Route path="/policies" element={<Policies />} />
         <Route path="/contactus" element={<ContactUs />} />
+        
+        {/* 🔑 Authentication Routes */}
         <Route path="/auth" element={<AuthForm />} />
+        <Route path="/login" element={<AuthForm />} />
+
+        {/* 👤 User Routes */}
         <Route path="/profile" element={<Profile />} />
         <Route path="/cart" element={<Cart />} />
         <Route path="/order-summary" element={<OrderSummary />} />
@@ -45,32 +51,35 @@ const App = () => {
         <Route path="/phonepe" element={<PhonePePayment />} />
         <Route path="/payment-status/:orderId" element={<PaymentStatusPage />} />
 
-        {/* Admin Protected Routes */}
+        {/* 🔐 SUPER SIMPLE Admin Routes - Just wrap with AdminProtectedRoute */}
         <Route 
           path="/dashboard" 
           element={
-            <AdminProtectedRoute requiredRole="admin">
+            <ProtectedRoute>
               <Dashboard />
-            </AdminProtectedRoute>
+            </ProtectedRoute>
           } 
         />
+        
         <Route 
           path="/inventory" 
           element={
-            <AdminProtectedRoute requiredRole="admin">
+            <ProtectedRoute>
               <Inventory />
-            </AdminProtectedRoute>
+            </ProtectedRoute>
           } 
         />
+        
         <Route 
           path="/adminorders" 
           element={
-            <AdminProtectedRoute requiredRole="moderator">
+            <ProtectedRoute>
               <AdminOrders />
-            </AdminProtectedRoute>
+            </ProtectedRoute>
           } 
         />
 
+        {/* 🎯 Catch all route - Keep this LAST */}
         <Route path="*" element={<NotFound />} />
       </Routes>
       <Footer/>

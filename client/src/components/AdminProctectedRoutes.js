@@ -1,153 +1,61 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../Firebase/Firebase';
 import { 
   Box, 
   CircularProgress, 
   Typography, 
-  Alert,
   Paper 
 } from '@mui/material';
 
-const AdminProtectedRoute = ({ children, requiredRole = null }) => {
+const AdminProtectedRoute = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
-  const [error, setError] = useState('');
+
+  // Terracotta theme colors
+  const terracottaTheme = {
+    primary: '#D2691E',
+    secondary: '#CD853F',
+    accent: '#F4A460',
+    dark: '#A0522D',
+    light: '#FFEEE6',
+  };
 
   useEffect(() => {
-    const validateAdminAccess = async () => {
-      try {
-        setIsLoading(true);
-        setError('');
+    const checkAdminAccess = () => {
+      console.log('🔍 Checking admin access...');
+      
+      // Get the 3 simple localStorage items
+      const adminToken = localStorage.getItem('adminToken');
+      const isAdmin = localStorage.getItem('isAdmin');
+      const adminUsername = localStorage.getItem('adminUsername');
 
-                const isAuthenticated = localStorage.getItem('isAuthenticated');
-        if (isAuthenticated !== 'true') {
+      console.log('adminToken:', adminToken);
+      console.log('isAdmin:', isAdmin);
+      console.log('adminUsername:', adminUsername);
+
+      // SUPER SIMPLE CHECK - Just check if all 3 exist and isAdmin is 'true'
+      if (adminToken && isAdmin === 'true' && adminUsername) {
+        // Extra check: token should start with 'ADMIN_LOGGED_IN_'
+        if (adminToken.startsWith('ADMIN_LOGGED_IN_')) {
+          console.log('✅ Admin access granted!');
+          setIsAuthorized(true);
+        } else {
+          console.log('❌ Invalid admin token format');
           setIsAuthorized(false);
-          setIsLoading(false);
-          return;
         }
-
-        // Check if user is marked as admin
-        const isAdmin = localStorage.getItem('isAdmin');
-        if (isAdmin !== 'true') {
-          setIsAuthorized(false);
-          setIsLoading(false);
-          return;
-        }
-
-
-        // Get admin token and user data
-        const adminToken = localStorage.getItem('adminToken');
-        const adminUserData = localStorage.getItem('adminUser');
-
-        if (!adminToken || !adminUserData) {
-          setIsAuthorized(false);
-          setIsLoading(false);
-          return;
-        }
-
-        // Parse admin user data
-        const adminUser = JSON.parse(adminUserData);
-        
-        // Query admin users collection to find the admin by username
-        const q = query(
-          collection(db, 'adminUsers'),
-          where('username', '==', adminUser.username)
-        );
-        
-        const querySnapshot = await getDocs(q);
-        
-        if (querySnapshot.empty) {
-          // Admin user no longer exists in database
-          localStorage.removeItem('adminToken');
-          localStorage.removeItem('adminUser');
-          localStorage.removeItem('isAdmin');
-          setError('Admin account no longer exists');
-          setIsAuthorized(false);
-          setIsLoading(false);
-          return;
-        }
-
-        // Get the first matching admin document (assuming usernames are unique)
-        const adminDoc = querySnapshot.docs[0];
-        const adminData = adminDoc.data();
-
-        // Check if admin account is still active
-        if (!adminData.isActive) {
-          localStorage.removeItem('adminToken');
-          localStorage.removeItem('adminUser');
-          localStorage.removeItem('isAdmin');
-          setError('Admin account has been disabled');
-          setIsAuthorized(false);
-          setIsLoading(false);
-          return;
-        }
-
-        // Check role-based access if required
-        if (requiredRole && adminData.role !== requiredRole) {
-          // Check role hierarchy
-          const roleHierarchy = {
-            'super_admin': 3,
-            'admin': 2,
-            'moderator': 1
-          };
-
-          const userRoleLevel = roleHierarchy[adminData.role] || 0;
-          const requiredRoleLevel = roleHierarchy[requiredRole] || 0;
-
-          if (userRoleLevel < requiredRoleLevel) {
-            setError(`Access denied. Required role: ${requiredRole}, Your role: ${adminData.role}`);
-            setIsAuthorized(false);
-            setIsLoading(false);
-            return;
-          }
-        }
-
-        // Validate token format (basic check)
-        const tokenParts = adminToken.split('_');
-        if (tokenParts.length !== 3 || tokenParts[0] !== 'admin' || tokenParts[1] !== adminUser.username) {
-          localStorage.removeItem('adminToken');
-          localStorage.removeItem('adminUser');
-          localStorage.removeItem('isAdmin');
-          setError('Invalid admin token');
-          setIsAuthorized(false);
-          setIsLoading(false);
-          return;
-        }
-
-        // Check token age (optional - expire after 24 hours)
-        const tokenTimestamp = parseInt(tokenParts[2]);
-        const currentTime = Date.now();
-        const tokenAge = currentTime - tokenTimestamp;
-        const maxTokenAge = 24 * 60 * 60 * 1000; // 24 hours
-
-        if (tokenAge > maxTokenAge) {
-          localStorage.removeItem('adminToken');
-          localStorage.removeItem('adminUser');
-          localStorage.removeItem('isAdmin');
-          setError('Admin session expired. Please login again.');
-          setIsAuthorized(false);
-          setIsLoading(false);
-          return;
-        }
-
-        // All checks passed
-        setIsAuthorized(true);
-        setIsLoading(false);
-
-      } catch (err) {
-        console.error('Error validating admin access:', err);
-        setError('Error validating admin access');
+      } else {
+        console.log('❌ Missing admin credentials');
         setIsAuthorized(false);
-        setIsLoading(false);
       }
+
+      setIsLoading(false);
     };
 
-    validateAdminAccess();
-  }, [requiredRole]);
+    // Small delay to simulate loading (makes it feel more natural)
+    setTimeout(checkAdminAccess, 500);
+  }, []);
 
-  // Show loading spinner while validating
+  // Show loading spinner
   if (isLoading) {
     return (
       <Box
@@ -156,117 +64,171 @@ const AdminProtectedRoute = ({ children, requiredRole = null }) => {
         justifyContent="center"
         alignItems="center"
         minHeight="100vh"
-        bgcolor="grey.50"
+        sx={{
+          background: `linear-gradient(135deg, ${terracottaTheme.light} 0%, ${terracottaTheme.accent} 50%, ${terracottaTheme.primary} 100%)`,
+        }}
       >
-        <CircularProgress size={60} />
-        <Typography variant="h6" sx={{ mt: 2 }}>
-          Validating Admin Access...
+        <CircularProgress 
+          size={60} 
+          sx={{ 
+            color: terracottaTheme.primary,
+            mb: 2
+          }} 
+        />
+        <Typography 
+          variant="h6" 
+          sx={{ 
+            color: terracottaTheme.dark,
+            fontWeight: 'bold'
+          }}
+        >
+          🔐 Checking Admin Access...
         </Typography>
       </Box>
     );
   }
 
-  // Show error if validation failed
+  // If not authorized, show access denied and redirect
   if (!isAuthorized) {
     return (
-      <Box
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
-        minHeight="100vh"
-        bgcolor="grey.50"
-        p={2}
-      >
-        <Paper elevation={3} sx={{ p: 4, maxWidth: 500, textAlign: 'center' }}>
-          <Typography variant="h5" color="error" gutterBottom>
-            Access Denied
-          </Typography>
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
-          <Typography variant="body1" color="text.secondary">
-            You don't have permission to access this page. Please contact an administrator if you believe this is an error.
-          </Typography>
-          <Box sx={{ mt: 3 }}>
-            <Navigate to="/login" replace />
-          </Box>
-        </Paper>
-      </Box>
+      <>
+        <Box
+          display="flex"
+          justifyContent="center"
+          alignItems="center"
+          minHeight="100vh"
+          sx={{
+            background: `linear-gradient(135deg, ${terracottaTheme.light} 0%, ${terracottaTheme.accent} 50%, ${terracottaTheme.primary} 100%)`,
+            p: 2
+          }}
+        >
+          <Paper 
+            elevation={8} 
+            sx={{ 
+              p: 4, 
+              maxWidth: 500, 
+              textAlign: 'center',
+              backgroundColor: 'rgba(255, 255, 255, 0.95)',
+              backdropFilter: 'blur(10px)',
+              borderRadius: 3,
+              border: `2px solid ${terracottaTheme.accent}`,
+              boxShadow: `0 8px 32px rgba(210, 105, 30, 0.3)`
+            }}
+          >
+            <Box
+              sx={{
+                width: 80,
+                height: 80,
+                borderRadius: '50%',
+                background: `linear-gradient(45deg, ${terracottaTheme.primary}, ${terracottaTheme.secondary})`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 20px auto',
+                boxShadow: `0 4px 20px rgba(210, 105, 30, 0.4)`
+              }}
+            >
+              <Typography sx={{ fontSize: '2rem' }}>🔒</Typography>
+            </Box>
+            
+            <Typography 
+              variant="h4" 
+              gutterBottom
+              sx={{ 
+                color: terracottaTheme.dark,
+                fontWeight: 'bold',
+                mb: 2
+              }}
+            >
+              Access Denied
+            </Typography>
+            
+            <Typography 
+              variant="h6" 
+              sx={{ 
+                color: terracottaTheme.primary,
+                mb: 2
+              }}
+            >
+              🚫 Admin Login Required
+            </Typography>
+            
+            <Typography 
+              variant="body1" 
+              sx={{ 
+                color: terracottaTheme.dark,
+                mb: 2
+              }}
+            >
+              You need administrator privileges to access this page.
+            </Typography>
+            
+            <Typography 
+              variant="body2" 
+              sx={{ 
+                color: terracottaTheme.secondary
+              }}
+            >
+              Please login as admin to continue.
+            </Typography>
+          </Paper>
+        </Box>
+        <Navigate to="/auth" replace />
+      </>
     );
   }
 
-  // Render protected content if authorized
+  // All good - show the protected content
   return <>{children}</>;
 };
 
-// Higher-order component for easier usage
-export const withAdminProtection = (Component, requiredRole = null) => {
-  return (props) => (
-    <AdminProtectedRoute requiredRole={requiredRole}>
-      <Component {...props} />
-    </AdminProtectedRoute>
-  );
+// Simple utility functions
+export const adminUtils = {
+  // Check if user is admin (super simple)
+  isAdmin: () => {
+    const adminToken = localStorage.getItem('adminToken');
+    const isAdmin = localStorage.getItem('isAdmin');
+    return adminToken && isAdmin === 'true' && adminToken.startsWith('ADMIN_LOGGED_IN_');
+  },
+
+  // Get admin username
+  getAdminUsername: () => {
+    return localStorage.getItem('adminUsername');
+  },
+
+  // Simple logout
+  logout: () => {
+    // Clear the 3 admin items
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('isAdmin');
+    localStorage.removeItem('adminUsername');
+    
+
+    // Redirect to auth
+    window.location.href = '/auth';
+  }
 };
 
-// Hook to get current admin user data
-export const useAdminUser = () => {
-  const [adminUser, setAdminUser] = useState(null);
+// Simple React hook to get admin status
+export const useAdminStatus = () => {
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminUsername, setAdminUsername] = useState('');
 
   useEffect(() => {
-    const adminUserData = localStorage.getItem('adminUser');
-    if (adminUserData) {
-      setAdminUser(JSON.parse(adminUserData));
-    }
-  }, []);
-
-  return adminUser;
-};
-
-// Utility functions for admin authentication
-export const adminAuthUtils = {
-  // Check if current user is admin
-  isAdmin: () => {
-    return localStorage.getItem('isAdmin') === 'true';
-  },
-
-  // Get admin user data
-  getAdminUser: () => {
-    const adminUserData = localStorage.getItem('adminUser');
-    return adminUserData ? JSON.parse(adminUserData) : null;
-  },
-
-  // Check if admin has specific role
-  hasRole: (role) => {
-    const adminUser = adminAuthUtils.getAdminUser();
-    return adminUser && adminUser.role === role;
-  },
-
-  // Check if admin has minimum role level
-  hasMinimumRole: (minimumRole) => {
-    const adminUser = adminAuthUtils.getAdminUser();
-    if (!adminUser) return false;
-
-    const roleHierarchy = {
-      'super_admin': 3,
-      'admin': 2,
-      'moderator': 1
+    const checkStatus = () => {
+      setIsAdmin(adminUtils.isAdmin());
+      setAdminUsername(adminUtils.getAdminUsername() || '');
     };
 
-    const userRoleLevel = roleHierarchy[adminUser.role] || 0;
-    const minimumRoleLevel = roleHierarchy[minimumRole] || 0;
+    checkStatus();
+    
+    // Check every 2 seconds (in case user logs out in another tab)
+    const interval = setInterval(checkStatus, 2000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
-    return userRoleLevel >= minimumRoleLevel;
-  },
-
-  // Logout admin user
-  logout: () => {
-    localStorage.removeItem('adminToken');
-    localStorage.removeItem('adminUser');
-    localStorage.removeItem('isAdmin');
-    window.location.href = '/login';
-  }
+  return { isAdmin, adminUsername };
 };
 
 export default AdminProtectedRoute;
