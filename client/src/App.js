@@ -8,7 +8,7 @@ import ProductDetail from './pages/ProductDetail';
 import About from './pages/aboutus';
 import Policies from './pages/Policies';
 import ContactUs from './pages/Contact';
-import AuthForm , {ProtectedRoute} from './components/AuthForm';
+import AuthForm  from './components/AuthForm';
 import Profile from './pages/Profile';
 import Cart from './pages/Cart';
 import OrderSummary from './pages/OrderSummary';
@@ -22,7 +22,7 @@ import PhonePePayment from './components/PhonePePayment';
 import PaymentStatusPage from './pages/PaymentStatusPage';
 import NotFound from './components/NotFound'; 
 import AdminOrders from './adminpages/adminorders';
-import AdminProtectedRoute from './components/AdminProctectedRoutes'; // Your existing file name
+import AdminAuth , {ProtectedAdminRoute} from './adminpages/adminauth';
 
 const App = () => {
   return (
@@ -50,35 +50,34 @@ const App = () => {
         <Route path="/orders" element={<Order />} />
         <Route path="/phonepe" element={<PhonePePayment />} />
         <Route path="/payment-status/:orderId" element={<PaymentStatusPage />} />
+        <Route path="/supercontrollogin" element={<AdminAuth/>} />
+{/* 🔐 Admin Routes - NOW PROPERLY PROTECTED */}
+<Route 
+  path="/dashboard" 
+  element={
+    <ProtectedAdminRoute adminOnly={true}>
+      <Dashboard />
+    </ProtectedAdminRoute>
+  } 
+/>
 
-        {/* 🔐 SUPER SIMPLE Admin Routes - Just wrap with AdminProtectedRoute */}
-        <Route 
-          path="/dashboard" 
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          } 
-        />
-        
-        <Route 
-          path="/inventory" 
-          element={
-            <ProtectedRoute>
-              <Inventory />
-            </ProtectedRoute>
-          } 
-        />
-        
-        <Route 
-          path="/adminorders" 
-          element={
-            <ProtectedRoute>
-              <AdminOrders />
-            </ProtectedRoute>
-          } 
-        />
+<Route 
+  path="/inventory" 
+  element={
+    <ProtectedAdminRoute adminOnly={true}>
+      <Inventory />
+    </ProtectedAdminRoute>
+  }
+/>
 
+<Route
+  path="/adminorders"
+  element={
+    <ProtectedAdminRoute adminOnly={true}>
+      <AdminOrders />
+    </ProtectedAdminRoute>
+  }
+/>
         {/* 🎯 Catch all route - Keep this LAST */}
         <Route path="*" element={<NotFound />} />
       </Routes>

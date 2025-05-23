@@ -12,8 +12,6 @@ export const uploadToCloudinary = async (file) => {
     formData.append('file', file);
     formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
     
-    // Remove API key from client-side code for security
-    // The upload preset should be set to "Unsigned" in Cloudinary dashboard
     
     const response = await fetch(CLOUDINARY_URL, {
       method: 'POST',
