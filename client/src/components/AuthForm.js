@@ -60,128 +60,118 @@ export default function AuthForm() {
     dark: '#A0522D',
     light: '#FFEEE6',
   };
-// Initialize admin credentials on first load
-useEffect(() => {
-  const initializeAdmins = async () => {
-    try {
-      // Check if admins are already initialized
-      const adminsCollection = collection(db, 'admins');
-      const adminsSnapshot = await getDocs(adminsCollection);
-      
-      if (adminsSnapshot.empty) {
-        console.log('Initializing default admin accounts...');
+
+  // Initialize admin credentials on first load
+  useEffect(() => {
+    const initializeAdmins = async () => {
+      try {
+        const adminsCollection = collection(db, 'admins');
+        const adminsSnapshot = await getDocs(adminsCollection);
         
-        // Create admin accounts
-        for (const admin of DEFAULT_ADMINS) {
-          try {
-            // Create user with Firebase Authentication
-            const userCredential = await createUserWithEmailAndPassword(
-              auth, 
-              admin.username, // Use the email directly
-              admin.password
-            );
-            
-            // Add admin record to Firestore
-            await setDoc(doc(db, 'admins', userCredential.user.uid), {
-              username: admin.username.split('@')[0], // Extract username part from email
-              email: admin.username,
-              isAdmin: true,
-              role: admin.role,
-              createdAt: new Date().toISOString()
-            });
-            
-            console.log(`Admin user '${admin.username}' created successfully`);
-          } catch (error) {
-            console.error(`Error creating admin '${admin.username}':`, error.message);
+        if (adminsSnapshot.empty) {
+          console.log('Initializing default admin accounts...');
+          
+          for (const admin of DEFAULT_ADMINS) {
+            try {
+              const userCredential = await createUserWithEmailAndPassword(
+                auth, 
+                admin.username,
+                admin.password
+              );
+              
+              await setDoc(doc(db, 'admins', userCredential.user.uid), {
+                username: admin.username.split('@')[0],
+                email: admin.username,
+                isAdmin: true,
+                role: admin.role,
+                createdAt: new Date().toISOString()
+              });
+              
+              console.log(`Admin user '${admin.username}' created successfully`);
+            } catch (error) {
+              console.error(`Error creating admin '${admin.username}':`, error.message);
+            }
           }
+          
+          console.log('Admin initialization complete');
+        } else {
+          console.log('Admin accounts already exist, skipping initialization');
         }
         
-        console.log('Admin initialization complete');
-      } else {
-        console.log('Admin accounts already exist, skipping initialization');
+        setAdminsInitialized(true);
+      } catch (error) {
+        console.error('Error during admin initialization:', error);
+        setAdminsInitialized(true);
       }
-      
-      setAdminsInitialized(true);
-    } catch (error) {
-      console.error('Error during admin initialization:', error);
-      setAdminsInitialized(true); // Set to true anyway to avoid infinite retries
-    }
-  };
-  
-  initializeAdmins();
-}, []);
+    };
+    
+    initializeAdmins();
+  }, []);
+
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
-// Admin login using Firebase Auth
-const handleAdminLogin = async () => {
-  setError('');
-  setSuccess('');
-  
-  const { adminUsername, adminPassword } = form;
 
-  if (!adminUsername || !adminPassword) {
-    return setError('Please enter admin username and password');
-  }
+  // Admin login using Firebase Auth
+  const handleAdminLogin = async () => {
+    setError('');
+    setSuccess('');
+    
+    const { adminUsername, adminPassword } = form;
 
-  try {
-    // Set persistence to session (ends when window closes)
-    await setPersistence(auth, browserSessionPersistence);
-    
-    // Use the admin username as email directly
-    const adminEmail = adminUsername.includes('@') ? adminUsername : `${adminUsername}@mittiarts.com`;
-    
-    // Authenticate with Firebase
-    const userCred = await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
-    
-    // Check if user exists in admins collection
-    const adminDoc = await getDoc(doc(db, 'admins', userCred.user.uid));
-    
-    if (!adminDoc.exists()) {
-      // Sign out if not an admin
-      await auth.signOut();
-      return setError('Not authorized as admin');
+    if (!adminUsername || !adminPassword) {
+      return setError('Please enter admin username and password');
     }
-    
-    // Get admin data
-    const adminData = adminDoc.data();
-    
-    if (!adminData.isAdmin) {
-      await auth.signOut();
-      return setError('Not authorized as admin');
+
+    try {
+      await setPersistence(auth, browserSessionPersistence);
+      
+      const adminEmail = adminUsername.includes('@') ? adminUsername : `${adminUsername}@mittiarts.com`;
+      
+      const userCred = await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
+      
+      const adminDoc = await getDoc(doc(db, 'admins', userCred.user.uid));
+      
+      if (!adminDoc.exists()) {
+        await auth.signOut();
+        return setError('Not authorized as admin');
+      }
+      
+      const adminData = adminDoc.data();
+      
+      if (!adminData.isAdmin) {
+        await auth.signOut();
+        return setError('Not authorized as admin');
+      }
+      
+      const token = await userCred.user.getIdToken();
+      
+      sessionStorage.setItem('adminToken', token);
+      sessionStorage.setItem('adminRole', adminData.role || 'admin');
+      sessionStorage.setItem('adminUsername', adminUsername);
+      sessionStorage.setItem('isAdmin', 'true');
+      
+      setSuccess('Admin login successful');
+      
+      setForm({
+        name: '',
+        phone: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+        adminUsername: '',
+        adminPassword: '',
+      });
+      
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 1000);
+    } catch (err) {
+      console.error('Admin login error:', err.code);
+      setError('Invalid admin credentials');
     }
-    
-    // Get secure token
-    const token = await userCred.user.getIdToken();
-    
-    // Store auth data in sessionStorage (more secure than localStorage)
-    sessionStorage.setItem('adminToken', token);
-    sessionStorage.setItem('adminRole', adminData.role || 'admin');
-    sessionStorage.setItem('adminUsername', adminUsername);
-    sessionStorage.setItem('isAdmin', 'true');
-    
-    setSuccess('Admin login successful');
-    
-    // Clear form
-    setForm({
-      name: '',
-      phone: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
-      adminUsername: '',
-      adminPassword: '',
-    });
-    
-    // Navigate to dashboard
-    setTimeout(() => {
-      navigate('/dashboard');
-    }, 1000);
-  } catch (err) {
-    console.error('Admin login error:', err.code);
-    setError('Invalid admin credentials');
-  }
-};
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -189,7 +179,7 @@ const handleAdminLogin = async () => {
       return handleAdminLogin();
     }
 
-    // Regular user login/signup
+    // Regular user login/signup - Enhanced from first version
     setError('');
     setSuccess('');
 
@@ -200,9 +190,6 @@ const handleAdminLogin = async () => {
     }
 
     try {
-      // Set persistence to session
-      await setPersistence(auth, browserSessionPersistence);
-      
       let userCred;
       let nameToStore = name;
 
@@ -212,7 +199,8 @@ const handleAdminLogin = async () => {
         const userData = userDoc.exists() ? userDoc.data() : {};
         nameToStore = userData.name || 'User';
 
-        sessionStorage.setItem('userPhone', userData.phone || '');
+        // Store phone number from userData
+        localStorage.setItem('userPhone', userData.phone || '');
         setSuccess('Logged in successfully');
       } else {
         userCred = await createUserWithEmailAndPassword(auth, email, password);
@@ -225,15 +213,16 @@ const handleAdminLogin = async () => {
         });
 
         setSuccess('Signed up successfully');
-        sessionStorage.setItem('userPhone', phone);
+
+        // Add phone number to localStorage after successful signup
+        localStorage.setItem('userPhone', phone);
       }
 
       const token = await userCred.user.getIdToken();
-      sessionStorage.setItem('authToken', token);
-      sessionStorage.setItem('userEmail', email);
-      sessionStorage.setItem('userName', nameToStore);
-      sessionStorage.setItem('userId', userCred.user.uid);
-      sessionStorage.setItem('isAdmin', 'false');
+      localStorage.setItem('authToken', token);
+      localStorage.setItem('userEmail', email);
+      localStorage.setItem('userName', nameToStore);
+      localStorage.setItem('userId', userCred.user.uid);
 
       setForm({
         name: '',
@@ -246,19 +235,23 @@ const handleAdminLogin = async () => {
       });
       
       // Navigate to home after login
-      setTimeout(() => {
-        navigate('/');
-      }, 1000);
-
+// Navigate based on action - login goes to home, signup stays on auth page but switches to login
+// Navigate based on action - login goes to home, signup stays on auth page but switches to login
+if (isLogin) {
+  setTimeout(() => {
+    navigate('/');
+  }, 1000);
+} else {
+  // Sign out the user after signup so they have to login manually
+  setTimeout(async () => {
+    await signOut(auth);
+    localStorage.clear(); // Clear stored data
+    setIsLogin(true);
+  }, 1000);
+}
     } catch (err) {
       console.error('Auth error:', err.code);
-      if (err.code === 'auth/email-already-in-use') {
-        setError('This email is already registered. Please login instead.');
-      } else if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-        setError('Invalid email or password');
-      } else {
-        setError(err.message);
-      }
+      setError(err.message);
     }
   };
 
@@ -271,35 +264,38 @@ const handleAdminLogin = async () => {
     setError('');
     setSuccess('');
     try {
-      // Set persistence to session
-      await setPersistence(auth, browserSessionPersistence);
-      
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
 
+      // Get user data from Firestore if exists
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       
       if (!userDoc.exists()) {
+        // Create new user document with Google profile data
         const userData = {
           name: user.displayName || 'Google User',
           email: user.email,
-          phone: user.phoneNumber || '',
+          phone: user.phoneNumber || '', // Get phone from Google profile if available
           createdAt: new Date().toISOString(),
         };
 
+        // Save to Firestore
         await setDoc(doc(db, 'users', user.uid), userData);
-        sessionStorage.setItem('userPhone', userData.phone);
+        
+        // Save to localStorage
+        localStorage.setItem('userPhone', userData.phone);
       } else {
+        // User exists, get their phone number
         const existingData = userDoc.data();
-        sessionStorage.setItem('userPhone', existingData.phone || '');
+        localStorage.setItem('userPhone', existingData.phone || '');
       }
 
+      // Save other user data to localStorage
       const token = await user.getIdToken();
-      sessionStorage.setItem('authToken', token);
-      sessionStorage.setItem('userEmail', user.email);
-      sessionStorage.setItem('userName', user.displayName || 'Google User');
-      sessionStorage.setItem('userId', user.uid);
-      sessionStorage.setItem('isAdmin', 'false');
+      localStorage.setItem('authToken', token);
+      localStorage.setItem('userEmail', user.email);
+      localStorage.setItem('userName', user.displayName || 'Google User');
+      localStorage.setItem('userId', user.uid);
 
       setSuccess('Signed in with Google successfully');
       
@@ -308,7 +304,7 @@ const handleAdminLogin = async () => {
       }, 1000);
     } catch (err) {
       console.error('Google sign-in error:', err.code);
-      setError('Google sign-in failed. Please try again.');
+      setError(err.message);
     }
   };
 
@@ -731,10 +727,8 @@ export const ProtectedRoute = ({ children, adminOnly = false }) => {
             return;
           }
           
-          // Check if this is an admin route
           if (adminOnly) {
             try {
-              // Check if user is in admins collection
               const adminDoc = await getDoc(doc(db, 'admins', user.uid));
               
               if (!adminDoc.exists() || !adminDoc.data().isAdmin) {
@@ -751,14 +745,12 @@ export const ProtectedRoute = ({ children, adminOnly = false }) => {
               setIsAuthorized(false);
             }
           } else {
-            // Regular user route - any authenticated user is allowed
             setIsAuthorized(true);
           }
           
           setIsLoading(false);
         });
         
-        // Cleanup function
         return () => unsubscribe();
       } catch (error) {
         console.error("Authentication error:", error);
@@ -770,7 +762,6 @@ export const ProtectedRoute = ({ children, adminOnly = false }) => {
     checkAuth();
   }, [adminOnly]);
 
-  // Show loading spinner
   if (isLoading) {
     return (
       <Box
@@ -803,18 +794,15 @@ export const ProtectedRoute = ({ children, adminOnly = false }) => {
     );
   }
 
-  // If not authorized, redirect to auth page
   if (!isAuthorized) {
     return <Navigate to="/auth" replace />;
   }
 
-  // All good - show the protected content
   return <>{children}</>;
 };
 
 // Utility functions
 export const authUtils = {
-  // Check if user is admin
   isAdmin: async () => {
     try {
       const user = auth.currentUser;
@@ -823,7 +811,6 @@ export const authUtils = {
         return false;
       }
       
-      // Check admin status in Firestore
       const adminDoc = await getDoc(doc(db, 'admins', user.uid));
       
       if (!adminDoc.exists()) {
@@ -837,7 +824,6 @@ export const authUtils = {
     }
   },
 
-  // Get username
   getUsername: async () => {
     try {
       const user = auth.currentUser;
@@ -846,14 +832,12 @@ export const authUtils = {
         return '';
       }
       
-      // Check if admin
       const adminDoc = await getDoc(doc(db, 'admins', user.uid));
       
       if (adminDoc.exists()) {
         return adminDoc.data().username || '';
       }
       
-      // Regular user
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       
       if (userDoc.exists()) {
@@ -867,16 +851,11 @@ export const authUtils = {
     }
   },
 
-  // Secure logout
   logout: async () => {
     try {
-      // Sign out from Firebase
       await signOut(auth);
-      
-      // Clear session storage
       sessionStorage.clear();
-      
-      // Redirect to auth
+      localStorage.clear();
       window.location.href = '/auth';
     } catch (error) {
       console.error("Logout error:", error);
@@ -904,7 +883,6 @@ export const useAuthStatus = () => {
         
         setIsLoggedIn(true);
         
-        // Check if user is admin
         const adminDoc = await getDoc(doc(db, 'admins', user.uid));
         
         if (adminDoc.exists() && adminDoc.data().isAdmin) {
@@ -913,7 +891,6 @@ export const useAuthStatus = () => {
         } else {
           setIsAdmin(false);
           
-          // Regular user
           const userDoc = await getDoc(doc(db, 'users', user.uid));
           
           if (userDoc.exists()) {

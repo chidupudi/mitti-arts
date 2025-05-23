@@ -8,7 +8,7 @@ import ProductDetail from './pages/ProductDetail';
 import About from './pages/aboutus';
 import Policies from './pages/Policies';
 import ContactUs from './pages/Contact';
-import AuthForm , {ProtectedRoute} from './components/AuthForm';
+import AuthForm  from './components/AuthForm';
 import Profile from './pages/Profile';
 import Cart from './pages/Cart';
 import OrderSummary from './pages/OrderSummary';
@@ -51,7 +51,7 @@ const App = () => {
         <Route path="/phonepe" element={<PhonePePayment />} />
         <Route path="/payment-status/:orderId" element={<PaymentStatusPage />} />
 
-        {/* 🔐 SUPER SIMPLE Admin Routes - Just wrap with AdminProtectedRoute */}
+        {/* 🔐 SUPER SIMPLE Admin Routes - Just wrap with AdminProtectedRoute
         <Route 
           path="/dashboard" 
           element={
@@ -77,7 +77,7 @@ const App = () => {
               <AdminOrders />
             </ProtectedRoute>
           } 
-        />
+        /> */}
 
         {/* 🎯 Catch all route - Keep this LAST */}
         <Route path="*" element={<NotFound />} />

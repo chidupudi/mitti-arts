@@ -85,15 +85,15 @@ const ContactUs = () => {
       {/* Map Section */}
       <div className="map-container">
         <h2>Find Us On The Map:</h2>
-        <iframe
-          src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d387190.27990233545!2d78.6843889!3d17.3098868!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bcb92627ec4c75d%3A0x62e7b1b75c4e5f6f!2s17.3098868%2C78.6843889!5e0!3m2!1sen!2sin!4v1683971315200!5m2!1sen!2sin"
-          width="100%"
-          height="400"
-          style={{ border: 0 }}
-          loading="lazy"
-          referrerPolicy="no-referrer-when-downgrade"
-          title="Google Map"
-        />
+       <iframe
+  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3808.8555555555557!2d78.67304237500001!3d17.3146061!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bcb0b5354ed2b39%3A0x2d5979ce9e71d231!2sArt%20of%20Indian%20Pottery(%20mittarts)!5e0!3m2!1sen!2sin!4v1642581234567!5m2!1sen!2sin"
+  width="100%"
+  height="400"
+  style={{ border: 0 }}
+  loading="lazy"
+  referrerPolicy="no-referrer-when-downgrade"
+  title="Google Map - Art of Indian Pottery"
+/>
       </div>
 
       {/* Updated Contact Form */}
