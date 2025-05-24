@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import * as THREE from 'three';
+import { useNavigate } from 'react-router-dom';
 import img1 from '../assets/Welcome_1.jpg';
 import img2 from '../assets/Welcome_2.jpg';
+
 
 // Three.js Background Component
 const ThreeBackground = () => {
@@ -135,6 +137,7 @@ const FadeInImage = ({ src, alt, style, className }) => {
 };
 
 const Welcome = () => {
+   const navigate = useNavigate();
   const [scrollY, setScrollY] = useState(0);
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
   
@@ -156,16 +159,12 @@ const Welcome = () => {
   const isTablet = windowWidth < 1024;
 
   const handleExploreClick = () => {
-    // Replace with your navigation logic
-    console.log('Navigate to Products Page');
-    // navigate('/products');
-  };
+  navigate('/products');
+};
 
-  const handleAboutClick = () => {
-    // Replace with your navigation logic
-    console.log('Navigate to About Page');
-    // navigate('/about');
-  };
+const handleAboutClick = () => {
+  navigate('/about');
+};
 
   return (
     <div style={{ 
