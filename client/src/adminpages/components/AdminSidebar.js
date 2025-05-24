@@ -12,10 +12,9 @@ import {
   useTheme,
   useMediaQuery,
   Avatar,
-  Tooltip,
   Collapse,
   Badge,
-  styled
+  Tooltip
 } from '@mui/material';
 import {
   DashboardOutlined,
@@ -23,83 +22,35 @@ import {
   ShoppingCartOutlined,
   MenuOpen,
   Menu,
-  Person,
-  Settings,
   Logout,
   StorefrontOutlined,
   ExpandLess,
   ExpandMore,
-  CategoryOutlined,
   PeopleOutlined,
   BarChartOutlined,
   SettingsOutlined
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { adminAuthUtils } from './AdminAuth'; // Adjust this import based on your file structure
 
-// Custom styled components
-const SidebarHeader = styled(Box)(({ theme }) => ({
-  padding: theme.spacing(3),
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`,
-  color: theme.palette.common.white,
-  borderBottom: `1px solid ${theme.palette.divider}`,
-}));
-
-const SidebarItem = styled(ListItem)(({ theme, active }) => ({
-  borderRadius: 12,
-  marginBottom: theme.spacing(0.5),
-  padding: theme.spacing(1, 2),
-  color: active ? theme.palette.primary.main : theme.palette.text.primary,
-  backgroundColor: active ? theme.palette.primary.light + '20' : 'transparent',
-  '&:hover': {
-    backgroundColor: theme.palette.action.hover,
-    transform: 'translateX(5px)',
-    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-  },
-  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-  fontWeight: active ? 600 : 400,
-}));
-
-const SidebarSubItem = styled(ListItem)(({ theme, active }) => ({
-  paddingLeft: theme.spacing(4),
-  borderRadius: 12,
-  marginBottom: theme.spacing(0.5),
-  padding: theme.spacing(0.8, 2),
-  color: active ? theme.palette.primary.main : theme.palette.text.secondary,
-  backgroundColor: active ? theme.palette.primary.light + '10' : 'transparent',
-  '&:hover': {
-    backgroundColor: theme.palette.action.hover,
-    transform: 'translateX(5px)',
-  },
-  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-  fontWeight: active ? 600 : 400,
-}));
-
-// Main AdminSidebar component
 const AdminSidebar = ({ open, onToggle }) => {
   const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const isSmall = useMediaQuery(theme.breakpoints.down('sm'));
-  
-  // State for nested menus
+
   const [openSubMenu, setOpenSubMenu] = useState({
     products: false,
     settings: false
   });
-  
-  // Admin info - you would get this from your auth context
-  const [adminInfo, setAdminInfo] = useState({
+
+  const [collapsed, setCollapsed] = useState(false);
+
+  const [adminInfo] = useState({
     name: 'Admin',
     role: 'Administrator',
     avatar: null
   });
-  
-  // Navigation items structure
+
   const navigationItems = [
     {
       title: 'Dashboard',
@@ -111,7 +62,7 @@ const AdminSidebar = ({ open, onToggle }) => {
       title: 'Orders',
       icon: <ShoppingCartOutlined />,
       path: '/adminorders',
-      badge: 5 // Example - would be dynamic in real app
+      badge: 5
     },
     {
       title: 'Products',
@@ -151,7 +102,6 @@ const AdminSidebar = ({ open, onToggle }) => {
     }
   ];
 
-  // Handle navigation
   const handleNavigation = (path) => {
     navigate(path);
     if (isMobile) {
@@ -159,7 +109,6 @@ const AdminSidebar = ({ open, onToggle }) => {
     }
   };
 
-  // Toggle submenu
   const handleToggleSubMenu = (key) => {
     setOpenSubMenu({
       ...openSubMenu,
@@ -167,78 +116,54 @@ const AdminSidebar = ({ open, onToggle }) => {
     });
   };
 
-  // Handle logout
   const handleLogout = () => {
-    // Call your logout function
-    if (adminAuthUtils?.logout) {
-      adminAuthUtils.logout();
-    } else {
-      console.warn('Logout function not available');
-      // Fallback - navigate to login
-      navigate('/admin');
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('adminUser');
+    navigate('/supercontrollogin');
+    if (isMobile) {
+      onToggle();
     }
   };
 
-  // Check if path is active
-  const isPathActive = (path) => {
-    return location.pathname === path;
-  };
+  const isPathActive = (path) => location.pathname === path;
 
-  // Drawer content
+  const drawerWidth = collapsed ? 80 : 280;
+
   const drawerContent = (
-    <Box
-      sx={{
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        bgcolor: 'background.paper',
-      }}
-    >
+    <Box sx={{
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      bgcolor: 'background.paper'
+    }}>
       {/* Sidebar Header */}
-      <SidebarHeader>
-        <Box 
-          sx={{ 
-            display: 'flex', 
-            alignItems: 'center',
-            width: '100%',
-            justifyContent: 'space-between'
-          }}
-        >
-          <Typography 
-            variant="h5" 
-            sx={{ 
-              fontWeight: 'bold',
-              my: 2
-            }}
-          >
+      <Box sx={{
+        p: 2,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: collapsed ? 'center' : 'space-between',
+        background: 'linear-gradient(135deg, #D2691E 0%, #8B4513 100%)',
+        color: 'white',
+        borderBottom: '1px solid #e0e0e0'
+      }}>
+        {!collapsed && (
+          <Typography variant="h6" fontWeight="bold">
             MittiArts
           </Typography>
-          
-          {isMobile && (
-            <IconButton 
-              edge="end" 
-              color="inherit" 
-              onClick={onToggle}
-              sx={{ ml: 1 }}
-            >
-              <MenuOpen />
-            </IconButton>
-          )}
-        </Box>
-        
-        <Box 
-          sx={{ 
-            display: 'flex', 
-            alignItems: 'center',
-            width: '100%',
-            mt: 2
-          }}
-        >
-          <Avatar 
-            src={adminInfo.avatar} 
+        )}
+        <IconButton onClick={() => setCollapsed(!collapsed)} sx={{ color: 'white' }}>
+          {collapsed ? <Menu /> : <MenuOpen />}
+        </IconButton>
+      </Box>
+
+      {/* Admin Info */}
+      {!collapsed && (
+        <Box sx={{ display: 'flex', alignItems: 'center', p: 2 }}>
+          <Avatar
+            src={adminInfo.avatar}
             alt={adminInfo.name}
-            sx={{ 
-              width: 40, 
+            sx={{
+              width: 40,
               height: 40,
               bgcolor: 'rgba(255,255,255,0.2)',
               border: '2px solid rgba(255,255,255,0.5)'
@@ -247,64 +172,87 @@ const AdminSidebar = ({ open, onToggle }) => {
             {adminInfo.name[0]}
           </Avatar>
           <Box sx={{ ml: 2 }}>
-            <Typography variant="subtitle1" fontWeight="bold">
-              {adminInfo.name}
-            </Typography>
-            <Typography variant="caption" sx={{ opacity: 0.8 }}>
-              {adminInfo.role}
-            </Typography>
+            <Typography variant="subtitle1" fontWeight="bold">{adminInfo.name}</Typography>
+            <Typography variant="caption" sx={{ opacity: 0.8 }}>{adminInfo.role}</Typography>
           </Box>
         </Box>
-      </SidebarHeader>
+      )}
 
-      {/* Main Navigation */}
-      <List sx={{ p: 2, flexGrow: 1 }}>
+      {/* Navigation Items */}
+      <List sx={{ p: 1, flexGrow: 1 }}>
         {navigationItems.map((item) => (
           <React.Fragment key={item.path || item.key}>
-            <SidebarItem
+            <ListItem
               button
-              active={isPathActive(item.path) ? 1 : 0}
-              onClick={item.hasSubMenu 
-                ? () => handleToggleSubMenu(item.key) 
-                : () => handleNavigation(item.path)
-              }
+              onClick={item.hasSubMenu
+                ? () => handleToggleSubMenu(item.key)
+                : () => handleNavigation(item.path)}
+              sx={{
+                borderRadius: 2,
+                mb: 0.5,
+                p: '8px 12px',
+                color: isPathActive(item.path) ? '#D2691E' : 'text.primary',
+                backgroundColor: isPathActive(item.path) ? 'rgba(210, 105, 30, 0.1)' : 'transparent',
+                '&:hover': {
+                  backgroundColor: 'action.hover',
+                  transform: 'translateX(5px)',
+                  transition: 'all 0.3s ease',
+                },
+                transition: 'all 0.2s ease',
+                fontWeight: isPathActive(item.path) ? 600 : 400,
+              }}
             >
-              <ListItemIcon 
-                sx={{ 
-                  color: isPathActive(item.path) ? 'primary.main' : 'text.secondary',
-                  minWidth: '40px'
-                }}
-              >
-                {item.badge ? (
-                  <Badge badgeContent={item.badge} color="error">
-                    {item.icon}
-                  </Badge>
-                ) : (
-                  item.icon
-                )}
-              </ListItemIcon>
-              <ListItemText 
-                primary={item.title} 
-                primaryTypographyProps={{ 
-                  variant: 'body2',
-                  fontWeight: isPathActive(item.path) ? 600 : 400
-                }}
-              />
-              {item.hasSubMenu && (
+              <Tooltip title={collapsed ? item.title : ''} placement="right">
+                <ListItemIcon
+                  sx={{
+                    color: isPathActive(item.path) ? '#D2691E' : 'text.secondary',
+                    minWidth: '36px'
+                  }}
+                >
+                  {item.badge ? (
+                    <Badge badgeContent={item.badge} color="error">
+                      {item.icon}
+                    </Badge>
+                  ) : item.icon}
+                </ListItemIcon>
+              </Tooltip>
+              {!collapsed && (
+                <ListItemText
+                  primary={item.title}
+                  primaryTypographyProps={{
+                    variant: 'body2',
+                    fontWeight: isPathActive(item.path) ? 600 : 400
+                  }}
+                />
+              )}
+              {item.hasSubMenu && !collapsed && (
                 openSubMenu[item.key] ? <ExpandLess /> : <ExpandMore />
               )}
-            </SidebarItem>
-            
-            {/* Sub Menu Items */}
-            {item.hasSubMenu && (
+            </ListItem>
+
+            {/* Submenu */}
+            {item.hasSubMenu && !collapsed && (
               <Collapse in={openSubMenu[item.key]} timeout="auto" unmountOnExit>
                 <List component="div" disablePadding>
                   {item.subItems.map((subItem) => (
-                    <SidebarSubItem
+                    <ListItem
                       button
                       key={subItem.path}
-                      active={isPathActive(subItem.path) ? 1 : 0}
                       onClick={() => handleNavigation(subItem.path)}
+                      sx={{
+                        pl: 4,
+                        borderRadius: 2,
+                        mb: 0.5,
+                        p: '6px 16px',
+                        color: isPathActive(subItem.path) ? '#D2691E' : 'text.secondary',
+                        backgroundColor: isPathActive(subItem.path) ? 'rgba(210, 105, 30, 0.05)' : 'transparent',
+                        '&:hover': {
+                          backgroundColor: 'action.hover',
+                          transform: 'translateX(5px)',
+                        },
+                        transition: 'all 0.2s ease',
+                        fontWeight: isPathActive(subItem.path) ? 600 : 400,
+                      }}
                     >
                       <ListItemIcon sx={{ minWidth: '30px' }}>
                         <Box
@@ -312,18 +260,18 @@ const AdminSidebar = ({ open, onToggle }) => {
                             width: 6,
                             height: 6,
                             borderRadius: '50%',
-                            bgcolor: isPathActive(subItem.path) ? 'primary.main' : 'text.disabled',
+                            bgcolor: isPathActive(subItem.path) ? '#D2691E' : 'text.disabled',
                           }}
                         />
                       </ListItemIcon>
-                      <ListItemText 
+                      <ListItemText
                         primary={subItem.title}
-                        primaryTypographyProps={{ 
+                        primaryTypographyProps={{
                           variant: 'body2',
                           fontWeight: isPathActive(subItem.path) ? 600 : 400
                         }}
                       />
-                    </SidebarSubItem>
+                    </ListItem>
                   ))}
                 </List>
               </Collapse>
@@ -332,19 +280,30 @@ const AdminSidebar = ({ open, onToggle }) => {
         ))}
       </List>
 
-      {/* Bottom Actions */}
+      {/* Logout */}
       <Box sx={{ p: 2 }}>
         <Divider sx={{ mb: 2 }} />
         <List>
-          <SidebarItem button onClick={handleLogout}>
+          <ListItem
+            button
+            onClick={handleLogout}
+            sx={{
+              borderRadius: 2,
+              '&:hover': {
+                backgroundColor: 'action.hover',
+              },
+            }}
+          >
             <ListItemIcon sx={{ minWidth: '40px', color: 'text.secondary' }}>
               <Logout />
             </ListItemIcon>
-            <ListItemText 
-              primary="Logout" 
-              primaryTypographyProps={{ variant: 'body2' }}
-            />
-          </SidebarItem>
+            {!collapsed && (
+              <ListItemText
+                primary="Logout"
+                primaryTypographyProps={{ variant: 'body2' }}
+              />
+            )}
+          </ListItem>
         </List>
       </Box>
     </Box>
@@ -352,7 +311,6 @@ const AdminSidebar = ({ open, onToggle }) => {
 
   return (
     <>
-      {/* Mobile Toggle Button */}
       {isMobile && !open && (
         <Box sx={{ position: 'fixed', top: 16, left: 16, zIndex: 1199 }}>
           <IconButton
@@ -360,7 +318,7 @@ const AdminSidebar = ({ open, onToggle }) => {
             onClick={onToggle}
             sx={{
               bgcolor: 'background.paper',
-              boxShadow: theme.shadows[3],
+              boxShadow: 3,
               '&:hover': {
                 bgcolor: 'background.paper',
               },
@@ -371,7 +329,6 @@ const AdminSidebar = ({ open, onToggle }) => {
         </Box>
       )}
 
-      {/* Mobile Drawer */}
       {isMobile ? (
         <Drawer
           anchor="left"
@@ -383,24 +340,25 @@ const AdminSidebar = ({ open, onToggle }) => {
           PaperProps={{
             sx: {
               width: 280,
-              borderRight: `1px solid ${theme.palette.divider}`,
+              borderRight: '1px solid #e0e0e0',
             },
           }}
         >
           {drawerContent}
         </Drawer>
       ) : (
-        /* Desktop Permanent Drawer */
         <Drawer
           variant="permanent"
           sx={{
-            width: 280,
+            width: drawerWidth,
             flexShrink: 0,
             [`& .MuiDrawer-paper`]: {
-              width: 280,
+              width: drawerWidth,
               boxSizing: 'border-box',
-              borderRight: `1px solid ${theme.palette.divider}`,
-              boxShadow: theme.shadows[2],
+              borderRight: '1px solid #e0e0e0',
+              boxShadow: 2,
+              transition: 'width 0.3s ease',
+              overflowX: 'hidden'
             },
           }}
           open

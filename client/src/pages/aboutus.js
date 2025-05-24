@@ -2,8 +2,10 @@ import React, { useEffect, useRef, useState } from "react";
 import { Box, Typography, Container, Grid, Paper, Button, Fade } from "@mui/material";
 import { keyframes } from "@emotion/react";
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import Img1 from '../assets/Aboutus1.jpg';
+import Img2 from '../assets/Aboutus2.jpg';
+import Img3 from '../assets/Aboutus3.jpg';
+import Img4 from '../assets/Aboutus4.jpg';
 
 // Animation keyframes
 const fadeInUp = keyframes`
@@ -28,53 +30,37 @@ const rotateIn = keyframes`
   }
 `;
 
-// Timeline data
+// Timeline data - Govardhan's actual journey and achievements
 const timelineData = [
   {
-    year: "1985",
-    title: "Our Humble Beginnings",
-    description: "Started with a small workshop in rural Gujarat, mastering traditional pottery techniques passed down for generations."
+    year: "1992",
+    title: "Best Artist Award Recognition",
+    description: "Received the prestigious Best Artist Award from Madhava Reddy, the Andhra Pradesh Minister, recognizing exceptional skill and contribution to traditional pottery arts.",
+    image: Img1 // Replace with actual image path
   },
   {
-    year: "1997",
-    title: "Revival of Lost Arts",
-    description: "Rediscovered ancient firing techniques and patterns from the Indus Valley Civilization, incorporating them into our modern designs."
+    year: "1998",
+    title: "Terracotta Pottery Demonstration",
+    description: "Had the honor of explaining the intricate art of terracotta pottery to Rangarangen, the Governor of Andhra Pradesh, showcasing traditional techniques and cultural significance.",
+    image: Img2 // Replace with actual image path
   },
   {
-    year: "2005",
-    title: "Community Collectives",
-    description: "Expanded to partner with artisan communities across India, creating sustainable livelihoods for over 200 families."
+    year: "2010",
+    title: "Educational Presentation at KVIC TTD",
+    description: "At KVIC TTD Kalyana Mandapam, presented the importance and techniques of pottery to E.S.L. Narasimhan, Governor of Andhra Pradesh, promoting traditional crafts awareness.",
+    image: Img3
   },
   {
-    year: "2012",
-    title: "Eco-Innovation",
-    description: "Pioneered water-conservation techniques in pottery production, reducing water usage by 60% while maintaining traditional quality."
-  },
-  {
-    year: "2018",
-    title: "Global Recognition",
-    description: "Our artisans received UNESCO recognition for preserving intangible cultural heritage through their masterful craftsmanship."
+    year: "2015",
+    title: "SBH Head Office - Handicrafts Discussion",
+    description: "At State Bank of Hyderabad head office, discussed the vital importance of pottery and handicrafts in preserving cultural heritage and supporting artisan livelihoods.",
+    image: Img4
   },
   {
     year: "Present",
-    title: "Digital Renaissance",
-    description: "Bringing ancient craft to the modern world while staying true to our roots - the sacred soil, sustainable practices, and spiritual traditions."
-  }
-];
-
-// Clay models data for the 3D showcase
-const clayModels = [
-  {
-    name: "Traditional Water Pot",
-    description: "Keeps water naturally cool through evaporative cooling. Made with river clay and hand-painted with natural pigments."
-  },
-  {
-    name: "Ceremonial Oil Lamp",
-    description: "Used in sacred rituals for centuries. The spiral patterns represent the eternal divine flame."
-  },
-  {
-    name: "Modern Clay Planter",
-    description: "Contemporary design with traditional craftsmanship. Perfect for indoor plants, allowing roots to breathe."
+    title: "Mitti Arts - Leading Innovation",
+    description: "Today, continuing the mission of empowering 2,500+ artists with modern technology while preserving traditional pottery techniques, creating eco-friendly products for a sustainable future.",
+    image: "timeline_present.jpg" // Replace with actual image path
   }
 ];
 
@@ -132,68 +118,59 @@ const PotteryShowcase = () => {
     directionalLight.position.set(5, 10, 7);
     scene.add(directionalLight);
     
-    // Create pottery - here we'll create a simple vase
-    // In production, you'd load GLTF models of actual pottery
-    const createVase = () => {
+    // Create Ganesha-inspired pot
+    const createGaneshaPot = () => {
       const geometry = new THREE.LatheGeometry(
         [
           new THREE.Vector2(0, 0),
-          new THREE.Vector2(0.5, 0),
-          new THREE.Vector2(0.6, 0.5),
-          new THREE.Vector2(0.75, 1),
-          new THREE.Vector2(0.6, 1.5),
-          new THREE.Vector2(0.8, 2),
-          new THREE.Vector2(0.5, 2.5),
-          new THREE.Vector2(0.45, 3),
-          new THREE.Vector2(0, 3),
+          new THREE.Vector2(0.8, 0),
+          new THREE.Vector2(1.0, 0.3),
+          new THREE.Vector2(1.2, 0.8),
+          new THREE.Vector2(1.1, 1.5),
+          new THREE.Vector2(1.3, 2.2),
+          new THREE.Vector2(0.9, 2.8),
+          new THREE.Vector2(0.7, 3.2),
+          new THREE.Vector2(0, 3.2),
         ],
-        30
+        32
       );
       
-      // Clay material with subtle texture
-      const texture = new THREE.TextureLoader().load('/textures/clay_normal.jpg');
+      // Traditional clay material
       const material = new THREE.MeshStandardMaterial({
-        color: 0xc1876b,
-        roughness: 0.8,
+        color: 0xd4a574,
+        roughness: 0.9,
         metalness: 0.1,
-        normalMap: texture,
       });
       
-      const vase = new THREE.Mesh(geometry, material);
-      vase.rotation.z = Math.PI;
-      scene.add(vase);
+      const pot = new THREE.Mesh(geometry, material);
+      pot.rotation.z = Math.PI;
+      scene.add(pot);
       
-      return vase;
+      return pot;
     };
     
-    const vase = createVase();
+    const pot = createGaneshaPot();
     
-    // Add some clay particles for a magical effect
+    // Add clay particles representing eco-friendly materials
     const particlesGeometry = new THREE.BufferGeometry();
-    const particlesCount = 500;
+    const particlesCount = 300;
     const posArray = new Float32Array(particlesCount * 3);
     
     for (let i = 0; i < particlesCount * 3; i++) {
-      posArray[i] = (Math.random() - 0.5) * 10;
+      posArray[i] = (Math.random() - 0.5) * 8;
     }
     
     particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
     
     const particlesMaterial = new THREE.PointsMaterial({
-      size: 0.02,
-      color: 0xd6a692,
+      size: 0.03,
+      color: 0xcd853f,
       transparent: true,
-      opacity: 0.8
+      opacity: 0.6
     });
     
     const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
     scene.add(particlesMesh);
-    
-    // Controls for user interaction
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-    controls.maxPolarAngle = Math.PI / 2;
     
     // Handle resize
     const handleResize = () => {
@@ -210,10 +187,9 @@ const PotteryShowcase = () => {
     const animate = () => {
       requestAnimationFrame(animate);
       
-      vase.rotation.y += 0.003;
-      particlesMesh.rotation.y -= 0.001;
+      pot.rotation.y += 0.005;
+      particlesMesh.rotation.y -= 0.002;
       
-      controls.update();
       renderer.render(scene, camera);
     };
     
@@ -226,9 +202,9 @@ const PotteryShowcase = () => {
       }
       
       // Dispose resources
-      scene.remove(vase);
-      vase.geometry.dispose();
-      vase.material.dispose();
+      scene.remove(pot);
+      pot.geometry.dispose();
+      pot.material.dispose();
       
       scene.remove(particlesMesh);
       particlesGeometry.dispose();
@@ -244,14 +220,14 @@ const PotteryShowcase = () => {
         width: "100%",
         borderRadius: 4,
         overflow: "hidden",
-        boxShadow: "0 5px 20px rgba(91, 58, 30, 0.2)",
+        boxShadow: "0 5px 20px rgba(139, 69, 19, 0.2)",
         mb: 6 
       }} 
     />
   );
 };
 
-// Timeline Component
+// Timeline Component with Images
 const Timeline = () => {
   const [visibleItems, setVisibleItems] = useState({});
   const itemRefs = useRef([]);
@@ -283,13 +259,13 @@ const Timeline = () => {
   }, []);
   
   return (
-    <Box sx={{ position: "relative", my: 10, px: 2 }}>
+<Box sx={{ position: "relative", my: 12, px: { xs: 3, md: 6 } }}>
       <Typography 
         variant="h4" 
         align="center" 
         sx={{ 
           mb: 6, 
-          color: "#5b3a1e", 
+          color: "#8b4513", 
           fontWeight: 600,
           position: "relative",
           "&:after": {
@@ -300,107 +276,107 @@ const Timeline = () => {
             transform: "translateX(-50%)",
             width: "80px",
             height: "3px",
-            bgcolor: "#d6a692"
+            bgcolor: "#cd853f"
           }
         }}
       >
-        Our Journey Through Time
+        Govardhan's Journey of Recognition & Achievement
       </Typography>
-      
-      {/* Central line */}
+
+{/* Central line */}
+<Box sx={{ 
+  position: "absolute", 
+  left: "50%", 
+  top: 140, 
+  bottom: 100, 
+  width: "2px", 
+  bgcolor: "#cd853f",
+  transform: "translateX(-50%)",
+  zIndex: 0,
+  display: { xs: "none", md: "block" }
+}}/>
+            {timelineData.map((item, index) => (
+  <Box 
+    key={item.year}
+    ref={el => itemRefs.current[index] = el}
+    data-year={item.year}
+    sx={{ 
+      display: "flex",
+      flexDirection: { xs: "column", md: index % 2 === 0 ? "row" : "row-reverse" },
+      alignItems: "center",
+mb: { xs: 8, md: 12 },
+gap: { xs: 4, md: 8 },
+      opacity: visibleItems[item.year] ? 1 : 0,
+      transform: visibleItems[item.year] ? "translateY(0)" : "translateY(50px)",
+      transition: "all 0.8s ease-out"
+    }}
+  >
+    {/* Image Side */}
+    <Box sx={{ 
+      width: { xs: "100%", md: "45%" },
+      position: "relative"
+    }}>
       <Box sx={{ 
-        position: "absolute", 
-        left: "50%", 
-        top: 80, 
-        bottom: 0, 
-        width: "4px", 
-        bgcolor: "#d6a692",
-        transform: "translateX(-50%)",
-        zIndex: 0
-      }}/>
-      
-      {timelineData.map((item, index) => (
-        <Box 
-          key={item.year}
-          ref={el => itemRefs.current[index] = el}
-          data-year={item.year}
-          sx={{ 
-            display: "flex", 
-            justifyContent: index % 2 === 0 ? "flex-start" : "flex-end",
-            position: "relative",
-            mb: 8,
-            opacity: visibleItems[item.year] ? 1 : 0,
-            transform: visibleItems[item.year] 
-              ? "translateY(0)" 
-              : index % 2 === 0 
-                ? "translateX(-50px)" 
-                : "translateX(50px)",
-            transition: "all 0.8s ease-out"
-          }}
-        >
-          <Box sx={{ 
-            width: { xs: "100%", md: "45%" },
-            position: "relative",
-            zIndex: 1
-          }}>
-            {/* Year bubble */}
-            <Box sx={{
-              position: "absolute",
-              width: 70,
-              height: 70,
-              borderRadius: "50%",
-              bgcolor: "#d6a692",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              [index % 2 === 0 ? "right" : "left"]: { xs: "50%", md: -35 },
-              top: 15,
-              transform: { xs: "translateX(50%)", md: "none" },
-              boxShadow: "0 4px 12px rgba(91, 58, 30, 0.3)",
-              zIndex: 2
-            }}>
-              <Typography sx={{ 
-                color: "#fff", 
-                fontWeight: 700,
-                fontSize: "1rem" 
-              }}>
-                {item.year}
-              </Typography>
+        borderRadius: 3,
+        overflow: "hidden",
+height: { xs: 200, md: 300 },
+        backgroundColor: "#f5ebe0",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        boxShadow: "0 5px 15px rgba(139, 69, 19, 0.1)"
+      }}>
+        <Box sx={{
+          width: "100%",
+          height: "100%",
+          backgroundImage: item.image ? `url(${item.image})` : 'none',
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "#f5ebe0"
+        }}>
+          {!item.image && (
+            <Box sx={{ textAlign: "center", color: "#8b4513", p: 2 }}>
+              <Typography variant="h4" sx={{ mb: 1 }}>📸</Typography>
+              <Typography variant="h6">Historical Moment</Typography>
+              <Typography variant="body2" sx={{ mt: 1 }}>{item.year}</Typography>
             </Box>
-            
-            <Paper sx={{
-              p: 3,
-              borderRadius: 3,
-              backgroundColor: "#fff3e6",
-              boxShadow: "0 5px 15px rgba(91, 58, 30, 0.1)",
-              ml: { xs: 0, md: index % 2 === 0 ? 0 : 5 },
-              mr: { xs: 0, md: index % 2 === 0 ? 5 : 0 },
-              position: "relative",
-              "&:before": {
-                content: '""',
-                position: "absolute",
-                top: 25,
-                [index % 2 === 0 ? "right" : "left"]: { xs: "50%", md: -10 },
-                transform: { 
-                  xs: "translateX(50%) rotate(45deg)", 
-                  md: "rotate(45deg)" 
-                },
-                width: 20,
-                height: 20,
-                backgroundColor: "#fff3e6",
-                display: { xs: "none", md: "block" }
-              }
-            }}>
-              <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
-                {item.title}
-              </Typography>
-              <Typography variant="body1" color="text.secondary">
-                {item.description}
-              </Typography>
-            </Paper>
-          </Box>
+          )}
         </Box>
-      ))}
+      </Box>
+    </Box>
+
+    {/* Information Side */}
+    <Box sx={{ 
+      width: { xs: "100%", md: "45%" },
+      position: "relative"
+    }}>
+      {/* Year Badge */}
+      <Box sx={{
+        display: "inline-block",
+        backgroundColor: "#cd853f",
+        color: "#fff",
+        px: 3,
+        py: 1,
+        borderRadius: 20,
+        fontWeight: 700,
+        fontSize: "1rem",
+        mb: 2
+      }}>
+        {item.year}
+      </Box>
+      
+      <Typography variant="h5" sx={{ fontWeight: 600, mb: 2, color: "#8b4513" }}>
+        {item.title}
+      </Typography>
+      <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.7 }}>
+        {item.description}
+      </Typography>
+    </Box>
+  </Box>
+))}
     </Box>
   );
 };
@@ -451,7 +427,7 @@ const About = () => {
   return (
     <Box
       sx={{
-        background: "linear-gradient(to bottom right, #fffaf2, #fff0dc)",
+        background: "linear-gradient(to bottom right, #fffbf5, #fff8f0)",
         minHeight: "100vh",
         fontFamily: "Georgia, serif",
         overflowX: "hidden"
@@ -473,22 +449,20 @@ const About = () => {
             left: 0,
             right: 0,
             bottom: 0,
-            background: "rgba(91, 58, 30, 0.1)",
+            background: "rgba(139, 69, 19, 0.1)",
             zIndex: 1
           }
         }}
       >
-        {/* Background Video or Image can be placed here */}
+        {/* Background */}
         <Box sx={{ 
           position: "absolute",
           top: 0,
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundImage: "url('/images/clay-hands-bg.jpg')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          filter: "brightness(0.9)"
+          backgroundImage: "linear-gradient(45deg, #deb887, #cd853f)",
+          opacity: 0.8
         }}/>
         
         <Container maxWidth="md" sx={{ position: "relative", zIndex: 2, textAlign: "center" }}>
@@ -502,7 +476,7 @@ const About = () => {
               mb: 3
             }}
           >
-            Our Sacred Journey
+            Govardhan's Sacred Journey
           </Typography>
 
           <Typography
@@ -515,7 +489,7 @@ const About = () => {
               mx: "auto"
             }}
           >
-            From Earth to Art - Preserving Ancient Tradition in Every Piece
+            From Family Legacy to Technological Innovation - Preserving Tradition for a Sustainable Future
           </Typography>
         </Container>
         
@@ -541,7 +515,7 @@ const About = () => {
             }
           }}
         >
-          <Typography sx={{ color: "#fff", mb: 1 }}>Scroll to Discover</Typography>
+          <Typography sx={{ color: "#fff", mb: 1 }}>Discover Our Story</Typography>
           <Box sx={{ 
             width: "30px", 
             height: "50px", 
@@ -584,11 +558,11 @@ const About = () => {
             gutterBottom
             sx={{
               fontWeight: 700,
-              color: "#5b3a1e",
+              color: "#8b4513",
               mb: 3
             }}
           >
-            About Our Pottery Journey
+            About Mitti Arts & Govardhan's Vision
           </Typography>
 
           <Typography
@@ -596,9 +570,9 @@ const About = () => {
             align="center"
             color="text.secondary"
             paragraph
-            sx={{ mb: 5, maxWidth: "800px", mx: "auto" }}
+            sx={{ mb: 5, maxWidth: "900px", mx: "auto" }}
           >
-            We're more than an e-commerce platform — we're a movement to revive the soul of traditional art and conscious living, connecting the ancient wisdom of pottery with modern needs.
+            Born from 40+ years of traditional pottery mastery and fueled by a vision to empower artisans through technology, Mitti Arts bridges ancient wisdom with modern innovation for a sustainable future.
           </Typography>
         </ScrollAnimation>
 
@@ -609,35 +583,47 @@ const About = () => {
             align="center"
             sx={{
               fontWeight: 600,
-              color: "#5b3a1e",
+              color: "#8b4513",
               mb: 4
             }}
           >
-            Experience Our Creations
+            Our Eco-Friendly Creations
           </Typography>
           <PotteryShowcase />
         </ScrollAnimation>
 
-        {/* OUR ROOTS */}
+        {/* Founder's Story */}
         <ScrollAnimation delay={0.3}>
           <Paper 
             elevation={3} 
             sx={{ 
               p: 5, 
               borderRadius: 4, 
-              backgroundColor: "#fff8ef", 
+              backgroundColor: "#fff8f0", 
               mb: 6,
-              backgroundImage: "url('/images/pottery-pattern-bg.svg')",
-              backgroundRepeat: "no-repeat",
-              backgroundPosition: "right bottom",
-              backgroundSize: "300px"
+              position: "relative",
+              overflow: "hidden"
             }}
           >
-            <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>
-              Deep Roots in Sacred Soil
+            <Box sx={{
+              position: "absolute",
+              top: -50,
+              right: -50,
+              width: "200px",
+              height: "200px",
+              bgcolor: "#cd853f",
+              borderRadius: "50%",
+              opacity: 0.1,
+              zIndex: 0
+            }}/>
+            <Typography variant="h5" sx={{ fontWeight: 600, mb: 3, position: "relative", zIndex: 1 }}>
+              From Generational Craft to Technological Innovation
             </Typography>
-            <Typography sx={{ maxWidth: "80%" }}>
-              Our story begins with earth – the humble clay from Indian rivers. Clay is not just a material to us; it's our connection to the ancestral wisdom. From this sacred soil, shaped by time and touched by faith, our artisans create vessels that carry more than water – they carry tradition. Each piece carries the vibration of tradition, the rhythm of our ancestors, and the pulse of sustainable living. In a world of mass production, we stand for mindful creation.
+            <Typography sx={{ mb: 3, position: "relative", zIndex: 1 }}>
+              My name is Govardhan, and pottery is more than just a profession for me—it's a legacy passed down through generations of my family. With over 40 years of experience, I've intimately understood the immense hard work and dedication that goes into crafting each pot, often for modest returns.
+            </Typography>
+            <Typography sx={{ position: "relative", zIndex: 1 }}>
+              This firsthand experience fueled a desire to find ways to make pottery production easier and more viable for artisans. My journey took me across roughly 70% of India, learning traditional techniques while discovering emerging technologies that could preserve our craft while empowering our artisans.
             </Typography>
           </Paper>
         </ScrollAnimation>
@@ -646,14 +632,14 @@ const About = () => {
         <Timeline />
 
         <Grid container spacing={5}>
-          {/* ARTISAN SPOTLIGHT */}
+          {/* TECHNOLOGY & TRADITION */}
           <Grid item xs={12} md={6}>
             <ScrollAnimation delay={0.4}>
               <Paper 
                 elevation={4} 
                 sx={{ 
                   p: 4, 
-                  backgroundColor: "#fff3e6", 
+                  backgroundColor: "#fff8f0", 
                   borderRadius: 4,
                   height: "100%",
                   position: "relative",
@@ -666,29 +652,29 @@ const About = () => {
                   right: 0,
                   width: "120px",
                   height: "120px",
-                  bgcolor: "#d6a692",
+                  bgcolor: "#cd853f",
                   borderBottomLeftRadius: "100%",
                   opacity: 0.3,
                   zIndex: 0
                 }}/>
                 <Typography variant="h5" sx={{ fontWeight: 600, mb: 2, position: "relative", zIndex: 1 }}>
-                  Artisan Spotlight
+                  Technology Meets Tradition
                 </Typography>
                 <Typography sx={{ position: "relative", zIndex: 1 }}>
-                  Every artisan we work with is a storyteller, a keeper of sacred design. Their fingers trace generations of art into every curve, ensuring no two pieces are ever the same. When you bring our pottery home, you're not just buying a product – you're preserving a legacy and supporting families who have maintained these traditions against the tide of industrialization.
+                  In 2017, with the invaluable support of the Telangana government, I led a delegation from the Ministry of BC Welfare to Gujarat. We witnessed advanced pottery technology and successfully brought it back to Telangana, training nearly 2,500 artists in new machinery and techniques while preserving traditional methods.
                 </Typography>
               </Paper>
             </ScrollAnimation>
           </Grid>
 
-          {/* ENVIRONMENTAL ETHOS */}
+          {/* ECO-FRIENDLY COMMITMENT */}
           <Grid item xs={12} md={6}>
             <ScrollAnimation delay={0.5}>
               <Paper 
                 elevation={4} 
                 sx={{ 
                   p: 4, 
-                  backgroundColor: "#fff3e6", 
+                  backgroundColor: "#fff8f0", 
                   borderRadius: 4,
                   height: "100%",
                   position: "relative",
@@ -701,16 +687,16 @@ const About = () => {
                   left: 0,
                   width: "120px",
                   height: "120px",
-                  bgcolor: "#d6a692",
+                  bgcolor: "#cd853f",
                   borderTopRightRadius: "100%",
                   opacity: 0.3,
                   zIndex: 0
                 }}/>
                 <Typography variant="h5" sx={{ fontWeight: 600, mb: 2, position: "relative", zIndex: 1 }}>
-                  Environmentally Devoted
+                  Environmental Protection
                 </Typography>
                 <Typography sx={{ position: "relative", zIndex: 1 }}>
-                  We use natural clay and water-based paints. Our firing techniques have been optimized to use minimal fuel while achieving the perfect finish. Our packaging is biodegradable, made from recycled paper and plant fibers. Every piece returns to the earth, leaving no trace of harm. Our vision is a plastic-free, spiritually aware future where commerce respects the Earth and creators.
+                  Our passion lies in the creative potential of clay and deep commitment to protecting our environment. We consciously create eco-friendly products, including thousands of clay Ganesha idols ranging from 8 inches to 8 feet, using only clay and biodegradable materials to preserve nature while celebrating cultural traditions.
                 </Typography>
               </Paper>
             </ScrollAnimation>
@@ -723,7 +709,7 @@ const About = () => {
                 elevation={4} 
                 sx={{ 
                   p: 5, 
-                  backgroundColor: "#f7e6d5", 
+                  backgroundColor: "#f5ebe0", 
                   borderRadius: 4,
                   position: "relative",
                   overflow: "hidden"
@@ -735,31 +721,31 @@ const About = () => {
                   right: -100,
                   width: "300px",
                   height: "300px",
-                  bgcolor: "#d6a692",
+                  bgcolor: "#cd853f",
                   borderRadius: "50%",
                   opacity: 0.15,
                   zIndex: 0
                 }}/>
                 <Typography variant="h5" sx={{ fontWeight: 600, mb: 3, position: "relative", zIndex: 1 }}>
-                  Community Impact
+                  Empowering Artisan Communities
                 </Typography>
                 <Grid container spacing={4}>
                   <Grid item xs={12} md={4}>
                     <Box sx={{ textAlign: "center", mb: 2 }}>
-                      <Typography variant="h2" sx={{ color: "#a0522d", fontWeight: 700 }}>500+</Typography>
-                      <Typography variant="body1">Artisan Families Supported</Typography>
+                      <Typography variant="h2" sx={{ color: "#8b4513", fontWeight: 700 }}>2,500+</Typography>
+                      <Typography variant="body1">Artists Trained in New Technology</Typography>
                     </Box>
                   </Grid>
                   <Grid item xs={12} md={4}>
                     <Box sx={{ textAlign: "center", mb: 2 }}>
-                      <Typography variant="h2" sx={{ color: "#a0522d", fontWeight: 700 }}>12</Typography>
-                      <Typography variant="body1">Rural Villages Revitalized</Typography>
+                      <Typography variant="h2" sx={{ color: "#8b4513", fontWeight: 700 }}>70%</Typography>
+                      <Typography variant="body1">of India Explored for Techniques</Typography>
                     </Box>
                   </Grid>
                   <Grid item xs={12} md={4}>
                     <Box sx={{ textAlign: "center", mb: 2 }}>
-                      <Typography variant="h2" sx={{ color: "#a0522d", fontWeight: 700 }}>40%</Typography>
-                      <Typography variant="body1">Women Artisan Employment</Typography>
+                      <Typography variant="h2" sx={{ color: "#8b4513", fontWeight: 700 }}>40+</Typography>
+                      <Typography variant="body1">Years of Pottery Expertise</Typography>
                     </Box>
                   </Grid>
                 </Grid>
@@ -770,25 +756,25 @@ const About = () => {
           {/* CUSTOMER VOICES */}
           <Grid item xs={12}>
             <ScrollAnimation delay={0.7}>
-              <Typography variant="h4" align="center" sx={{ fontWeight: 600, color: "#5b3a1e", mb: 4, mt: 2 }}>
+              <Typography variant="h4" align="center" sx={{ fontWeight: 600, color: "#8b4513", mb: 4, mt: 2 }}>
                 Voices From Our Community
               </Typography>
               <Grid container spacing={3}>
                 {[
                   {
-                    name: "Priya M.",
-                    quote: "These clay pots have transformed my kitchen. Not only are they beautiful, but the food tastes so much better when cooked in clay. I can feel the connection to tradition with every meal.",
-                    location: "Mumbai"
+                    name: "Rajesh K.",
+                    quote: "Govardhan sir's training transformed my pottery skills. The new techniques increased my productivity while keeping the traditional soul of our craft alive.",
+                    location: "Telangana Potter"
                   },
                   {
-                    name: "Thomas R.",
-                    quote: "I've been collecting artisanal pottery for years, and these pieces are truly special. The natural imperfections tell a story, and I love knowing exactly who made my tea set.",
-                    location: "London"
+                    name: "Lakshmi D.",
+                    quote: "The clay Ganesha idols from Mitti Arts are perfect for our festivals. Knowing they're completely biodegradable makes our celebrations guilt-free and meaningful.",
+                    location: "Festival Organizer, Hyderabad"
                   },
                   {
-                    name: "Aisha K.",
-                    quote: "As someone trying to live more sustainably, finding these plastic-free, natural clay products has been a blessing. They're beautiful, functional, and I know I'm supporting real craftspeople.",
-                    location: "Bengaluru"
+                    name: "Dr. Priya M.",
+                    quote: "As an environmentalist, I'm impressed by Mitti Arts' commitment to sustainability. Their products prove that tradition and environmental responsibility can beautifully coexist.",
+                    location: "Environmental Researcher"
                   }
                 ].map((testimonial, i) => (
                   <Grid item xs={12} md={4} key={testimonial.name}>
@@ -798,16 +784,14 @@ const About = () => {
                         borderRadius: 3, 
                         height: "100%",
                         bgcolor: "#fff",
-                        boxShadow: "0 4px 15px rgba(91, 58, 30, 0.08)",
-                        animation: isVisible => isVisible ? `${rotateIn} 0.6s ease-out ${0.3 + i * 0.2}s forwards` : "none",
-                        opacity: 0,
+                        boxShadow: "0 4px 15px rgba(139, 69, 19, 0.08)",
                         display: "flex",
                         flexDirection: "column",
                       }}
                     >
                       <Box sx={{ 
                         mb: 2, 
-                        color: "#d6a692", 
+                        color: "#cd853f", 
                         fontSize: "2rem", 
                         height: "20px", 
                         fontFamily: "Georgia, serif" 
@@ -836,18 +820,18 @@ const About = () => {
         {/* CTA */}
         <ScrollAnimation delay={0.8}>
           <Box textAlign="center" mt={10} mb={4}>
-            <Typography variant="h4" sx={{ mb: 3, fontWeight: 600, color: "#5b3a1e" }}>
-              Step into the World of Clay, Culture, and Connection
+            <Typography variant="h4" sx={{ mb: 3, fontWeight: 600, color: "#8b4513" }}>
+              Join Our Mission of Sustainable Tradition
             </Typography>
             <Typography variant="body1" sx={{ mb: 4, maxWidth: "700px", mx: "auto" }}>
-              Bring a piece of this ancient tradition into your home. Each purchase supports artisan communities and sustainable practices.
+              Be part of our journey to preserve ancient traditions while building a sustainable future. Every purchase supports artisan communities and environmental protection.
             </Typography>
             <Button
               variant="contained"
               href="/products"
               sx={{
-                backgroundColor: "#a0522d",
-                "&:hover": { backgroundColor: "#8b4513" },
+                backgroundColor: "#8b4513",
+                "&:hover": { backgroundColor: "#654321" },
                 px: 5,
                 py: 1.8,
                 fontSize: "1.1rem",
@@ -855,59 +839,63 @@ const About = () => {
                 boxShadow: "2px 2px 8px rgba(0,0,0,0.2)",
                 transition: "transform 0.3s ease",
                 "&:hover": {
-                  backgroundColor: "#8b4513",
+                  backgroundColor: "#654321",
                   transform: "translateY(-3px)",
                   boxShadow: "2px 5px 12px rgba(0,0,0,0.3)",
                 }
               }}
             >
-              Explore Our Collections
+              Explore Our Eco-Friendly Collections
             </Button>
           </Box>
         </ScrollAnimation>
         
-        {/* Our Philosophy */}
+        {/* Philosophy */}
         <ScrollAnimation delay={0.9}>
           <Box sx={{ my: 8, px: 2 }}>
-            <Typography variant="h4" align="center" sx={{ fontWeight: 600, color: "#5b3a1e", mb: 5 }}>
-              Our Philosophy
+            <Typography variant="h4" align="center" sx={{ fontWeight: 600, color: "#8b4513", mb: 5 }}>
+              Our Philosophy: Creators, Not Job Seekers
             </Typography>
             <Grid container spacing={4} alignItems="center">
               <Grid item xs={12} md={6}>
                 <Box sx={{ 
                   position: "relative", 
-                  bgcolor: "#f5e3d0", 
+                  bgcolor: "#f5ebe0", 
                   height: "100%", 
                   minHeight: 400, 
                   borderRadius: 4,
-                  overflow: "hidden"
+                  overflow: "hidden",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
                 }}>
-                  {/* This would be an image in production */}
-                  <Box sx={{ 
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    backgroundImage: "url('/images/pottery-making.jpg')",
-                    backgroundSize: "cover",
-                    backgroundPosition: "center",
-                  }}/>
+                  <Typography variant="h3" sx={{ 
+                    color: "#8b4513", 
+                    textAlign: "center",
+                    fontWeight: 700,
+                    px: 4
+                  }}>
+                    मिट्टी से मिले प्रेरणा
+                    <br />
+                    <Typography component="span" variant="h5" sx={{ color: "#cd853f" }}>
+                      From Clay Comes Inspiration
+                    </Typography>
+                  </Typography>
                 </Box>
               </Grid>
               <Grid item xs={12} md={6}>
                 <Box>
-                  <Typography variant="h5" sx={{ fontWeight: 600, mb: 3, color: "#5b3a1e" }}>
-                    The Dance Between Tradition and Innovation
+                  <Typography variant="h5" sx={{ fontWeight: 600, mb: 3, color: "#8b4513" }}>
+                    Innovation Rooted in Tradition
                   </Typography>
                   <Typography variant="body1" paragraph>
-                    At the heart of our practice is a delicate balance. We honor traditions that span millennia while embracing techniques that make this ancient art form relevant for contemporary living.
+                    At Mitti Arts, we believe in being creators of opportunity, not just job seekers. This philosophy drives everything we do - from preserving ancient pottery techniques to embracing modern technology that empowers our artisans.
                   </Typography>
                   <Typography variant="body1" paragraph>
-                    For us, pottery is more than craft—it's meditation. Each piece begins with centering the clay, just as the potter must center themselves. The wheel turns, hands shape, and in this sacred dance between human and earth, something authentic emerges.
+                    Our journey across India taught us that tradition and innovation aren't opposing forces - they're complementary. By bringing Gujarat's advanced pottery technology to Telangana, we've shown that respecting our heritage while embracing progress creates the strongest foundation for sustainable growth.
                   </Typography>
                   <Typography variant="body1">
-                    We believe beautiful, handcrafted objects bring mindfulness to everyday moments. A morning tea ritual becomes deeper when drinking from a cup made with intention and care. Cooking becomes more connected when done in vessels formed from the very earth that nourishes us.
+                    Every clay Ganesha idol we craft, every artisan we train, every eco-friendly product we create represents our commitment to a future where cultural preservation and environmental protection go hand in hand.
                   </Typography>
                 </Box>
               </Grid>
@@ -915,14 +903,14 @@ const About = () => {
           </Box>
         </ScrollAnimation>
         
-        {/* Workshop Experience */}
+        {/* Ganesha Idols Showcase */}
         <ScrollAnimation delay={1.0}>
           <Paper 
             elevation={3} 
             sx={{ 
               p: { xs: 3, md: 5 }, 
               borderRadius: 4, 
-              backgroundColor: "#fff8ef", 
+              backgroundColor: "#fff8f0", 
               mb: 10,
               position: "relative",
               overflow: "hidden"
@@ -934,7 +922,7 @@ const About = () => {
               left: -20,
               width: "140px",
               height: "140px",
-              bgcolor: "#d6a692",
+              bgcolor: "#cd853f",
               borderRadius: "50%",
               opacity: 0.2,
               zIndex: 0
@@ -945,17 +933,17 @@ const About = () => {
               right: -30,
               width: "180px",
               height: "180px",
-              bgcolor: "#d6a692",
+              bgcolor: "#cd853f",
               borderRadius: "50%",
               opacity: 0.2,
               zIndex: 0
             }}/>
             
             <Typography variant="h5" sx={{ fontWeight: 600, mb: 3, position: "relative", zIndex: 1 }}>
-              Experience The Craft Firsthand
+              Our Signature: Eco-Friendly Ganesha Idols
             </Typography>
             <Typography sx={{ mb: 4, position: "relative", zIndex: 1 }}>
-              Visit our workshops in Jaipur and Delhi to witness the magic of pottery-making in person. Feel the clay between your fingers, learn from master artisans, and create your own piece to take home.
+              We take pride in crafting thousands of clay Ganesha idols ranging from 8 inches to 8 feet, using only natural clay and biodegradable materials. Each idol represents our commitment to celebrating traditions while protecting our environment.
             </Typography>
             
             <Grid container spacing={3}>
@@ -963,19 +951,18 @@ const About = () => {
                 <Box sx={{ textAlign: "center" }}>
                   <Typography sx={{ 
                     fontSize: "3rem", 
-                    color: "#a0522d", 
+                    color: "#8b4513", 
                     mb: 1,
                     display: "flex",
                     justifyContent: "center"
                   }}>
-                    {/* Icon would go here - using placeholder */}
-                    <span role="img" aria-label="pottery wheel">🏺</span>
+                    <span role="img" aria-label="small idol">🐘</span>
                   </Typography>
                   <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
-                    Wheel Throwing
+                    8" Mini Idols
                   </Typography>
                   <Typography variant="body2">
-                    Learn the basics of centering clay and forming vessels on the potter's wheel.
+                    Perfect for home altars and personal worship, crafted with intricate details.
                   </Typography>
                 </Box>
               </Grid>
@@ -984,18 +971,18 @@ const About = () => {
                 <Box sx={{ textAlign: "center" }}>
                   <Typography sx={{ 
                     fontSize: "3rem", 
-                    color: "#a0522d", 
+                    color: "#8b4513", 
                     mb: 1,
                     display: "flex",
                     justifyContent: "center"
                   }}>
-                    <span role="img" aria-label="hand building">✋</span>
+                    <span role="img" aria-label="medium idol">🏛️</span>
                   </Typography>
                   <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
-                    Hand Building
+                    Community Size
                   </Typography>
                   <Typography variant="body2">
-                    Discover traditional pinch, coil, and slab techniques to create unique forms.
+                    Medium-sized idols ideal for community celebrations and neighborhood festivals.
                   </Typography>
                 </Box>
               </Grid>
@@ -1004,18 +991,18 @@ const About = () => {
                 <Box sx={{ textAlign: "center" }}>
                   <Typography sx={{ 
                     fontSize: "3rem", 
-                    color: "#a0522d", 
+                    color: "#8b4513", 
                     mb: 1,
                     display: "flex",
                     justifyContent: "center"
                   }}>
-                    <span role="img" aria-label="glazing">🎨</span>
+                    <span role="img" aria-label="large idol">🎭</span>
                   </Typography>
                   <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
-                    Natural Glazing
+                    8' Grand Idols
                   </Typography>
                   <Typography variant="body2">
-                    Explore traditional plant-based glazes and painting techniques.
+                    Majestic large idols for grand celebrations, entirely biodegradable.
                   </Typography>
                 </Box>
               </Grid>
@@ -1024,18 +1011,18 @@ const About = () => {
                 <Box sx={{ textAlign: "center" }}>
                   <Typography sx={{ 
                     fontSize: "3rem", 
-                    color: "#a0522d", 
+                    color: "#8b4513", 
                     mb: 1,
                     display: "flex",
                     justifyContent: "center"
                   }}>
-                    <span role="img" aria-label="firing">🔥</span>
+                    <span role="img" aria-label="eco-friendly">🌱</span>
                   </Typography>
                   <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
-                    Firing Ceremonies
+                    100% Natural
                   </Typography>
                   <Typography variant="body2">
-                    Witness traditional firing methods that have remained unchanged for centuries.
+                    Made with pure clay and natural pigments, completely biodegradable.
                   </Typography>
                 </Box>
               </Grid>
@@ -1044,93 +1031,144 @@ const About = () => {
             <Box sx={{ textAlign: "center", mt: 4 }}>
               <Button
                 variant="outlined"
-                href="/workshops"
+                href="/ganesha-idols"
                 sx={{
-                  color: "#a0522d",
-                  borderColor: "#a0522d",
+                  color: "#8b4513",
+                  borderColor: "#8b4513",
                   "&:hover": { 
-                    borderColor: "#8b4513",
-                    backgroundColor: "rgba(160, 82, 45, 0.05)" 
+                    borderColor: "#654321",
+                    backgroundColor: "rgba(139, 69, 19, 0.05)" 
                   },
                   px: 4,
                   py: 1,
                   borderRadius: 8
                 }}
               >
-                Book a Workshop
+                View Ganesha Collection
               </Button>
             </Box>
           </Paper>
         </ScrollAnimation>
         
-        {/* Map with Locations */}
+        {/* Training & Workshops */}
         <ScrollAnimation delay={1.1}>
-          <Typography variant="h4" align="center" sx={{ fontWeight: 600, color: "#5b3a1e", mb: 4 }}>
-            Find Us Across India
+          <Typography variant="h4" align="center" sx={{ fontWeight: 600, color: "#8b4513", mb: 4 }}>
+            Artisan Training & Workshops
           </Typography>
+          <Grid container spacing={4} sx={{ mb: 8 }}>
+            <Grid item xs={12} md={6}>
+              <Paper sx={{ p: 4, borderRadius: 4, height: "100%" }}>
+                <Typography variant="h5" sx={{ fontWeight: 600, mb: 2, color: "#8b4513" }}>
+                  Technology Training Programs
+                </Typography>
+                <Typography paragraph>
+                  We offer comprehensive training programs that blend traditional pottery techniques with modern machinery. Our goal is to increase productivity while preserving the artistic integrity of handcrafted pottery.
+                </Typography>
+                <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                  <Box sx={{ width: 12, height: 12, bgcolor: "#cd853f", borderRadius: "50%", mr: 2 }} />
+                  <Typography>Advanced pottery wheel techniques</Typography>
+                </Box>
+                <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                  <Box sx={{ width: 12, height: 12, bgcolor: "#cd853f", borderRadius: "50%", mr: 2 }} />
+                  <Typography>Modern kiln operation and firing methods</Typography>
+                </Box>
+                <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                  <Box sx={{ width: 12, height: 12, bgcolor: "#cd853f", borderRadius: "50%", mr: 2 }} />
+                  <Typography>Quality control and finishing techniques</Typography>
+                </Box>
+                <Box sx={{ display: "flex", alignItems: "center" }}>
+                  <Box sx={{ width: 12, height: 12, bgcolor: "#cd853f", borderRadius: "50%", mr: 2 }} />
+                  <Typography>Business skills and market access</Typography>
+                </Box>
+              </Paper>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Paper sx={{ p: 4, borderRadius: 4, height: "100%" }}>
+                <Typography variant="h5" sx={{ fontWeight: 600, mb: 2, color: "#8b4513" }}>
+                  Traditional Craft Preservation
+                </Typography>
+                <Typography paragraph>
+                  While embracing technology, we ensure that the soul of traditional Indian pottery is never lost. Our workshops focus on preserving ancient techniques alongside modern innovations.
+                </Typography>
+                <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                  <Box sx={{ width: 12, height: 12, bgcolor: "#cd853f", borderRadius: "50%", mr: 2 }} />
+                  <Typography>Hand-building and coiling methods</Typography>
+                </Box>
+                <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                  <Box sx={{ width: 12, height: 12, bgcolor: "#cd853f", borderRadius: "50%", mr: 2 }} />
+                  <Typography>Natural clay preparation techniques</Typography>
+                </Box>
+                <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                  <Box sx={{ width: 12, height: 12, bgcolor: "#cd853f", borderRadius: "50%", mr: 2 }} />
+                  <Typography>Traditional firing and glazing methods</Typography>
+                </Box>
+                <Box sx={{ display: "flex", alignItems: "center" }}>
+                  <Box sx={{ width: 12, height: 12, bgcolor: "#cd853f", borderRadius: "50%", mr: 2 }} />
+                  <Typography>Cultural significance and symbolism</Typography>
+                </Box>
+              </Paper>
+            </Grid>
+          </Grid>
+        </ScrollAnimation>
+        
+        {/* Final CTA */}
+        <ScrollAnimation delay={1.3}>
           <Box 
             sx={{ 
-              width: "100%", 
-              height: "50vh", 
-              bgcolor: "#f5e3d0", 
-              borderRadius: 4,
-              position: "relative",
-              overflow: "hidden",
-              mb: 8,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center"
+              
+              textAlign: "center", 
+              bgcolor: "#f5ebe0", 
+              p: 6, 
+              borderRadius: 4, 
+              mt: 12
             }}
           >
-            {/* This would be replaced with an actual map component */}
-            <Typography variant="h6" sx={{ color: "#a0522d" }}>
-              Interactive Map of our Workshops & Stores
+            <Typography variant="h4" sx={{ mb: 2, fontWeight: 600, color: "#8b4513" }}>
+              "We are creators of opportunity, not just job seekers"
             </Typography>
-            
-            {/* Location markers - these would be positioned on the actual map */}
-            {[
-              { name: "Delhi Studio", position: { top: "30%", left: "40%" } },
-              { name: "Jaipur Workshop", position: { top: "50%", left: "30%" } },
-              { name: "Mumbai Gallery", position: { top: "70%", left: "20%" } },
-              { name: "Varanasi Artisan Center", position: { top: "40%", left: "60%" } },
-              { name: "Kolkata Store", position: { top: "50%", left: "70%" } }
-            ].map((location) => (
-              <Box
-                key={location.name}
-                sx={{
-                  position: "absolute",
-                  top: location.position.top,
-                  left: location.position.left,
-                  width: "12px",
-                  height: "12px",
-                  bgcolor: "#a0522d",
-                  borderRadius: "50%",
-                  transform: "translate(-50%, -50%)",
-                  "&:before": {
-                    content: '""',
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    width: "24px",
-                    height: "24px",
-                    bgcolor: "rgba(160, 82, 45, 0.3)",
-                    borderRadius: "50%",
-                    transform: "translate(-50%, -50%)",
-                    animation: "pulse 2s infinite"
-                  },
-                  "@keyframes pulse": {
-                    "0%": {
-                      transform: "translate(-50%, -50%) scale(1)",
-                      opacity: 1
+            <Typography variant="h6" sx={{ mb: 4, color: "#8b4513", fontStyle: "italic" }}>
+              - Govardhan, Founder of Mitti Arts
+            </Typography>
+            <Typography variant="body1" sx={{ mb: 4, color: "text.secondary", maxWidth: "600px", mx: "auto" }}>
+              Join us in our mission to preserve India's pottery heritage while building a sustainable, 
+              technology-enabled future for artisan communities across the nation.
+            </Typography>
+            <Grid container spacing={2} justifyContent="center">
+              <Grid item>
+                <Button
+                  variant="contained"
+                  href="/products"
+                  sx={{
+                    backgroundColor: "#8b4513",
+                    "&:hover": { backgroundColor: "#654321" },
+                    px: 4,
+                    py: 1.5,
+                    borderRadius: 8
+                  }}
+                >
+                  Shop Our Products
+                </Button>
+              </Grid>
+              <Grid item>
+                <Button
+                  variant="outlined"
+                  href="/training"
+                  sx={{
+                    color: "#8b4513",
+                    borderColor: "#8b4513",
+                    "&:hover": { 
+                      borderColor: "#654321",
+                      backgroundColor: "rgba(139, 69, 19, 0.05)" 
                     },
-                    "100%": {
-                      transform: "translate(-50%, -50%) scale(2)",
-                      opacity: 0
-                    }
-                  }
-                }}
-              />
-            ))}
+                    px: 4,
+                    py: 1.5,
+                    borderRadius: 8
+                  }}
+                >
+                  Learn More About Training
+                </Button>
+              </Grid>
+            </Grid>
           </Box>
         </ScrollAnimation>
       </Container>
