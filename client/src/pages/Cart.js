@@ -377,7 +377,7 @@ const OrderSummary = memo(({ cartItems, products, navigate, totalPrice, subtotal
               Shipping
             </Typography>
             <Typography variant="body2">
-              {shippingCost === 0 ? 'Free' : `₹${shippingCost.toLocaleString('en-IN')}`}
+              {shippingCost === 0 ? 'Enjoy Free Delivery' : `₹${shippingCost.toLocaleString('en-IN')}`}
             </Typography>
           </Box>
           
@@ -745,7 +745,7 @@ const Cart = () => {
     }, 0);
     
     // Free shipping above ₹1500
-    const shipping = sub > 1500 ? 0 : 99;
+    const shipping = sub > 1500 ? 0 : 0;
     
     // 10% discount above ₹1000, max ₹100
     const disc = sub > 1000 ? Math.min(Math.round(sub * 0.1), 100) : 0;
