@@ -57,6 +57,7 @@ import {
   styled,
   useTheme
 } from '@mui/material';
+import { useOrderService } from '../hooks/useOrderService';
 
 // MUI Icons
 import {
@@ -355,7 +356,7 @@ const CheckoutFlow = () => {
     discount: 0,
     totalPrice: 0
   });
-
+const { placeOrderWithStockDeduction, checkStockAvailability, updateOrderPaymentStatus } = useOrderService();
   // Products state
   const [products, setProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
@@ -479,6 +480,7 @@ const CheckoutFlow = () => {
   }, [navigate, state]);
 
 // Modify the payment status handling in the useEffect
+// Updated useEffect for payment status handling with immediate stock deduction
 useEffect(() => {
   // Check if returning from payment gateway (URL contains payment status info)
   const urlParams = new URLSearchParams(window.location.search);
@@ -512,6 +514,35 @@ useEffect(() => {
     }
     
     if (pendingOrderId && pendingOrderNumber) {
+      // Update order payment status and handle stock deduction
+      const handlePaymentStatusUpdate = async () => {
+        try {
+          let finalPaymentStatus = 'PENDING';
+          
+          // Map payment gateway status to our status
+          if (paymentStatus === 'COMPLETED' || paymentStatus === 'SUCCESS') {
+            finalPaymentStatus = 'COMPLETED';
+          } else if (paymentStatus === 'FAILED' || paymentStatus === 'FAILURE') {
+            finalPaymentStatus = 'FAILED';
+          }
+          
+          // Update payment status and handle stock deduction automatically
+          const updateResult = await updateOrderPaymentStatus(pendingOrderId, finalPaymentStatus);
+          
+          if (updateResult.success) {
+            console.log('Order payment status updated and stock handled:', updateResult.message);
+          } else {
+            console.error('Failed to update order status:', updateResult.message);
+          }
+          
+        } catch (error) {
+          console.error('Error updating payment status:', error);
+        }
+      };
+      
+      // Execute the payment status update
+      handlePaymentStatusUpdate();
+      
       // Check payment status securely
       if (verificationData && Object.keys(verificationData).length > 0) {
         // Add the returned status to verification data
@@ -531,18 +562,8 @@ useEffect(() => {
       
       // Show a brief notification based on status
       if (paymentStatus === 'COMPLETED' || paymentStatus === 'SUCCESS') {
-        setSnackbarMessage('Payment successful! Redirecting to order details...');
+        setSnackbarMessage('Payment successful! Stock updated automatically. Redirecting to order details...');
         setSnackbarSeverity('success');
-          if (pendingOrderId) {
-    (async () => {
-      try {
-        await updateInventoryAfterPayment(pendingOrderId);
-        console.log('Inventory updated successfully after payment');
-      } catch (error) {
-        console.error('Error updating inventory after payment:', error);
-      }
-    })(); // Immediately invoke the async function
-  }
       } else if (paymentStatus === 'FAILED' || paymentStatus === 'FAILURE') {
         setSnackbarMessage('Payment was not successful. Redirecting to details page...');
         setSnackbarSeverity('error');
@@ -553,8 +574,7 @@ useEffect(() => {
       setSnackbarOpen(true);
     }
   }
-}, [navigate]);
-
+}, [navigate, updateOrderPaymentStatus]);
   // Handle input changes for personal info
   const handlePersonalInfoChange = (e) => {
     const { name, value } = e.target;

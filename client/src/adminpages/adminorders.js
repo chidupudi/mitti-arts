@@ -1,3 +1,4 @@
+// Updated AdminOrders.js component with cancel order functionality
 import React from 'react';
 import { Box, Container } from '@mui/material';
 import { ThemeProvider } from '@mui/material/styles';
@@ -6,6 +7,7 @@ import OrdersTable from './components/AdminOrders/OrderTable';
 import OrdersCards from './components/AdminOrders/OrdersCards';
 import DeliveryDetailsDialog from './components/AdminOrders/DeliveryDetailsDialog';
 import OrderDetailsDialog from './components/AdminOrders/OrderDetailsDialog';
+import CancelOrderDialog from './components/AdminOrders/CancelOrderDialog'; // Import the new dialog
 import NotificationSnackbar from './components/NotificationSnackbar';
 import LoadingScreen from './components/LoadingScreen';
 import { terracottaTheme } from '../theme/terracottaTheme';
@@ -58,6 +60,10 @@ const AdminOrders = () => {
     setDetailsDialogOpen,
     selectedOrderForDetails,
     setSelectedOrderForDetails,
+    cancelDialogOpen,
+    setCancelDialogOpen,
+    selectedOrderForCancel,
+    setSelectedOrderForCancel,
     
     // Data maps
     deliveryDetailsMap,
@@ -67,6 +73,9 @@ const AdminOrders = () => {
     handlePaymentToggle,
     handleSaveDeliveryDetails,
     handleMarkDelivered,
+    handleCancelOrder,
+    handleCancelOrderClick,
+    handleConfirmCancelOrder,
     handleResetFilters,
     handleCloseSnackbar,
     handleChangePage,
@@ -122,6 +131,7 @@ const AdminOrders = () => {
               handlePaymentToggle={handlePaymentToggle}
               handleMarkDelivered={handleMarkDelivered}
               handleViewOrderDetails={handleViewOrderDetails}
+              handleCancelOrderClick={handleCancelOrderClick} // Add cancel handler
               setSelectedOrderForDelivery={setSelectedOrderForDelivery}
               setDeliveryDialogOpen={setDeliveryDialogOpen}
               handleChangePage={handleChangePage}
@@ -137,6 +147,7 @@ const AdminOrders = () => {
               handlePaymentToggle={handlePaymentToggle}
               handleMarkDelivered={handleMarkDelivered}
               handleViewOrderDetails={handleViewOrderDetails}
+              handleCancelOrderClick={handleCancelOrderClick} // Add cancel handler
               setSelectedOrderForDelivery={setSelectedOrderForDelivery}
               setDeliveryDialogOpen={setDeliveryDialogOpen}
               handleChangePage={handleChangePage}
@@ -159,6 +170,14 @@ const AdminOrders = () => {
             onClose={() => setDetailsDialogOpen(false)}
             order={selectedOrderForDetails}
             searchQuery={searchQuery}
+          />
+
+          {/* Cancel Order Dialog */}
+          <CancelOrderDialog
+            open={cancelDialogOpen}
+            onClose={() => setCancelDialogOpen(false)}
+            order={selectedOrderForCancel}
+            onConfirm={handleConfirmCancelOrder}
           />
           
           {/* Notification Snackbar */}

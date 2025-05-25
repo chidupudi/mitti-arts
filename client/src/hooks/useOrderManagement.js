@@ -1,6 +1,7 @@
+// Updated useOrderManagement.js with proper order flow
 import { useState } from 'react';
 import { db } from '../Firebase/Firebase';
-import { doc, updateDoc, getDoc, increment, writeBatch } from 'firebase/firestore';
+import { doc, updateDoc, getDoc, increment, writeBatch, Timestamp } from 'firebase/firestore';
 
 export const useOrderManagement = () => {
   const [paymentStatuses, setPaymentStatuses] = useState({});
@@ -15,22 +16,192 @@ export const useOrderManagement = () => {
     severity: 'success'
   });
 
-  // Handle payment status toggle
-  const handlePaymentToggle = async (orderId) => {
+  // Handle payment status toggle (for admin convenience only)
+  const handlePaymentToggle = async (orderId, currentPaymentStatus) => {
     try {
-      const newStatus = !paymentStatuses[orderId];
-      setPaymentStatuses(prev => ({ ...prev, [orderId]: newStatus }));
       const orderRef = doc(db, 'orders', orderId);
+      const orderSnap = await getDoc(orderRef);
+      
+      if (!orderSnap.exists()) {
+        throw new Error('Order not found');
+      }
+
+      const orderData = orderSnap.data();
+      const isCurrentlyPaid = currentPaymentStatus === 'COMPLETED' || currentPaymentStatus === 'SUCCESS';
+      const newStatus = isCurrentlyPaid ? 'PENDING' : 'COMPLETED';
+
+      // If changing from paid to unpaid, we need to restore stock
+      if (isCurrentlyPaid && !isCurrentlyPaid) {
+        await restoreStockForOrder(orderData);
+      }
+      // If changing from unpaid to paid, we need to deduct stock
+      else if (!isCurrentlyPaid && newStatus === 'COMPLETED') {
+        await deductStockForOrder(orderData);
+      }
+
       await updateDoc(orderRef, {
-        paymentStatus: newStatus ? 'COMPLETED' : 'PENDING'
+        paymentStatus: newStatus,
+        adminConfirmed: newStatus === 'COMPLETED',
+        updatedAt: Timestamp.now()
+      });
+
+      setPaymentStatuses(prev => ({ ...prev, [orderId]: newStatus === 'COMPLETED' }));
+      
+      setSnackbar({
+        open: true,
+        message: `Payment status updated to ${newStatus}`,
+        severity: 'success'
       });
     } catch (error) {
       console.error('Error updating payment status:', error);
       setSnackbar({
         open: true,
-        message: 'Error updating payment status',
+        message: `Error: ${error.message}`,
         severity: 'error'
       });
+    }
+  };
+
+  // Function to deduct stock when payment is confirmed
+  const deductStockForOrder = async (orderData) => {
+    const batch = writeBatch(db);
+    let hasUpdates = false;
+
+    // Get items from order
+    let items = [];
+    if (orderData.orderDetails?.items && orderData.orderDetails.items.length > 0) {
+      items = orderData.orderDetails.items;
+    } else if (orderData.orderDetails?.cartData?.items && orderData.orderDetails.cartData.items.length > 0) {
+      items = orderData.orderDetails.cartData.items;
+    } else if (orderData.items && orderData.items.length > 0) {
+      items = orderData.items;
+    }
+
+    for (const item of items) {
+      const productId = item.id || item.productId;
+      
+      if (!productId) {
+        console.warn('Product ID not found for item:', item);
+        continue;
+      }
+      
+      const productRef = doc(db, 'products', productId);
+      const productSnap = await getDoc(productRef);
+      
+      if (!productSnap.exists()) {
+        console.warn(`Product ${productId} not found in database`);
+        continue;
+      }
+
+      const currentStock = productSnap.data().stock || 0;
+      
+      // Check if we have enough stock
+      if (currentStock < item.quantity) {
+        throw new Error(`Insufficient stock for ${item.name}. Available: ${currentStock}, Required: ${item.quantity}`);
+      }
+      
+      batch.update(productRef, {
+        stock: increment(-item.quantity),
+        updatedAt: Timestamp.now()
+      });
+      
+      hasUpdates = true;
+    }
+
+    if (hasUpdates) {
+      await batch.commit();
+      console.log('Stock deducted for order items');
+    }
+  };
+
+  // Function to restore stock when order is cancelled or payment fails
+  const restoreStockForOrder = async (orderData) => {
+    const batch = writeBatch(db);
+    let hasUpdates = false;
+
+    // Get items from order
+    let items = [];
+    if (orderData.orderDetails?.items && orderData.orderDetails.items.length > 0) {
+      items = orderData.orderDetails.items;
+    } else if (orderData.orderDetails?.cartData?.items && orderData.orderDetails.cartData.items.length > 0) {
+      items = orderData.orderDetails.cartData.items;
+    } else if (orderData.items && orderData.items.length > 0) {
+      items = orderData.items;
+    }
+
+    for (const item of items) {
+      const productId = item.id || item.productId;
+      
+      if (!productId) {
+        console.warn('Product ID not found for item:', item);
+        continue;
+      }
+      
+      const productRef = doc(db, 'products', productId);
+      const productSnap = await getDoc(productRef);
+      
+      if (!productSnap.exists()) {
+        console.warn(`Product ${productId} not found in database`);
+        continue;
+      }
+      
+      batch.update(productRef, {
+        stock: increment(item.quantity), // Add back to stock
+        updatedAt: Timestamp.now()
+      });
+      
+      hasUpdates = true;
+    }
+
+    if (hasUpdates) {
+      await batch.commit();
+      console.log('Stock restored for cancelled order');
+    }
+  };
+
+  // Cancel entire order
+  const handleCancelOrder = async (orderId) => {
+    try {
+      setProcessingOrder(orderId);
+      
+      const orderRef = doc(db, 'orders', orderId);
+      const orderSnap = await getDoc(orderRef);
+      
+      if (!orderSnap.exists()) {
+        throw new Error('Order not found');
+      }
+      
+      const orderData = orderSnap.data();
+      
+      // If order was paid, restore the stock
+      if (orderData.paymentStatus === 'COMPLETED' || orderData.paymentStatus === 'SUCCESS') {
+        await restoreStockForOrder(orderData);
+      }
+      
+      // Update order status to cancelled
+      await updateDoc(orderRef, {
+        status: 'CANCELLED',
+        paymentStatus: 'CANCELLED',
+        cancelledAt: Timestamp.now(),
+        cancelledBy: 'admin',
+        updatedAt: Timestamp.now()
+      });
+      
+      setSnackbar({
+        open: true,
+        message: 'Order cancelled successfully and stock restored',
+        severity: 'success'
+      });
+      
+    } catch (error) {
+      console.error('Error cancelling order:', error);
+      setSnackbar({
+        open: true,
+        message: `Error: ${error.message || 'Failed to cancel order'}`,
+        severity: 'error'
+      });
+    } finally {
+      setProcessingOrder(null);
     }
   };
 
@@ -39,7 +210,10 @@ export const useOrderManagement = () => {
     try {
       const orderRef = doc(db, 'orders', orderId);
       await updateDoc(orderRef, {
-        deliveryDetails: details
+        deliveryDetails: details,
+        deliveryStatus: 'DISPATCHED', // Set status when delivery details are added
+        dispatchedAt: Timestamp.now(),
+        updatedAt: Timestamp.now()
       });
       setSnackbar({
         open: true,
@@ -56,7 +230,7 @@ export const useOrderManagement = () => {
     }
   };
 
-  // Mark order as delivered
+  // Mark order as delivered (no stock changes here since already deducted)
   const handleMarkDelivered = async (orderId) => {
     if (processingOrder === orderId) return;
     
@@ -70,59 +244,16 @@ export const useOrderManagement = () => {
         throw new Error('Order not found');
       }
       
-      const orderData = orderSnap.data();
-      
-      let items = [];
-      if (orderData.orderDetails?.items && orderData.orderDetails.items.length > 0) {
-        items = orderData.orderDetails.items;
-      } else if (orderData.orderDetails?.cartData?.items && orderData.orderDetails.cartData.items.length > 0) {
-        items = orderData.orderDetails.cartData.items;
-      } else if (orderData.items && orderData.items.length > 0) {
-        items = orderData.items;
-      }
-      
-      if (items.length === 0) {
-        throw new Error('No items found in this order');
-      }
-      
-      const batch = writeBatch(db);
-      let hasUpdates = false;
-      
-      for (const item of items) {
-        const productId = item.id || item.productId;
-        
-        if (!productId) {
-          console.warn('Product ID not found for item:', item);
-          continue;
-        }
-        
-        const productRef = doc(db, 'products', productId);
-        const productSnap = await getDoc(productRef);
-        if (!productSnap.exists()) {
-          console.warn(`Product ${productId} not found in database`);
-          continue;
-        }
-        
-        batch.update(productRef, {
-          stock: increment(-item.quantity)
-        });
-        
-        console.log(`Updating stock for product ${productId}, decreasing by ${item.quantity}`);
-        hasUpdates = true;
-      }
-      
-      batch.update(orderRef, {
+      await updateDoc(orderRef, {
         deliveryStatus: 'DELIVERED',
-        deliveredAt: new Date(),
+        status: 'COMPLETED', // Mark overall order as completed
+        deliveredAt: Timestamp.now(),
+        updatedAt: Timestamp.now()
       });
-      
-      await batch.commit();
       
       setSnackbar({
         open: true,
-        message: hasUpdates 
-          ? 'Order marked as delivered and product stock updated' 
-          : 'Order marked as delivered',
+        message: 'Order marked as delivered successfully',
         severity: 'success'
       });
       
@@ -159,6 +290,7 @@ export const useOrderManagement = () => {
     handlePaymentToggle,
     handleSaveDeliveryDetails,
     handleMarkDelivered,
+    handleCancelOrder, // New cancel function
     handleCloseSnackbar,
   };
 };

@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react';
 import { Box, useTheme, useMediaQuery } from '@mui/material';
+import { auth, db } from './Firebase/Firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 
 // Regular components
 import Header from './components/Header';
@@ -30,13 +33,46 @@ import AdminOrders from './adminpages/adminorders';
 import AdminAuth, { ProtectedAdminRoute } from './adminpages/adminauth';
 import AdminSidebar from './adminpages/components/AdminSidebar';
 
-// Check if current path is admin route
-const useIsAdminRoute = () => {
-  const location = useLocation();
-  return ['/dashboard', '/inventory', '/adminorders'].includes(location.pathname);
+// Hook to check if user is admin
+const useIsAdmin = () => {
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        try {
+          // Check if user is admin
+          const adminDoc = await getDoc(doc(db, 'admins', user.uid));
+          
+          if (adminDoc.exists() && adminDoc.data().isAdmin) {
+            setIsAdmin(true);
+          } else {
+            setIsAdmin(false);
+          }
+        } catch (error) {
+          console.error('Error checking admin status:', error);
+          setIsAdmin(false);
+        }
+      } else {
+        setIsAdmin(false);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  return { isAdmin, loading };
 };
 
-// Admin Layout Component (only for admin routes)
+// Check if current path is admin-specific route (dashboard, inventory, etc.)
+const useIsAdminRoute = () => {
+  const location = useLocation();
+  return ['/dashboard', '/inventory', '/adminorders', '/admin', '/supercontrollogin'].includes(location.pathname);
+};
+
+// Admin Layout Component (for ALL pages when admin is logged in)
 const AdminLayoutContent = ({ children }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -85,12 +121,38 @@ const AdminLayoutContent = ({ children }) => {
   );
 };
 
+// Regular User Layout Component
+const RegularLayoutContent = ({ children }) => {
+  return (
+    <>
+      <Header />
+      {children}
+      <Footer />
+    </>
+  );
+};
+
 // Main App Layout Component
 const AppLayout = ({ children }) => {
+  const { isAdmin, loading } = useIsAdmin();
   const isAdminRoute = useIsAdminRoute();
 
-  if (isAdminRoute) {
-    // Admin Layout: Sidebar + Header + Content + Footer
+  // Show loading while checking admin status
+  if (loading) {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '100vh' 
+      }}>
+        <div>Loading...</div>
+      </Box>
+    );
+  }
+
+  // If user is admin AND not on login/auth pages, show admin layout
+  if (isAdmin && !isAdminRoute) {
     return (
       <AdminLayoutContent>
         {children}
@@ -98,13 +160,20 @@ const AppLayout = ({ children }) => {
     );
   }
 
-  // Regular Layout: Header + Content + Footer
+  // If user is admin AND on admin-specific pages, show admin layout
+  if (isAdmin && isAdminRoute) {
+    return (
+      <AdminLayoutContent>
+        {children}
+      </AdminLayoutContent>
+    );
+  }
+
+  // For regular users or admin on login pages, show regular layout
   return (
-    <>
-      <Header />
+    <RegularLayoutContent>
       {children}
-      <Footer />
-    </>
+    </RegularLayoutContent>
   );
 };
 
@@ -136,7 +205,7 @@ const App = () => {
           <Route path="/payment-status/:orderId" element={<PaymentStatusPage />} />
           <Route path="/supercontrollogin" element={<AdminAuth />} />
 
-          {/* 🔐 Admin Routes - WITH SIDEBAR + HEADER */}
+          {/* 🔐 Admin Routes */}
           <Route 
             path="/dashboard" 
             element={

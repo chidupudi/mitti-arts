@@ -1,3 +1,4 @@
+// Updated OrdersTable.js with cancel order functionality
 import React from 'react';
 import {
   Paper,
@@ -28,6 +29,7 @@ import {
   Cancel,
   Warning,
   Info,
+  CancelOutlined,
 } from '@mui/icons-material';
 
 // Utility function to get order date
@@ -79,7 +81,7 @@ const getEnhancedStatusChip = (status, type = 'payment') => {
         case 'CANCELLED':
         case 'REFUNDED':
           return {
-            label: statusUpper === 'REFUNDED' ? 'Refunded' : 'Failed',
+            label: statusUpper === 'REFUNDED' ? 'Refunded' : statusUpper === 'CANCELLED' ? 'Cancelled' : 'Failed',
             color: '#D32F2F',
             backgroundColor: '#FFEBEE',
             borderColor: '#F44336',
@@ -313,6 +315,7 @@ const OrdersTable = ({
   setDeliveryDialogOpen,
   handleChangePage,
   handleChangeRowsPerPage,
+  handleCancelOrderClick, // New prop for cancel order
   error,
 }) => {
   if (error) {
@@ -356,194 +359,238 @@ const OrdersTable = ({
           <TableBody>
             {filteredOrders
               .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-              .map((order) => (
-                <TableRow 
-                  key={order.id}
-                  hover
-                  sx={{ 
-                    cursor: 'pointer',
-                    '&:hover': { backgroundColor: 'rgba(210, 105, 30, 0.04)' }
-                  }}
-                  onClick={() => handleViewOrderDetails(order)}
-                >
-                  <TableCell>
-                    <Typography variant="body2" fontWeight="medium">
-                      {order.orderNumber}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">
-                      {getOrderDate(order).toLocaleDateString()}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {getOrderDate(order).toLocaleTimeString()}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">
-                      {order.orderDetails?.personalInfo?.fullName || order.customerName || 'N/A'}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {order.orderDetails?.personalInfo?.phone || order.customerPhone || 'N/A'}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <AmountDisplay amount={order.orderDetails?.totalAmount} />
-                  </TableCell>
-                  <TableCell align="center">
-                    {getEnhancedStatusChip(order.paymentStatus || 'PENDING', 'payment')}
-                  </TableCell>
-                  <TableCell align="center">
-                    {getEnhancedStatusChip(order.status || 'PENDING', 'order')}
-                  </TableCell>
-                  <TableCell align="center">
-                    {order.deliveryDetails ? (
-                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
-                        <Box sx={{ display: 'flex', gap: 0.5 }}>
-                          <Tooltip title={`${order.deliveryDetails.company} - ${order.deliveryDetails.consignmentNumber}`}>
-                            <Chip 
-                              icon={<LocalShipping />} 
-                              label="Set" 
-                              size="small"
-                              sx={{
-                                color: '#1976D2',
-                                backgroundColor: '#E3F2FD',
-                                border: '1px solid #2196F3',
-                                '& .MuiChip-icon': {
-                                  color: '#1976D2'
-                                }
-                              }}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedOrderForDelivery(order.id);
-                                setDeliveryDialogOpen(true);
-                              }} 
-                            />
-                          </Tooltip>
-                          
-                          {order.deliveryStatus !== 'DELIVERED' ? (
-                            <Tooltip title="Mark as Delivered">
-                              <IconButton
+              .map((order) => {
+                const isCancelled = order.status === 'CANCELLED' || order.paymentStatus === 'CANCELLED';
+                
+                return (
+                  <TableRow 
+                    key={order.id}
+                    hover
+                    sx={{ 
+                      cursor: 'pointer',
+                      opacity: isCancelled ? 0.7 : 1,
+                      '&:hover': { backgroundColor: 'rgba(210, 105, 30, 0.04)' }
+                    }}
+                    onClick={() => handleViewOrderDetails(order)}
+                  >
+                    <TableCell>
+                      <Typography variant="body2" fontWeight="medium">
+                        {order.orderNumber}
+                      </Typography>
+                      {isCancelled && (
+                        <Chip 
+                          label="CANCELLED" 
+                          size="small" 
+                          color="error" 
+                          sx={{ mt: 0.5, fontSize: '0.7rem' }}
+                        />
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2">
+                        {getOrderDate(order).toLocaleDateString()}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {getOrderDate(order).toLocaleTimeString()}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2">
+                        {order.orderDetails?.personalInfo?.fullName || order.customerName || 'N/A'}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {order.orderDetails?.personalInfo?.phone || order.customerPhone || 'N/A'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <AmountDisplay amount={order.orderDetails?.totalAmount} />
+                    </TableCell>
+                    <TableCell align="center">
+                      {getEnhancedStatusChip(order.paymentStatus || 'PENDING', 'payment')}
+                    </TableCell>
+                    <TableCell align="center">
+                      {getEnhancedStatusChip(order.status || 'PENDING', 'order')}
+                    </TableCell>
+                    <TableCell align="center">
+                      {isCancelled ? (
+                        <Chip 
+                          label="Cancelled" 
+                          icon={<Cancel />}
+                          size="small"
+                          color="error"
+                          variant="outlined"
+                        />
+                      ) : order.deliveryDetails ? (
+                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
+                          <Box sx={{ display: 'flex', gap: 0.5 }}>
+                            <Tooltip title={`${order.deliveryDetails.company} - ${order.deliveryDetails.consignmentNumber}`}>
+                              <Chip 
+                                icon={<LocalShipping />} 
+                                label="Set" 
                                 size="small"
                                 sx={{
-                                  color: '#2E7D32',
-                                  '&:hover': {
-                                    backgroundColor: 'rgba(46, 125, 50, 0.08)'
+                                  color: '#1976D2',
+                                  backgroundColor: '#E3F2FD',
+                                  border: '1px solid #2196F3',
+                                  '& .MuiChip-icon': {
+                                    color: '#1976D2'
                                   }
                                 }}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleMarkDelivered(order.id);
-                                }}
-                              >
-                                <CheckCircle />
-                              </IconButton>
+                                  setSelectedOrderForDelivery(order.id);
+                                  setDeliveryDialogOpen(true);
+                                }} 
+                              />
                             </Tooltip>
-                          ) : (
-                            <Chip 
-                              label="Delivered" 
-                              icon={<CheckCircle />}
-                              size="small"
-                              sx={{
-                                color: '#2E7D32',
-                                backgroundColor: '#E8F5E8',
-                                border: '1px solid #4CAF50',
-                                '& .MuiChip-icon': {
-                                  color: '#2E7D32'
-                                }
-                              }}
-                            />
+                            
+                            {order.deliveryStatus !== 'DELIVERED' ? (
+                              <Tooltip title="Mark as Delivered">
+                                <IconButton
+                                  size="small"
+                                  sx={{
+                                    color: '#2E7D32',
+                                    '&:hover': {
+                                      backgroundColor: 'rgba(46, 125, 50, 0.08)'
+                                    }
+                                  }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleMarkDelivered(order.id);
+                                  }}
+                                >
+                                  <CheckCircle />
+                                </IconButton>
+                              </Tooltip>
+                            ) : (
+                              <Chip 
+                                label="Delivered" 
+                                icon={<CheckCircle />}
+                                size="small"
+                                sx={{
+                                  color: '#2E7D32',
+                                  backgroundColor: '#E8F5E8',
+                                  border: '1px solid #4CAF50',
+                                  '& .MuiChip-icon': {
+                                    color: '#2E7D32'
+                                  }
+                                }}
+                              />
+                            )}
+                          </Box>
+                          
+                          {order.deliveryStatus && (
+                            getEnhancedStatusChip(order.deliveryStatus, 'delivery')
                           )}
                         </Box>
-                        
-                        {order.deliveryStatus && (
-                          getEnhancedStatusChip(order.deliveryStatus, 'delivery')
+                      ) : (
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<LocalShipping />}
+                          sx={{
+                            borderColor: '#CD5C5C',
+                            color: '#CD5C5C',
+                            '&:hover': {
+                              borderColor: '#B84A4A',
+                              backgroundColor: 'rgba(205, 92, 92, 0.04)'
+                            }
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedOrderForDelivery(order.id);
+                            setDeliveryDialogOpen(true);
+                          }}
+                        >
+                          Set Address
+                        </Button>
+                      )}
+                    </TableCell>
+                    <TableCell align="right">
+                      <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 1 }}>
+                        {!isCancelled && (
+                          <>
+                            <FormControlLabel
+                              control={
+                                <Switch
+                                  checked={order.paymentStatus === 'COMPLETED' || order.paymentStatus === 'SUCCESS'}
+                                  onChange={(e) => {
+                                    e.stopPropagation();
+                                    handlePaymentToggle(order.id, order.paymentStatus);
+                                  }}
+                                  sx={{
+                                    '& .MuiSwitch-switchBase.Mui-checked': {
+                                      color: '#2E7D32',
+                                      '&:hover': {
+                                        backgroundColor: 'rgba(46, 125, 50, 0.08)',
+                                      },
+                                    },
+                                    '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                                      backgroundColor: '#2E7D32',
+                                    },
+                                  }}
+                                  size="small"
+                                />
+                              }
+                              label={
+                                <Typography 
+                                  variant="caption" 
+                                  sx={{ 
+                                    color: order.paymentStatus === 'COMPLETED' || order.paymentStatus === 'SUCCESS' 
+                                      ? '#2E7D32' 
+                                      : '#757575',
+                                    fontWeight: order.paymentStatus === 'COMPLETED' || order.paymentStatus === 'SUCCESS' 
+                                      ? 600 
+                                      : 400
+                                  }}
+                                >
+                                  Paid
+                                </Typography>
+                              }
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            
+                            {/* Cancel Order Button */}
+                            <Tooltip title="Cancel Order">
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCancelOrderClick(order);
+                                }}
+                                sx={{
+                                  '&:hover': {
+                                    backgroundColor: 'rgba(211, 47, 47, 0.08)'
+                                  }
+                                }}
+                              >
+                                <CancelOutlined />
+                              </IconButton>
+                            </Tooltip>
+                          </>
                         )}
+                        
+                        <IconButton 
+                          sx={{
+                            color: '#CD5C5C',
+                            '&:hover': {
+                              backgroundColor: 'rgba(205, 92, 92, 0.08)'
+                            }
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleViewOrderDetails(order);
+                          }}
+                          size="small"
+                        >
+                          <KeyboardArrowRight />
+                        </IconButton>
                       </Box>
-                    ) : (
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        startIcon={<LocalShipping />}
-                        sx={{
-                          borderColor: '#CD5C5C',
-                          color: '#CD5C5C',
-                          '&:hover': {
-                            borderColor: '#B84A4A',
-                            backgroundColor: 'rgba(205, 92, 92, 0.04)'
-                          }
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedOrderForDelivery(order.id);
-                          setDeliveryDialogOpen(true);
-                        }}
-                      >
-                        Set Address
-                      </Button>
-                    )}
-                  </TableCell>
-                  <TableCell align="right">
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            checked={order.paymentStatus === 'COMPLETED' || order.paymentStatus === 'SUCCESS'}
-                            onChange={(e) => {
-                              e.stopPropagation();
-                              handlePaymentToggle(order.id, order.paymentStatus);
-                            }}
-                            sx={{
-                              '& .MuiSwitch-switchBase.Mui-checked': {
-                                color: '#2E7D32',
-                                '&:hover': {
-                                  backgroundColor: 'rgba(46, 125, 50, 0.08)',
-                                },
-                              },
-                              '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                                backgroundColor: '#2E7D32',
-                              },
-                            }}
-                            size="small"
-                          />
-                        }
-                        label={
-                          <Typography 
-                            variant="caption" 
-                            sx={{ 
-                              color: order.paymentStatus === 'COMPLETED' || order.paymentStatus === 'SUCCESS' 
-                                ? '#2E7D32' 
-                                : '#757575',
-                              fontWeight: order.paymentStatus === 'COMPLETED' || order.paymentStatus === 'SUCCESS' 
-                                ? 600 
-                                : 400
-                            }}
-                          >
-                            Paid
-                          </Typography>
-                        }
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      
-                      <IconButton 
-                        sx={{
-                          color: '#CD5C5C',
-                          '&:hover': {
-                            backgroundColor: 'rgba(205, 92, 92, 0.08)'
-                          }
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleViewOrderDetails(order);
-                        }}
-                        size="small"
-                      >
-                        <KeyboardArrowRight />
-                      </IconButton>
-                    </Box>
-                  </TableCell>
-                </TableRow>
-              ))}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
           </TableBody>
         </Table>
       </TableContainer>

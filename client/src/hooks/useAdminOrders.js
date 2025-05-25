@@ -1,3 +1,4 @@
+// Updated useAdminOrders.js with cancel order functionality
 import { useState, useEffect } from 'react';
 import { db } from '../Firebase/Firebase';
 import { 
@@ -62,6 +63,8 @@ export const useAdminOrders = () => {
   const [selectedOrderForDelivery, setSelectedOrderForDelivery] = useState(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [selectedOrderForDetails, setSelectedOrderForDetails] = useState(null);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [selectedOrderForCancel, setSelectedOrderForCancel] = useState(null);
   
   // Data maps and notifications
   const [deliveryDetailsMap, setDeliveryDetailsMap] = useState({});
@@ -212,7 +215,7 @@ export const useAdminOrders = () => {
     setPage(0);
   }, [orders, sortBy, searchQuery, dateRange, deliveryFilter, paymentStatusFilter, orderStatusFilter]);
 
-  // Handle payment status toggle
+  // Handle payment status toggle (for admin convenience)
   const handlePaymentToggle = async (orderId, currentStatus) => {
     try {
       const newStatus = currentStatus === 'COMPLETED' || currentStatus === 'SUCCESS' ? 'PENDING' : 'COMPLETED';
@@ -220,12 +223,13 @@ export const useAdminOrders = () => {
       
       await updateDoc(orderRef, {
         paymentStatus: newStatus,
+        adminConfirmed: newStatus === 'COMPLETED',
         updatedAt: Timestamp.now()
       });
       
       setOrders(prevOrders => 
         prevOrders.map(order => 
-          order.id === orderId ? { ...order, paymentStatus: newStatus } : order
+          order.id === orderId ? { ...order, paymentStatus: newStatus, adminConfirmed: newStatus === 'COMPLETED' } : order
         )
       );
       
@@ -251,6 +255,8 @@ export const useAdminOrders = () => {
       
       await updateDoc(orderRef, {
         deliveryDetails: details,
+        deliveryStatus: 'DISPATCHED',
+        dispatchedAt: Timestamp.now(),
         updatedAt: Timestamp.now()
       });
       
@@ -263,7 +269,8 @@ export const useAdminOrders = () => {
         prevOrders.map(order => 
           order.id === orderId ? { 
             ...order, 
-            deliveryDetails: details
+            deliveryDetails: details,
+            deliveryStatus: 'DISPATCHED'
           } : order
         )
       );
@@ -287,65 +294,20 @@ export const useAdminOrders = () => {
   const handleMarkDelivered = async (orderId) => {
     try {
       const orderRef = doc(db, 'orders', orderId);
-      const orderSnap = await getDocs(query(collection(db, 'orders'), where('__name__', '==', orderId)));
       
-      if (orderSnap.empty) {
-        throw new Error('Order not found');
-      }
-      
-      const orderData = orderSnap.docs[0].data();
-      
-      let items = [];
-      if (orderData.orderDetails?.items && orderData.orderDetails.items.length > 0) {
-        items = orderData.orderDetails.items;
-      } else if (orderData.orderDetails?.cartData?.items && orderData.orderDetails.cartData.items.length > 0) {
-        items = orderData.orderDetails.cartData.items;
-      } else if (orderData.items && orderData.items.length > 0) {
-        items = orderData.items;
-      }
-      
-      if (items.length === 0) {
-        throw new Error('No items found in this order');
-      }
-      
-      const batch = writeBatch(db);
-      let hasUpdates = false;
-      
-      for (const item of items) {
-        const productId = item.id || item.productId;
-        
-        if (!productId) {
-          console.warn('Product ID not found for item:', item);
-          continue;
-        }
-        
-        const productRef = doc(db, 'products', productId);
-        const productSnap = await getDoc(productRef);
-        if (!productSnap.exists()) {
-          console.warn(`Product ${productId} not found in database`);
-          continue;
-        }
-        
-        batch.update(productRef, {
-          stock: increment(-item.quantity)
-        });
-        
-        hasUpdates = true;
-      }
-      
-      batch.update(orderRef, {
+      await updateDoc(orderRef, {
         deliveryStatus: 'DELIVERED',
+        status: 'COMPLETED',
         deliveredAt: Timestamp.now(),
         updatedAt: Timestamp.now()
       });
-      
-      await batch.commit();
       
       setOrders(prevOrders => 
         prevOrders.map(order => 
           order.id === orderId ? { 
             ...order, 
             deliveryStatus: 'DELIVERED',
+            status: 'COMPLETED',
             deliveredAt: Timestamp.now()
           } : order
         )
@@ -353,9 +315,7 @@ export const useAdminOrders = () => {
       
       setSnackbar({
         open: true,
-        message: hasUpdates 
-          ? 'Order marked as delivered and product stock updated' 
-          : 'Order marked as delivered',
+        message: 'Order marked as delivered successfully',
         severity: 'success'
       });
       
@@ -366,6 +326,106 @@ export const useAdminOrders = () => {
         message: `Error: ${error.message || 'Failed to mark as delivered'}`,
         severity: 'error'
       });
+    }
+  };
+
+  // Handle cancel order
+  const handleCancelOrder = async (orderId) => {
+    try {
+      const orderRef = doc(db, 'orders', orderId);
+      const orderSnap = await getDoc(orderRef);
+      
+      if (!orderSnap.exists()) {
+        throw new Error('Order not found');
+      }
+      
+      const orderData = orderSnap.data();
+      
+      // If order was paid, restore the stock
+      if (orderData.paymentStatus === 'COMPLETED' || orderData.paymentStatus === 'SUCCESS') {
+        await restoreStockForOrder(orderData);
+      }
+      
+      // Update order status to cancelled
+      await updateDoc(orderRef, {
+        status: 'CANCELLED',
+        paymentStatus: 'CANCELLED',
+        deliveryStatus: 'CANCELLED',
+        cancelledAt: Timestamp.now(),
+        cancelledBy: 'admin',
+        updatedAt: Timestamp.now()
+      });
+      
+      setOrders(prevOrders => 
+        prevOrders.map(order => 
+          order.id === orderId ? { 
+            ...order, 
+            status: 'CANCELLED',
+            paymentStatus: 'CANCELLED',
+            deliveryStatus: 'CANCELLED',
+            cancelledAt: Timestamp.now()
+          } : order
+        )
+      );
+      
+      setSnackbar({
+        open: true,
+        message: 'Order cancelled successfully and stock restored',
+        severity: 'success'
+      });
+      
+    } catch (error) {
+      console.error('Error cancelling order:', error);
+      setSnackbar({
+        open: true,
+        message: `Error: ${error.message || 'Failed to cancel order'}`,
+        severity: 'error'
+      });
+    }
+  };
+
+  // Function to restore stock when order is cancelled
+  const restoreStockForOrder = async (orderData) => {
+    const batch = writeBatch(db);
+    let hasUpdates = false;
+
+    // Get items from order
+    let items = [];
+    if (orderData.orderDetails?.items && orderData.orderDetails.items.length > 0) {
+      items = orderData.orderDetails.items;
+    } else if (orderData.orderDetails?.cartData?.items && orderData.orderDetails.cartData.items.length > 0) {
+      items = orderData.orderDetails.cartData.items;
+    } else if (orderData.items && orderData.items.length > 0) {
+      items = orderData.items;
+    }
+
+    for (const item of items) {
+      const productId = item.id || item.productId;
+      
+      if (!productId) {
+        console.warn('Product ID not found for item:', item);
+        continue;
+      }
+      
+      const productRef = doc(db, 'products', productId);
+      const productSnap = await getDoc(productRef);
+      
+      if (!productSnap.exists()) {
+        console.warn(`Product ${productId} not found in database`);
+        continue;
+      }
+      
+      batch.update(productRef, {
+        stock: increment(item.quantity), // Add back to stock
+        updatedAt: Timestamp.now()
+      });
+      
+      hasUpdates = true;
+    }
+
+    if (hasUpdates) {
+      await batch.commit();
+      console.log('Stock restored for cancelled order');
     }
   };
 
@@ -399,6 +459,20 @@ export const useAdminOrders = () => {
   const handleViewOrderDetails = (order) => {
     setSelectedOrderForDetails(order);
     setDetailsDialogOpen(true);
+  };
+
+  // Handle cancel order dialog
+  const handleCancelOrderClick = (order) => {
+    setSelectedOrderForCancel(order);
+    setCancelDialogOpen(true);
+  };
+
+  const handleConfirmCancelOrder = async () => {
+    if (selectedOrderForCancel) {
+      await handleCancelOrder(selectedOrderForCancel.id);
+      setCancelDialogOpen(false);
+      setSelectedOrderForCancel(null);
+    }
   };
 
   return {
@@ -443,6 +517,10 @@ export const useAdminOrders = () => {
     setDetailsDialogOpen,
     selectedOrderForDetails,
     setSelectedOrderForDetails,
+    cancelDialogOpen,
+    setCancelDialogOpen,
+    selectedOrderForCancel,
+    setSelectedOrderForCancel,
     
     // Data maps
     deliveryDetailsMap,
@@ -452,6 +530,9 @@ export const useAdminOrders = () => {
     handlePaymentToggle,
     handleSaveDeliveryDetails,
     handleMarkDelivered,
+    handleCancelOrder,
+    handleCancelOrderClick,
+    handleConfirmCancelOrder,
     handleResetFilters,
     handleCloseSnackbar,
     handleChangePage,

@@ -1,3 +1,4 @@
+// Updated OrdersCards.js with cancel order functionality
 import React from 'react';
 import {
   Box,
@@ -17,6 +18,7 @@ import {
   TablePagination,
   Alert,
   useTheme,
+  Tooltip,
 } from '@mui/material';
 import {
   LocalShipping,
@@ -25,6 +27,8 @@ import {
   ExpandLess,
   OpenInNew,
   ShoppingCart,
+  CancelOutlined,
+  Cancel,
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 
@@ -82,22 +86,25 @@ const getStatusChip = (status) => {
   );
 };
 
-const CardStyled = styled(Card)(({ theme, status }) => ({
+const CardStyled = styled(Card)(({ theme, status, iscancelled }) => ({
   marginBottom: theme.spacing(2),
   borderLeft: `5px solid ${
-    status === 'DELIVERED' 
-      ? theme.palette.success.main 
-      : status === 'CONFIRMED' 
-        ? theme.palette.info.main 
-        : status === 'CANCELLED' 
-          ? theme.palette.error.main 
-          : theme.palette.warning.main
+    iscancelled === 'true'
+      ? theme.palette.error.main
+      : status === 'DELIVERED' 
+        ? theme.palette.success.main 
+        : status === 'CONFIRMED' 
+          ? theme.palette.info.main 
+          : status === 'CANCELLED' 
+            ? theme.palette.error.main 
+            : theme.palette.warning.main
   }`,
   transition: 'all 0.3s ease',
   borderRadius: 16,
+  opacity: iscancelled === 'true' ? 0.7 : 1,
   '&:hover': {
     boxShadow: '0 8px 40px rgba(210, 105, 30, 0.12)',
-    transform: 'translateY(-3px)'
+    transform: iscancelled === 'true' ? 'none' : 'translateY(-3px)'
   }
 }));
 
@@ -110,14 +117,16 @@ const OrderCard = ({
   handlePaymentToggle,
   handleMarkDelivered,
   handleViewOrderDetails,
+  handleCancelOrderClick, // New prop for cancel order
   setSelectedOrderForDelivery,
   setDeliveryDialogOpen,
 }) => {
   const theme = useTheme();
   const hasDeliveryDetails = !!order.deliveryDetails;
+  const isCancelled = order.status === 'CANCELLED' || order.paymentStatus === 'CANCELLED';
 
   return (
-    <CardStyled status={order.status}>
+    <CardStyled status={order.status} iscancelled={isCancelled.toString()}>
       <CardContent sx={{ p: 3 }}>
         {/* Order header with basic info */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -128,6 +137,14 @@ const OrderCard = ({
             <Typography variant="body2" color="text.secondary">
               {getOrderDate(order).toLocaleString()}
             </Typography>
+            {isCancelled && (
+              <Chip 
+                label="CANCELLED" 
+                color="error" 
+                size="small" 
+                sx={{ mt: 1, fontWeight: 'bold' }}
+              />
+            )}
           </Box>
           <Typography variant="h6" color="primary.main" fontWeight="bold">
             ₹{order.orderDetails?.totalAmount?.toFixed(2) || '0.00'}
@@ -152,7 +169,7 @@ const OrderCard = ({
             color={
               order.paymentStatus === 'SUCCESS' || order.paymentStatus === 'COMPLETED' 
                 ? 'success' 
-                : order.paymentStatus === 'FAILED' 
+                : order.paymentStatus === 'FAILED' || order.paymentStatus === 'CANCELLED'
                   ? 'error' 
                   : 'warning'
             }
@@ -186,14 +203,16 @@ const OrderCard = ({
                     ? 'info'
                     : order.deliveryStatus === 'DISPATCHED'
                       ? 'warning'
-                      : 'default'
+                      : order.deliveryStatus === 'CANCELLED'
+                        ? 'error'
+                        : 'default'
               }
               size="small"
             />
           )}
           
           {/* Delivery details indicator */}
-          {hasDeliveryDetails && !order.deliveryStatus && (
+          {hasDeliveryDetails && !order.deliveryStatus && !isCancelled && (
             <Chip 
               icon={<LocalShipping />}
               label="Delivery Set"
@@ -205,17 +224,41 @@ const OrderCard = ({
         
         {/* Actions Row */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3, alignItems: 'center' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={order.paymentStatus === 'COMPLETED' || order.paymentStatus === 'SUCCESS'}
-                  onChange={() => handlePaymentToggle(order.id, order.paymentStatus)}
-                  color="success"
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {!isCancelled && (
+              <>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={order.paymentStatus === 'COMPLETED' || order.paymentStatus === 'SUCCESS'}
+                      onChange={() => handlePaymentToggle(order.id, order.paymentStatus)}
+                      color="success"
+                      size="small"
+                    />
+                  }
+                  label="Paid"
                 />
-              }
-              label="Paid"
-            />
+                
+                {/* Cancel Order Button */}
+                <Tooltip title="Cancel Order">
+                  <IconButton
+                    size="small"
+                    color="error"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCancelOrderClick(order);
+                    }}
+                    sx={{
+                      '&:hover': {
+                        backgroundColor: 'rgba(211, 47, 47, 0.08)'
+                      }
+                    }}
+                  >
+                    <CancelOutlined />
+                  </IconButton>
+                </Tooltip>
+              </>
+            )}
           </Box>
           
           <Box>
@@ -241,89 +284,116 @@ const OrderCard = ({
         {/* Expanded content */}
         <Collapse in={isExpanded}>
           <Box sx={{ mt: 3, pt: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
-            {/* Delivery Details */}
-            <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
-              Delivery Information
-            </Typography>
-            
-            {hasDeliveryDetails ? (
-              <Box sx={{ mb: 3, p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
-                <Typography variant="body2">
-                  <b>Company:</b> {order.deliveryDetails.company}
+            {/* Show cancellation info if cancelled */}
+            {isCancelled && (
+              <Box sx={{ mb: 3, p: 2, bgcolor: 'error.50', borderRadius: 2, border: '1px solid', borderColor: 'error.light' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <Cancel sx={{ color: 'error.main', mr: 1 }} />
+                  <Typography variant="subtitle2" fontWeight="bold" color="error.main">
+                    Order Cancelled
+                  </Typography>
+                </Box>
+                <Typography variant="body2" color="error.main">
+                  This order has been cancelled. 
+                  {order.cancelledAt && (
+                    <> Cancelled on: {new Date(order.cancelledAt.seconds * 1000).toLocaleString()}</>
+                  )}
                 </Typography>
-                <Typography variant="body2">
-                  <b>Tracking:</b> {order.deliveryDetails.consignmentNumber}
-                </Typography>
-                {order.deliveryStatus && (
-                  <Typography variant="body2">
-                    <b>Status:</b> {getStatusChip(order.deliveryStatus)}
+                {order.cancelledBy && (
+                  <Typography variant="caption" color="text.secondary">
+                    Cancelled by: {order.cancelledBy}
                   </Typography>
                 )}
+              </Box>
+            )}
+
+            {/* Delivery Details - only show if not cancelled */}
+            {!isCancelled && (
+              <>
+                <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
+                  Delivery Information
+                </Typography>
                 
-                <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={() => {
-                      setSelectedOrderForDelivery(order.id);
-                      setDeliveryDialogOpen(true);
-                    }}
-                  >
-                    Update Address
-                  </Button>
-                  
-                  {order.deliveryStatus !== 'DELIVERED' && (
+                {hasDeliveryDetails ? (
+                  <Box sx={{ mb: 3, p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
+                    <Typography variant="body2">
+                      <b>Company:</b> {order.deliveryDetails.company}
+                    </Typography>
+                    <Typography variant="body2">
+                      <b>Tracking:</b> {order.deliveryDetails.consignmentNumber}
+                    </Typography>
+                    {order.deliveryStatus && (
+                      <Typography variant="body2">
+                        <b>Status:</b> {getStatusChip(order.deliveryStatus)}
+                      </Typography>
+                    )}
+                    
+                    <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => {
+                          setSelectedOrderForDelivery(order.id);
+                          setDeliveryDialogOpen(true);
+                        }}
+                      >
+                        Update Address
+                      </Button>
+                      
+                      {order.deliveryStatus !== 'DELIVERED' && (
+                        <Button
+                          variant="contained"
+                          size="small"
+                          color="success"
+                          startIcon={<CheckCircle />}
+                          onClick={() => handleMarkDelivered(order.id)}
+                          sx={{ 
+                            background: 'linear-gradient(135deg, #6B7821 0%, #8BC34A 100%)',
+                            '&:hover': {
+                              background: 'linear-gradient(135deg, #5D4E42 0%, #6B7821 100%)',
+                            },
+                          }}
+                        >
+                          Mark Delivered
+                        </Button>
+                      )}
+                      
+                      {order.deliveryStatus === 'DELIVERED' && (
+                        <Chip 
+                          label="Delivered" 
+                          color="success"
+                          icon={<CheckCircle />}
+                          sx={{ fontWeight: 'bold' }}
+                        />
+                      )}
+                    </Box>
+                  </Box>
+                ) : (
+                  <Box sx={{ mb: 3, p: 2, bgcolor: 'warning.50', borderRadius: 2, border: '1px dashed', borderColor: 'warning.main' }}>
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                      No delivery details added yet
+                    </Typography>
                     <Button
                       variant="contained"
                       size="small"
-                      color="success"
-                      startIcon={<CheckCircle />}
-                      onClick={() => handleMarkDelivered(order.id)}
+                      color="primary"
+                      startIcon={<LocalShipping />}
+                      onClick={() => {
+                        setSelectedOrderForDelivery(order.id);
+                        setDeliveryDialogOpen(true);
+                      }}
                       sx={{ 
-                        background: 'linear-gradient(135deg, #6B7821 0%, #8BC34A 100%)',
+                        background: 'linear-gradient(135deg, #D2691E 0%, #F4A460 100%)',
                         '&:hover': {
-                          background: 'linear-gradient(135deg, #5D4E42 0%, #6B7821 100%)',
+                          background: 'linear-gradient(135deg, #A0522D 0%, #D2691E 100%)',
                         },
                       }}
                     >
-                      Mark Delivered
+                      Set Delivery Address
                     </Button>
-                  )}
-                  
-                  {order.deliveryStatus === 'DELIVERED' && (
-                    <Chip 
-                      label="Delivered" 
-                      color="success"
-                      icon={<CheckCircle />}
-                      sx={{ fontWeight: 'bold' }}
-                    />
-                  )}
-                </Box>
-              </Box>
-            ) : (
-              <Box sx={{ mb: 3, p: 2, bgcolor: 'warning.50', borderRadius: 2, border: '1px dashed', borderColor: 'warning.main' }}>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  No delivery details added yet
-                </Typography>
-                <Button
-                  variant="contained"
-                  size="small"
-                  color="primary"
-                  startIcon={<LocalShipping />}
-                  onClick={() => {
-                    setSelectedOrderForDelivery(order.id);
-                    setDeliveryDialogOpen(true);
-                  }}
-                  sx={{ 
-                    background: 'linear-gradient(135deg, #D2691E 0%, #F4A460 100%)',
-                    '&:hover': {
-                      background: 'linear-gradient(135deg, #A0522D 0%, #D2691E 100%)',
-                    },
-                  }}
-                >
-                  Set Delivery Address
-                </Button>
-              </Box>
+                  </Box>
+                )}
+              </>
             )}
             
             {/* Items Summary */}
@@ -424,6 +494,7 @@ const OrdersCards = ({
   handlePaymentToggle,
   handleMarkDelivered,
   handleViewOrderDetails,
+  handleCancelOrderClick, // New prop for cancel order
   setSelectedOrderForDelivery,
   setDeliveryDialogOpen,
   handleChangePage,
@@ -467,6 +538,7 @@ const OrdersCards = ({
             handlePaymentToggle={handlePaymentToggle}
             handleMarkDelivered={handleMarkDelivered}
             handleViewOrderDetails={handleViewOrderDetails}
+            handleCancelOrderClick={handleCancelOrderClick} // Pass cancel handler
             setSelectedOrderForDelivery={setSelectedOrderForDelivery}
             setDeliveryDialogOpen={setDeliveryDialogOpen}
           />
