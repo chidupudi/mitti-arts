@@ -1,4 +1,4 @@
-// Products.jsx - Complete self-contained version
+// Products.jsx - Updated with Buy Now functionality
 import React, { 
   useState, 
   useEffect, 
@@ -44,6 +44,7 @@ import {
   Avatar,
   Switch,
   FormControlLabel,
+  ButtonGroup,
 } from '@mui/material';
 import {
   Search,
@@ -66,6 +67,7 @@ import {
   Remove,
   ShoppingCart,
   LocationOn,
+  FlashOn, // Icon for Buy Now button
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../Firebase/Firebase';
@@ -120,10 +122,11 @@ const useDebounce = (value, delay) => {
   return debouncedValue;
 };
 
-// ProductCard Component
+// ProductCard Component - Updated with Buy Now button
 const ProductCard = memo(({ 
   product, 
   onAddToCart, 
+  onBuyNow, // New prop for Buy Now functionality
   onToggleWishlist, 
   onProductClick,
   isInWishlist
@@ -178,7 +181,6 @@ const ProductCard = memo(({
       );
     }
 
-    // New section for Hyderabad-only products
     if (product.hyderabadOnly) {
       return (
         <Box sx={{ 
@@ -187,8 +189,8 @@ const ProductCard = memo(({
           mt: 1,
           p: 0.5,
           borderRadius: 1,
-          backgroundColor: '#9C27B020', // Light purple background
-          color: '#9C27B0', // Purple text
+          backgroundColor: '#9C27B020',
+          color: '#9C27B0',
         }}>
           <LocationOn fontSize="small" sx={{ mr: 0.5 }} />
           <Typography variant="caption" fontWeight={600}>
@@ -345,11 +347,11 @@ const ProductCard = memo(({
           size="small"
           sx={{
             position: 'absolute',
-            top: product.isFeatured ? 46 : 12, // Position below Featured badge if present
+            top: product.isFeatured ? 46 : 12,
             left: 12,
             zIndex: 2,
             fontWeight: 600,
-            backgroundColor: '#9C27B0', // Use purple to make it distinct
+            backgroundColor: '#9C27B0',
             color: 'white',
             pl: 0.5,
           }}
@@ -446,7 +448,9 @@ const ProductCard = memo(({
         </Typography>
       </CardContent>
 
-      <CardActions sx={{ p: 2, pt: 0 }}>
+      {/* Updated CardActions with Buy Now button */}
+      <CardActions sx={{ p: 2, pt: 0, flexDirection: 'column', gap: 1 }}>
+        {/* Add to Cart Button */}
         <Button
           variant="contained"
           startIcon={<AddShoppingCart />}
@@ -457,7 +461,6 @@ const ProductCard = memo(({
           disabled={isUnavailable}
           fullWidth
           sx={{
-            mr: 1,
             borderRadius: 2,
             py: 1,
             fontWeight: 600,
@@ -477,34 +480,72 @@ const ProductCard = memo(({
           {isOutOfStock ? 'Out of Stock' : isHidden ? 'Unavailable' : 'Add to Cart'}
         </Button>
 
-        <Tooltip title={isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}>
-          <IconButton
+        {/* Buy Now and Wishlist Row */}
+        <Box sx={{ display: 'flex', gap: 1, width: '100%' }}>
+          {/* Buy Now Button */}
+          <Button
+            variant="contained"
+            startIcon={<FlashOn />}
             onClick={(e) => {
               e.stopPropagation();
-              onToggleWishlist(product);
+              onBuyNow(product);
             }}
+            disabled={isUnavailable}
             sx={{
-              border: '1px solid',
-              borderColor: isInWishlist ? terracottaColors.error : terracottaColors.divider,
+              flex: 1,
               borderRadius: 2,
-              p: 1,
-              transition: 'all 0.2s ease',
-              color: isInWishlist ? terracottaColors.error : 'default',
+              py: 1,
+              fontWeight: 600,
+              fontSize: '0.85rem',
+              background: `linear-gradient(135deg, ${terracottaColors.success} 0%, #4CAF50 100%)`,
+              color: 'white',
               '&:hover': {
-                transform: 'scale(1.1)',
-                backgroundColor: isInWishlist ? `${terracottaColors.error}10` : `${terracottaColors.primary}10`,
+                background: `linear-gradient(135deg, #4CAF50 0%, #388E3C 100%)`,
               },
+              ...(isUnavailable && {
+                backgroundColor: 'grey.300',
+                color: 'grey.600',
+                background: 'grey.300',
+                '&:hover': {
+                  backgroundColor: 'grey.300',
+                  background: 'grey.300',
+                },
+              }),
             }}
           >
-            {isInWishlist ? <Favorite /> : <FavoriteBorder />}
-          </IconButton>
-        </Tooltip>
+            Buy Now
+          </Button>
+
+          {/* Wishlist Button */}
+          <Tooltip title={isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}>
+            <IconButton
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleWishlist(product);
+              }}
+              sx={{
+                border: '1px solid',
+                borderColor: isInWishlist ? terracottaColors.error : terracottaColors.divider,
+                borderRadius: 2,
+                p: 1,
+                transition: 'all 0.2s ease',
+                color: isInWishlist ? terracottaColors.error : 'default',
+                '&:hover': {
+                  transform: 'scale(1.1)',
+                  backgroundColor: isInWishlist ? `${terracottaColors.error}10` : `${terracottaColors.primary}10`,
+                },
+              }}
+            >
+              {isInWishlist ? <Favorite /> : <FavoriteBorder />}
+            </IconButton>
+          </Tooltip>
+        </Box>
       </CardActions>
     </Card>
   );
 });
 
-// FilterPanel Component
+// FilterPanel Component (unchanged)
 const FilterPanel = memo(({
   priceRange,
   setPriceRange,
@@ -605,7 +646,6 @@ const FilterPanel = memo(({
         </FormControl>
       ),
     },
-    // New section for location-based filtering
     {
       key: 'location',
       title: 'Delivery Location',
@@ -756,7 +796,7 @@ const FilterPanel = memo(({
   );
 });
 
-// QuantityModal Component
+// QuantityModal Component (unchanged)
 const QuantityModal = ({ 
   open, 
   onClose, 
@@ -891,7 +931,6 @@ const QuantityModal = ({
             </Typography>
           </Typography>
           
-          {/* Show delivery location restriction if applicable */}
           {product.hyderabadOnly && (
             <Box sx={{ 
               mt: 1, 
@@ -1072,7 +1111,7 @@ const QuantityModal = ({
   );
 };
 
-// Loading skeleton component
+// Loading skeleton component (unchanged)
 const ProductSkeleton = () => (
   <Grid container spacing={3}>
     {Array(8).fill(0).map((_, index) => (
@@ -1106,7 +1145,7 @@ const ProductSkeleton = () => (
   </Grid>
 );
 
-// Main Products Component
+// Main Products Component - Updated with Buy Now functionality
 const Products = () => {
   const theme = useTheme();
   const navigate = useNavigate();
@@ -1119,12 +1158,12 @@ const Products = () => {
   const [priceRange, setPriceRange] = useState([1, 5000]);
   const [sortBy, setSortBy] = useState('relevance');
   const [searchQuery, setSearchQuery] = useState('');
-  const [hyderabadOnly, setHyderabadOnly] = useState(false); // New state for Hyderabad-only filter
+  const [hyderabadOnly, setHyderabadOnly] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [expanded, setExpanded] = useState({
     price: true,
     sort: true,
-    location: true, // Initialize the location section as expanded
+    location: true,
   });
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -1184,7 +1223,7 @@ const Products = () => {
             reviews: data.reviews || 0,
             isFeatured: data.isFeatured || false,
             hidden: data.hidden || false,
-            hyderabadOnly: data.hyderabadOnly || false, // Include the hyderabadOnly property
+            hyderabadOnly: data.hyderabadOnly || false,
           };
         });
 
@@ -1230,7 +1269,7 @@ const Products = () => {
   // Debounced search
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-  // Memoized filtered and sorted products - Updated to include hyderabadOnly filter
+  // Memoized filtered and sorted products
   const filteredProducts = useMemo(() => {
     let filtered = products.filter(product => {
       const matchesPrice = product.price >= priceRange[0] && product.price <= priceRange[1];
@@ -1238,7 +1277,6 @@ const Products = () => {
         product.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
         product.code.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
       
-      // Filter for Hyderabad-only products
       const matchesLocation = !hyderabadOnly || (hyderabadOnly && product.hyderabadOnly === true);
       
       return matchesPrice && matchesSearch && matchesLocation;
@@ -1262,12 +1300,11 @@ const Products = () => {
         filtered.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
         break;
       default:
-        // Keep original order for relevance
         break;
     }
 
     return filtered;
-  }, [products, priceRange, debouncedSearchQuery, sortBy, hyderabadOnly]); // Add hyderabadOnly dependency
+  }, [products, priceRange, debouncedSearchQuery, sortBy, hyderabadOnly]);
 
   // Callbacks
   const showSnackbar = useCallback((message, severity = 'success') => {
@@ -1295,6 +1332,48 @@ const Products = () => {
 
     setSelectedProduct(product);
     setModalOpen(true);
+  }, [user, navigate, showSnackbar]);
+
+  // New Buy Now handler
+  const handleBuyNow = useCallback(async (product) => {
+    if (product.hidden || product.stock === 0) {
+      showSnackbar(
+        product.hidden ? 'This product is currently unavailable.' : 'This product is out of stock.',
+        'warning'
+      );
+      return;
+    }
+
+    if (!user) {
+      showSnackbar('Please log in to purchase items.', 'warning');
+      setTimeout(() => navigate('/auth'), 1500);
+      return;
+    }
+
+    try {
+      // Add 1 quantity to cart
+      await addDoc(collection(db, 'cart'), {
+        userId: user.uid,
+        productId: product.id,
+        name: product.name,
+        price: product.price,
+        code: product.code,
+        quantity: 1, // Always add 1 for Buy Now
+        imgUrl: product.imgUrl,
+        hyderabadOnly: product.hyderabadOnly,
+      });
+
+      showSnackbar(`${product.name} added to cart!`, 'success');
+      
+      // Navigate to cart page immediately
+      setTimeout(() => {
+        navigate('/cart');
+      }, 1000);
+      
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      showSnackbar('Error adding to cart', 'error');
+    }
   }, [user, navigate, showSnackbar]);
 
   const handleToggleWishlist = useCallback(async (product) => {
@@ -1329,7 +1408,7 @@ const Products = () => {
           code: product.code,
           hidden: product.hidden,
           stock: product.stock,
-          hyderabadOnly: product.hyderabadOnly, // Include hyderabadOnly property in wishlist
+          hyderabadOnly: product.hyderabadOnly,
         });
 
         setWishlist(prev => [...prev, { ...product, wishlistDocId: docRef.id }]);
@@ -1358,7 +1437,7 @@ const Products = () => {
         code: selectedProduct.code,
         quantity: quantity,
         imgUrl: selectedProduct.imgUrl,
-        hyderabadOnly: selectedProduct.hyderabadOnly, // Include hyderabadOnly property in cart
+        hyderabadOnly: selectedProduct.hyderabadOnly,
       });
 
       showSnackbar(`${selectedProduct.name} added to cart!`);
@@ -1374,7 +1453,7 @@ const Products = () => {
     setPriceRange([1, 5000]);
     setSortBy('relevance');
     setSearchQuery('');
-    setHyderabadOnly(false); // Reset hyderabadOnly filter
+    setHyderabadOnly(false);
   }, []);
 
   const handleToggleSection = useCallback((section) => {
@@ -1632,6 +1711,7 @@ const Products = () => {
                         <ProductCard
                           product={product}
                           onAddToCart={handleAddToCart}
+                          onBuyNow={handleBuyNow} // Pass the Buy Now handler
                           onToggleWishlist={handleToggleWishlist}
                           onProductClick={handleProductClick}
                           isInWishlist={wishlist.some(item => item.id === product.id)}

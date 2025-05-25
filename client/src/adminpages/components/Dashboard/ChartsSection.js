@@ -29,6 +29,32 @@ const ModernPaper = styled(Paper)(({ theme }) => ({
   backdropFilter: 'blur(10px)',
 }));
 
+// Styled scrollable container for the wishlist
+const ScrollableList = styled(Box)(({ theme }) => ({
+  maxHeight: '280px', // Fixed height for the list container
+  overflowY: 'auto',
+  overflowX: 'hidden',
+  paddingRight: theme.spacing(0.5),
+  // Custom scrollbar styling
+  '&::-webkit-scrollbar': {
+    width: '6px',
+  },
+  '&::-webkit-scrollbar-track': {
+    background: theme.palette.grey[100],
+    borderRadius: '3px',
+  },
+  '&::-webkit-scrollbar-thumb': {
+    background: theme.palette.primary.main,
+    borderRadius: '3px',
+    '&:hover': {
+      background: theme.palette.primary.dark,
+    },
+  },
+  // Firefox scrollbar
+  scrollbarWidth: 'thin',
+  scrollbarColor: `${theme.palette.primary.main} ${theme.palette.grey[100]}`,
+}));
+
 // Utility function to format currency
 const formatCurrency = (amount) => {
   return new Intl.NumberFormat('en-IN', {
@@ -188,60 +214,180 @@ const ChartsSection = ({ stats, deliveredOrders }) => {
         </ModernPaper>
       </Grid>
 
-      {/* Top Products */}
+      {/* Top Products - Updated with Scrollable Container */}
       <Grid item xs={12} lg={6}>
         <ModernPaper sx={{ p: 3, height: 350 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
             <ViewModule sx={{ color: 'primary.main', mr: 2, fontSize: 28 }} />
-            <Typography variant="h6" fontWeight="bold">
-              Top Wishlisted Products
-            </Typography>
-          </Box>
-          <List>
-            {stats.topProducts.length === 0 ? (
-              <ListItem>
-                <ListItemText primary="No data available" />
-              </ListItem>
-            ) : (
-              stats.topProducts.map((prod, index) => (
-                <ListItem key={prod.id} sx={{ px: 0 }}>
-                  <ListItemAvatar>
-                    <Avatar
-                      src={prod.imgUrl || (prod.images?.[0] || '')}
-                      alt={prod.name}
-                      sx={{ 
-                        width: 48, 
-                        height: 48,
-                        bgcolor: 'primary.light'
-                      }}
-                    >
-                      {prod.name?.[0]}
-                    </Avatar>
-                  </ListItemAvatar>
-                  <ListItemText
-                    primary={
-                      <Typography fontWeight="bold">
-                        {prod.name}
-                      </Typography>
-                    }
-                    secondary={
-                      <Typography variant="body2" color="text.secondary">
-                        {prod.code} • {formatCurrency(prod.price || 0)}
-                      </Typography>
-                    }
-                  />
-                  <Box textAlign="center">
-                    <Typography variant="h6" fontWeight="bold" color="error.main">
-                      {prod.wishlistCount}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      wishes
-                    </Typography>
-                  </Box>
-                </ListItem>
-              ))
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="h6" fontWeight="bold">
+                Top Wishlisted Products
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Most popular items in customer wishlists
+              </Typography>
+            </Box>
+            {stats.topProducts.length > 0 && (
+              <Chip 
+                label={`${stats.topProducts.length} items`}
+                size="small"
+                color="primary"
+                variant="outlined"
+              />
             )}
-          </List>
+          </Box>
+          
+          {/* Scrollable List Container */}
+          <ScrollableList>
+            {stats.topProducts.length === 0 ? (
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                height: '200px',
+                flexDirection: 'column',
+                color: 'text.secondary'
+              }}>
+                <ViewModule sx={{ fontSize: 48, mb: 2, opacity: 0.3 }} />
+                <Typography variant="body1">No wishlist data available</Typography>
+                <Typography variant="body2">Products will appear here once customers start adding items to their wishlists</Typography>
+              </Box>
+            ) : (
+              <List sx={{ pt: 0 }}>
+                {stats.topProducts.map((prod, index) => (
+                  <ListItem 
+                    key={prod.id} 
+                    sx={{ 
+                      px: 0, 
+                      py: 1.5,
+                      borderBottom: index < stats.topProducts.length - 1 ? '1px solid rgba(0,0,0,0.08)' : 'none',
+                      '&:hover': {
+                        backgroundColor: 'rgba(210, 105, 30, 0.04)',
+                        borderRadius: 1,
+                      },
+                      transition: 'background-color 0.2s ease'
+                    }}
+                  >
+                    {/* Rank Number */}
+                    <Box sx={{ 
+                      width: 24, 
+                      height: 24, 
+                      borderRadius: '50%', 
+                      backgroundColor: index < 3 ? 'primary.main' : 'grey.300',
+                      color: index < 3 ? 'white' : 'text.secondary',
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      fontSize: '0.75rem',
+                      fontWeight: 'bold',
+                      mr: 2,
+                      flexShrink: 0
+                    }}>
+                      {index + 1}
+                    </Box>
+                    
+                    <ListItemAvatar sx={{ minWidth: 56 }}>
+                      <Avatar
+                        src={prod.imgUrl || (prod.images?.[0] || '')}
+                        alt={prod.name}
+                        sx={{ 
+                          width: 48, 
+                          height: 48,
+                          bgcolor: 'primary.light',
+                          border: '2px solid',
+                          borderColor: index < 3 ? 'primary.main' : 'grey.200'
+                        }}
+                      >
+                        {prod.name?.[0]}
+                      </Avatar>
+                    </ListItemAvatar>
+                    
+                    <ListItemText
+                      sx={{ flex: 1, minWidth: 0 }} // minWidth: 0 allows text to truncate
+                      primary={
+                        <Typography 
+                          fontWeight="bold" 
+                          sx={{ 
+                            fontSize: '0.9rem',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {prod.name}
+                        </Typography>
+                      }
+                      secondary={
+                        <Box>
+                          <Typography 
+                            variant="body2" 
+                            color="text.secondary"
+                            sx={{
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis', 
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
+                            {prod.code && `${prod.code} • `}
+                            {formatCurrency(prod.price || 0)}
+                          </Typography>
+                          {prod.category && (
+                            <Chip 
+                              label={prod.category}
+                              size="small"
+                              variant="outlined"
+                              sx={{ 
+                                height: 20, 
+                                fontSize: '0.65rem',
+                                mt: 0.5
+                              }}
+                            />
+                          )}
+                        </Box>
+                      }
+                    />
+                    
+                    <Box textAlign="center" sx={{ flexShrink: 0, ml: 1 }}>
+                      <Typography 
+                        variant="h6" 
+                        fontWeight="bold" 
+                        color={index < 3 ? 'primary.main' : 'text.primary'}
+                        sx={{ fontSize: '1.1rem' }}
+                      >
+                        {prod.wishlistCount}
+                      </Typography>
+                      <Typography 
+                        variant="caption" 
+                        color="text.secondary"
+                        sx={{ fontSize: '0.7rem' }}
+                      >
+                        wishes
+                      </Typography>
+                    </Box>
+                  </ListItem>
+                ))}
+              </List>
+            )}
+          </ScrollableList>
+          
+          {/* Footer info for the wishlist card */}
+          {stats.topProducts.length > 0 && (
+            <Box sx={{ 
+              mt: 2, 
+              pt: 2, 
+              borderTop: '1px solid rgba(0,0,0,0.08)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <Typography variant="caption" color="text.secondary">
+                Total wishlist entries: {stats.topProducts.reduce((sum, prod) => sum + prod.wishlistCount, 0)}
+              </Typography>
+              <Typography variant="caption" color="primary.main" fontWeight="medium">
+                Updated in real-time
+              </Typography>
+            </Box>
+          )}
         </ModernPaper>
       </Grid>
     </Grid>

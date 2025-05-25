@@ -1,4 +1,4 @@
-// ProductDetail.jsx - Complete Professional Ant Design Version
+// ProductDetail.jsx - Updated with Buy Now functionality
 import React, { 
   useEffect, 
   useState, 
@@ -55,7 +55,8 @@ import {
   ClockCircleOutlined,
   InfoCircleOutlined,
   FireOutlined,
-  EnvironmentOutlined, // Added for location
+  EnvironmentOutlined,
+  ThunderboltOutlined, // Added for Buy Now button
 } from '@ant-design/icons';
 import { auth, db } from '../Firebase/Firebase';
 import { 
@@ -127,6 +128,16 @@ const customStyles = {
     height: '48px',
     fontSize: '16px',
   },
+  // New Buy Now button style
+  buyNowButton: {
+    background: `linear-gradient(135deg, ${colors.success} 0%, #4CAF50 100%)`,
+    borderColor: colors.success,
+    borderRadius: '8px',
+    fontWeight: 600,
+    height: '48px',
+    fontSize: '16px',
+    color: 'white',
+  },
   priceContainer: {
     background: `linear-gradient(135deg, ${colors.primary}12 0%, ${colors.secondary}12 100%)`,
     borderRadius: '12px',
@@ -150,7 +161,7 @@ const customStyles = {
   },
 };
 
-// Custom hook for product data
+// Custom hook for product data (unchanged)
 const useProductData = (productId, code) => {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -175,7 +186,7 @@ const useProductData = (productId, code) => {
             rating: Number(data.rating) || 4.2,
             reviews: Number(data.reviews) || 156,
             images: Array.isArray(data.images) ? data.images : data.imgUrl ? [data.imgUrl] : [],
-            hyderabadOnly: data.hyderabadOnly || false, // Added hyderabadOnly property
+            hyderabadOnly: data.hyderabadOnly || false,
           };
           setProduct(productData);
         } else if (code) {
@@ -192,7 +203,7 @@ const useProductData = (productId, code) => {
               rating: Number(data.rating) || 4.2,
               reviews: Number(data.reviews) || 156,
               images: Array.isArray(data.images) ? data.images : data.imgUrl ? [data.imgUrl] : [],
-              hyderabadOnly: data.hyderabadOnly || false, // Added hyderabadOnly property
+              hyderabadOnly: data.hyderabadOnly || false,
             };
             setProduct(productData);
           } else {
@@ -217,7 +228,7 @@ const useProductData = (productId, code) => {
   return { product, loading, error };
 };
 
-// Custom hook for wishlist
+// Custom hook for wishlist (unchanged)
 const useWishlist = (user) => {
   const [wishlist, setWishlist] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -274,7 +285,7 @@ const useWishlist = (user) => {
           price: product.price,
           code: product.code,
           addedAt: new Date().toISOString(),
-          hyderabadOnly: product.hyderabadOnly || false, // Include hyderabadOnly property
+          hyderabadOnly: product.hyderabadOnly || false,
         });
 
         const newItem = { ...product, wishlistDocId: docRef.id };
@@ -294,7 +305,7 @@ const useWishlist = (user) => {
   return { wishlist, toggleWishlist, isInWishlist, loading };
 };
 
-// Image Gallery Component
+// Image Gallery Component (unchanged)
 const ImageGallery = memo(({ images, productName }) => {
   const [selectedImage, setSelectedImage] = useState(0);
   const [previewVisible, setPreviewVisible] = useState(false);
@@ -409,7 +420,7 @@ const ImageGallery = memo(({ images, productName }) => {
   );
 });
 
-// Quantity Selector Component
+// Quantity Selector Component (unchanged)
 const QuantitySelector = memo(({ value, onChange, max, disabled }) => {
   return (
     <Space.Compact style={customStyles.quantitySelector}>
@@ -443,8 +454,8 @@ const QuantitySelector = memo(({ value, onChange, max, disabled }) => {
   );
 });
 
-// Product Info Component
-const ProductInfo = memo(({ product, onAddToCart, onToggleWishlist, isInWishlist }) => {
+// Updated Product Info Component with Buy Now button
+const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, isInWishlist }) => {
   const [quantity, setQuantity] = useState(1);
   const [expandedDescription, setExpandedDescription] = useState(false);
   const screens = useBreakpoint();
@@ -629,8 +640,9 @@ const ProductInfo = memo(({ product, onAddToCart, onToggleWishlist, isInWishlist
             />
           </div>
 
-          {/* Action Buttons */}
+          {/* Action Buttons - Updated with Buy Now */}
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            {/* Add to Cart and Wishlist Row */}
             <Space size="middle" style={{ width: '100%' }}>
               <Button
                 type="primary"
@@ -659,9 +671,13 @@ const ProductInfo = memo(({ product, onAddToCart, onToggleWishlist, isInWishlist
               </Tooltip>
             </Space>
             
+            {/* Buy Now Button */}
             <Button
               size="large"
-              style={customStyles.secondaryButton}
+              icon={<ThunderboltOutlined />}
+              onClick={() => onBuyNow(product, quantity)}
+              disabled={product.stock === 0}
+              style={customStyles.buyNowButton}
               block
             >
               Buy Now
@@ -693,18 +709,30 @@ const ProductInfo = memo(({ product, onAddToCart, onToggleWishlist, isInWishlist
   );
 });
 
-// Mobile Actions Component
-const MobileActions = memo(({ product, onAddToCart, onToggleWishlist, isInWishlist }) => {
+// Updated Mobile Actions Component with Buy Now button
+const MobileActions = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, isInWishlist }) => {
   const [quantity, setQuantity] = useState(1);
   const [modalVisible, setModalVisible] = useState(false);
+  const [actionType, setActionType] = useState('cart'); // 'cart' or 'buy'
 
   const handleAddToCart = () => {
     if (product.stock === 0) return;
+    setActionType('cart');
     setModalVisible(true);
   };
 
-  const confirmAddToCart = () => {
-    onAddToCart(product, quantity);
+  const handleBuyNow = () => {
+    if (product.stock === 0) return;
+    setActionType('buy');
+    setModalVisible(true);
+  };
+
+  const confirmAction = () => {
+    if (actionType === 'cart') {
+      onAddToCart(product, quantity);
+    } else {
+      onBuyNow(product, quantity);
+    }
     setModalVisible(false);
     setQuantity(1);
   };
@@ -735,38 +763,56 @@ const MobileActions = memo(({ product, onAddToCart, onToggleWishlist, isInWishli
             </div>
           )}
           
-          <Space size="middle" style={{ width: '100%' }}>
+          {/* Updated Mobile Action Buttons */}
+          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            {/* First Row: Wishlist + Add to Cart */}
+            <Space size="middle" style={{ width: '100%' }}>
+              <Button
+                size="large"
+                icon={isInWishlist ? <HeartFilled /> : <HeartOutlined />}
+                onClick={() => onToggleWishlist(product)}
+                style={{
+                  borderColor: colors.divider,
+                  color: isInWishlist ? colors.error : colors.textSecondary,
+                  width: '60px',
+                  height: '48px',
+                }}
+              />
+              <Button
+                type="primary"
+                size="large"
+                icon={<ShoppingCartOutlined />}
+                onClick={handleAddToCart}
+                disabled={product.stock === 0}
+                style={{
+                  ...customStyles.primaryButton,
+                  flex: 1,
+                }}
+              >
+                {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
+              </Button>
+            </Space>
+
+            {/* Second Row: Buy Now Button */}
             <Button
               size="large"
-              icon={isInWishlist ? <HeartFilled /> : <HeartOutlined />}
-              onClick={() => onToggleWishlist(product)}
-              style={{
-                borderColor: colors.divider,
-                color: isInWishlist ? colors.error : colors.textSecondary,
-                width: '60px',
-                height: '48px',
-              }}
-            />
-            <Button
-              type="primary"
-              size="large"
-              icon={<ShoppingCartOutlined />}
-              onClick={handleAddToCart}
+              icon={<ThunderboltOutlined />}
+              onClick={handleBuyNow}
               disabled={product.stock === 0}
               style={{
-                ...customStyles.primaryButton,
-                flex: 1,
+                ...customStyles.buyNowButton,
+                width: '100%',
               }}
             >
-              {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
+              Buy Now
             </Button>
           </Space>
         </div>
       </Affix>
 
-      {/* Quantity Modal */}
+      {/* Updated Quantity Modal */}
       <Modal
-        title="Select Quantity"
+        title={actionType === 'cart' ? 'Select Quantity' : 'Buy Now - Select Quantity'}
         open={modalVisible}
         onCancel={() => setModalVisible(false)}
         footer={[
@@ -776,11 +822,11 @@ const MobileActions = memo(({ product, onAddToCart, onToggleWishlist, isInWishli
           <Button
             key="submit"
             type="primary"
-            icon={<ShoppingCartOutlined />}
-            onClick={confirmAddToCart}
-            style={customStyles.primaryButton}
+            icon={actionType === 'cart' ? <ShoppingCartOutlined /> : <ThunderboltOutlined />}
+            onClick={confirmAction}
+            style={actionType === 'cart' ? customStyles.primaryButton : customStyles.buyNowButton}
           >
-            Add to Cart
+            {actionType === 'cart' ? 'Add to Cart' : 'Buy Now'}
           </Button>,
         ]}
       >
@@ -856,7 +902,8 @@ const MobileActions = memo(({ product, onAddToCart, onToggleWishlist, isInWishli
     </>
   );
 });
-// Service Features Component
+
+// Service Features Component (unchanged)
 const ServiceFeatures = memo(({ product }) => {
   const features = [
     {
@@ -906,7 +953,8 @@ const ServiceFeatures = memo(({ product }) => {
     </Row>
   );
 });
-// Product Tabs Component
+
+// Product Tabs Component (unchanged - keeping all existing tabs)
 const ProductTabs = memo(({ product }) => {
   const specifications = [
     { label: 'Material', value: product?.material || 'Premium Natural Clay' },
@@ -915,7 +963,6 @@ const ProductTabs = memo(({ product }) => {
     { label: 'Color', value: product?.color || 'Natural Terracotta' },
     { label: 'Origin', value: 'Handmade in India' },
     { label: 'Care', value: 'Hand wash recommended' },
-   
   ];
 
   const reviews = [
@@ -1366,7 +1413,7 @@ const ProductTabs = memo(({ product }) => {
   );
 });
 
-// Loading Skeleton Component
+// Loading Skeleton Component (unchanged)
 const ProductDetailSkeleton = () => (
   <div style={customStyles.container}>
     <Skeleton.Button size="large" style={{ marginBottom: '24px' }} />
@@ -1390,7 +1437,7 @@ const ProductDetailSkeleton = () => (
   </div>
 );
 
-// Main ProductDetail Component
+// Main ProductDetail Component - Updated with Buy Now functionality
 const ProductDetail = () => {
   const { id } = useParams();
   const { search } = useLocation();
@@ -1427,10 +1474,43 @@ const ProductDetail = () => {
         imgUrl: product.images?.[0] || product.imgUrl,
         code: product.code,
         addedAt: new Date().toISOString(),
-        hyderabadOnly: product.hyderabadOnly || false, // Include hyderabadOnly property
+        hyderabadOnly: product.hyderabadOnly || false,
       });
       
       message.success(`${product.name} added to cart successfully!`);
+    } catch (error) {
+      message.error('Failed to add to cart');
+      console.error('Error adding to cart:', error);
+    }
+  }, [user, navigate]);
+
+  // New Buy Now handler - adds to cart and redirects
+  const handleBuyNow = useCallback(async (product, quantity) => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+
+    try {
+      await addDoc(collection(db, 'cart'), {
+        userId: user.uid,
+        productId: product.id,
+        name: product.name,
+        price: product.price,
+        quantity: quantity,
+        imgUrl: product.images?.[0] || product.imgUrl,
+        code: product.code,
+        addedAt: new Date().toISOString(),
+        hyderabadOnly: product.hyderabadOnly || false,
+      });
+      
+      message.success(`${product.name} added to cart!`);
+      
+      // Navigate to cart page after a short delay
+      setTimeout(() => {
+        navigate('/cart');
+      }, 1000);
+      
     } catch (error) {
       message.error('Failed to add to cart');
       console.error('Error adding to cart:', error);
@@ -1508,6 +1588,7 @@ const ProductDetail = () => {
           <ProductInfo
             product={product}
             onAddToCart={handleAddToCart}
+            onBuyNow={handleBuyNow} // Pass the Buy Now handler
             onToggleWishlist={handleToggleWishlist}
             isInWishlist={isInWishlist(product.id)}
           />
@@ -1525,6 +1606,7 @@ const ProductDetail = () => {
         <MobileActions
           product={product}
           onAddToCart={handleAddToCart}
+          onBuyNow={handleBuyNow} // Pass the Buy Now handler
           onToggleWishlist={handleToggleWishlist}
           isInWishlist={isInWishlist(product.id)}
         />
