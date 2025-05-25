@@ -52,6 +52,7 @@ import {
   AppstoreOutlined,
   WarningOutlined,
   InfoCircleOutlined,
+  EnvironmentOutlined, // Added for location
 } from '@ant-design/icons';
 import { auth, db } from '../Firebase/Firebase';
 import { 
@@ -171,6 +172,7 @@ const useProductData = (productId, code) => {
             rating: Number(data.rating) || 4.2,
             reviews: Number(data.reviews) || 156,
             images: Array.isArray(data.images) ? data.images : data.imgUrl ? [data.imgUrl] : [],
+            hyderabadOnly: data.hyderabadOnly || false, // Added hyderabadOnly property
           };
           setProduct(productData);
         } else if (code) {
@@ -187,6 +189,7 @@ const useProductData = (productId, code) => {
               rating: Number(data.rating) || 4.2,
               reviews: Number(data.reviews) || 156,
               images: Array.isArray(data.images) ? data.images : data.imgUrl ? [data.imgUrl] : [],
+              hyderabadOnly: data.hyderabadOnly || false, // Added hyderabadOnly property
             };
             setProduct(productData);
           } else {
@@ -268,6 +271,7 @@ const useWishlist = (user) => {
           price: product.price,
           code: product.code,
           addedAt: new Date().toISOString(),
+          hyderabadOnly: product.hyderabadOnly || false, // Include hyderabadOnly property
         });
 
         const newItem = { ...product, wishlistDocId: docRef.id };
@@ -471,17 +475,52 @@ const ProductInfo = memo(({ product, onAddToCart, onToggleWishlist, isInWishlist
         <Breadcrumb.Item href="/products">
           <AppstoreOutlined /> Products
         </Breadcrumb.Item>
-        <Breadcrumb.Item>{product.name}</Breadcrumb.Item>
+        <Breadcrumb.Item>
+          {product.name}
+          {product.hyderabadOnly && (
+            <Tag 
+              icon={<EnvironmentOutlined />}
+              color="#9C27B0"
+              style={{ 
+                marginLeft: '8px',
+                fontSize: '12px',
+              }}
+            >
+              Hyderabad Only
+            </Tag>
+          )}
+        </Breadcrumb.Item>
       </Breadcrumb>
 
       {/* Product Title */}
-      <Title level={2} style={{ 
-        marginBottom: '16px', 
-        color: colors.text,
-        fontSize: screens.xs ? '24px' : '32px',
-      }}>
-        {product.name}
-      </Title>
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', marginBottom: '16px' }}>
+        <Title level={2} style={{ 
+          marginBottom: screens.xs ? '8px' : '0', 
+          marginRight: '8px',
+          color: colors.text,
+          fontSize: screens.xs ? '24px' : '32px',
+        }}>
+          {product.name}
+        </Title>
+        
+        {product.hyderabadOnly && (
+          <Tag 
+            icon={<EnvironmentOutlined />} 
+            color="#9C27B0"
+            style={{ 
+              fontWeight: 600, 
+              marginLeft: screens.xs ? '0' : '8px',
+              marginTop: screens.xs ? '8px' : '0',
+              padding: '4px 8px',
+              borderRadius: '4px',
+              display: 'inline-flex',
+              alignItems: 'center',
+            }}
+          >
+            Hyderabad Only
+          </Tag>
+        )}
+      </div>
 
       {/* Rating and Reviews */}
       <Space wrap style={{ marginBottom: '16px' }}>
@@ -521,7 +560,12 @@ const ProductInfo = memo(({ product, onAddToCart, onToggleWishlist, isInWishlist
             </>
           )}
         </Space>
-        <Text type="secondary">Inclusive of all taxes • Free shipping above ₹500</Text>
+        <Text type="secondary">
+          Inclusive of all taxes • 
+          {product.hyderabadOnly 
+            ? ' Available for delivery in Hyderabad only' 
+            : ' Free shipping above ₹500'}
+        </Text>
       </div>
 
       {/* Stock Status */}
@@ -537,6 +581,24 @@ const ProductInfo = memo(({ product, onAddToCart, onToggleWishlist, isInWishlist
           border: `1px solid ${stockStatus.color}30`,
         }}
       />
+
+      {/* Hyderabad-only Alert */}
+      {product.hyderabadOnly && (
+        <Alert
+          message="Hyderabad-Only Delivery"
+          description="This product is available for delivery only within Hyderabad city limits."
+          type="info"
+          icon={<EnvironmentOutlined />}
+          showIcon
+          style={{ 
+            marginBottom: '20px',
+            borderRadius: '8px',
+            backgroundColor: '#9C27B010',
+            border: '1px solid #9C27B030',
+            color: '#9C27B0',
+          }}
+        />
+      )}
 
       {/* Description */}
       <div style={{ marginBottom: '24px' }}>
@@ -615,6 +677,7 @@ const ProductInfo = memo(({ product, onAddToCart, onToggleWishlist, isInWishlist
           'Handcrafted by skilled artisans',
           'Eco-friendly and sustainable',
           'Premium quality guarantee',
+          ...(product.hyderabadOnly ? ['Available for delivery in Hyderabad only'] : []),
         ]}
         renderItem={item => (
           <List.Item>
@@ -653,6 +716,22 @@ const MobileActions = memo(({ product, onAddToCart, onToggleWishlist, isInWishli
           borderTop: `1px solid ${colors.divider}`,
           borderRadius: '20px 20px 0 0',
         }}>
+          {/* Hyderabad-Only Badge - Visible on mobile bottom bar */}
+          {product.hyderabadOnly && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              color: '#9C27B0',
+              marginBottom: '8px',
+            }}>
+              <EnvironmentOutlined />
+              <Text style={{ fontSize: '12px', color: '#9C27B0' }}>
+                Hyderabad Only Delivery
+              </Text>
+            </div>
+          )}
+          
           <Space size="middle" style={{ width: '100%' }}>
             <Button
               size="large"
@@ -713,6 +792,16 @@ const MobileActions = memo(({ product, onAddToCart, onToggleWishlist, isInWishli
               <Text strong>{product.name}</Text>
               <div>
                 <Text type="secondary">Code: {product.code}</Text>
+                {product.hyderabadOnly && (
+                  <Tag 
+                    icon={<EnvironmentOutlined />}
+                    color="#9C27B0"
+                    size="small"
+                    style={{ marginLeft: '4px' }}
+                  >
+                    Hyderabad Only
+                  </Tag>
+                )}
               </div>
               <Title level={4} style={{ margin: 0, color: colors.primary }}>
                 ₹{product.price.toLocaleString()}
@@ -726,6 +815,26 @@ const MobileActions = memo(({ product, onAddToCart, onToggleWishlist, isInWishli
               onChange={setQuantity}
               max={product.stock}
             />
+          </div>
+
+          {/* Hyderabad-Only delivery info */}
+          <div style={{ 
+            background: product.hyderabadOnly ? '#9C27B010' : 'inherit',
+            padding: product.hyderabadOnly ? '12px' : '0',
+            borderRadius: '8px',
+            marginTop: product.hyderabadOnly ? '16px' : '0',
+            display: product.hyderabadOnly ? 'flex' : 'none',
+            alignItems: 'center',
+            gap: '8px',
+          }}>
+            {product.hyderabadOnly && (
+              <>
+                <EnvironmentOutlined style={{ color: '#9C27B0' }} />
+                <Text type="secondary" style={{ color: '#9C27B0' }}>
+                  This product is available for delivery only within Hyderabad city limits.
+                </Text>
+              </>
+            )}
           </div>
 
           <div style={{
@@ -746,12 +855,12 @@ const MobileActions = memo(({ product, onAddToCart, onToggleWishlist, isInWishli
 });
 
 // Service Features Component
-const ServiceFeatures = memo(() => {
+const ServiceFeatures = memo(({ product }) => {
   const features = [
     {
-      icon: <TruckOutlined style={{ fontSize: '40px', color: colors.primary }} />,
-      title: 'Free Shipping',
-      description: 'Free delivery on orders above ₹500',
+      icon: <TruckOutlined style={{ fontSize: '40px', color: product?.hyderabadOnly ? '#9C27B0' : colors.primary }} />,
+      title: product?.hyderabadOnly ? 'Hyderabad Only' : 'Free Shipping',
+      description: product?.hyderabadOnly ? 'Available for delivery in Hyderabad only' : 'Free delivery on orders above ₹500',
     },
     {
       icon: <UndoOutlined style={{ fontSize: '40px', color: colors.primary }} />,
@@ -770,12 +879,22 @@ const ServiceFeatures = memo(() => {
       {features.map((feature, index) => (
         <Col xs={24} sm={8} key={index}>
           <Card
-            style={customStyles.featureCard}
+            style={{
+              ...customStyles.featureCard,
+              ...(index === 0 && product?.hyderabadOnly ? {
+                borderColor: '#9C27B030',
+                backgroundColor: '#9C27B008',
+              } : {})
+            }}
             bodyStyle={{ textAlign: 'center', padding: '32px 16px' }}
             hoverable
           >
             {feature.icon}
-            <Title level={4} style={{ marginTop: '16px', marginBottom: '8px', color: colors.text }}>
+            <Title level={4} style={{ 
+              marginTop: '16px', 
+              marginBottom: '8px', 
+              color: index === 0 && product?.hyderabadOnly ? '#9C27B0' : colors.text 
+            }}>
               {feature.title}
             </Title>
             <Text type="secondary">{feature.description}</Text>
@@ -797,6 +916,19 @@ const ProductTabs = memo(({ product }) => {
     { label: 'Care', value: 'Hand wash recommended' },
     { label: 'Warranty', value: '6 months manufacturing defect' },
     { label: 'Certification', value: 'Food grade safe' },
+    { 
+      label: 'Delivery', 
+      value: product.hyderabadOnly 
+        ? (
+          <Space>
+            Hyderabad Only
+            <Tag color="#9C27B0" icon={<EnvironmentOutlined />} style={{ margin: 0 }}>
+              Location Restricted
+            </Tag>
+          </Space>
+        ) 
+        : 'Pan India' 
+    },
   ];
 
   const reviews = [
@@ -822,7 +954,7 @@ const ProductTabs = memo(({ product }) => {
 
   const careInstructions = {
     daily: [
-      'Hand wash with mild soap and warm water',
+      'Hand wash with rice or gram flour and warm water',
       'Avoid harsh chemicals or abrasive cleaners',
       'Dry thoroughly after washing',
       'Store in a cool, dry place',
@@ -831,7 +963,7 @@ const ProductTabs = memo(({ product }) => {
       'Season periodically with natural oils',
       'Avoid extreme temperature changes',
       'Handle with care to prevent chipping',
-      'Polish occasionally with soft cloth',
+      
     ],
   };
 
@@ -850,6 +982,24 @@ const ProductTabs = memo(({ product }) => {
             <Paragraph style={{ fontSize: '16px', lineHeight: '1.8' }}>
               Whether you're looking to enhance your daily routine or searching for the perfect gift, this product combines functionality with timeless beauty that will be appreciated for years to come.
             </Paragraph>
+            
+            {/* Add Hyderabad-only information in description if applicable */}
+            {product.hyderabadOnly && (
+              <Alert
+                message="Delivery Information"
+                description="This product is available for delivery only within Hyderabad city limits. Please ensure your shipping address is within Hyderabad before placing an order."
+                type="info"
+                icon={<EnvironmentOutlined />}
+                showIcon
+                style={{
+                  marginTop: '24px',
+                  borderRadius: '8px',
+                  backgroundColor: '#9C27B010',
+                  border: '1px solid #9C27B030',
+                  color: '#9C27B0',
+                }}
+              />
+            )}
           </div>
         </TabPane>
 
@@ -862,9 +1012,10 @@ const ProductTabs = memo(({ product }) => {
                   <Card
                     size="small"
                     style={{
-                      border: `1px solid ${colors.divider}`,
+                      border: `1px solid ${spec.label === 'Delivery' && product.hyderabadOnly ? '#9C27B030' : colors.divider}`,
                       borderRadius: '8px',
                       transition: 'all 0.3s ease',
+                      backgroundColor: spec.label === 'Delivery' && product.hyderabadOnly ? '#9C27B008' : 'inherit',
                     }}
                     bodyStyle={{ padding: '16px' }}
                     hoverable
@@ -1051,7 +1202,7 @@ const ProductTabs = memo(({ product }) => {
               description={
                 <div style={{ marginTop: '8px' }}>
                   <p style={{ margin: '4px 0' }}>• This is a handcrafted product, so slight variations in size, color, and texture are natural and add to its unique charm.</p>
-                  <p style={{ margin: '4px 0' }}>• Avoid using in microwave or dishwasher unless specifically mentioned as microwave/dishwasher safe.</p>
+                  <p style={{ margin: '4px 0' }}>• Avoid using in microwave or dishwasher</p>
                   <p style={{ margin: '4px 0' }}>• For first use, rinse with water and let it air dry completely.</p>
                   <p style={{ margin: '4px 0' }}>• Contact our support team if you have any questions about care and maintenance.</p>
                 </div>
@@ -1065,6 +1216,24 @@ const ProductTabs = memo(({ product }) => {
                 border: `1px solid ${colors.warning}30`,
               }}
             />
+            
+            {/* Add Hyderabad-only delivery info */}
+            {product.hyderabadOnly && (
+              <Alert
+                message="Delivery Information"
+                description="This product is available for delivery only within Hyderabad city limits. Please ensure your delivery address is within Hyderabad before placing an order."
+                type="info"
+                icon={<EnvironmentOutlined />}
+                showIcon
+                style={{
+                  marginTop: '24px',
+                  borderRadius: '8px',
+                  backgroundColor: '#9C27B010',
+                  border: '1px solid #9C27B030',
+                  color: '#9C27B0',
+                }}
+              />
+            )}
           </div>
         </TabPane>
       </Tabs>
@@ -1133,6 +1302,7 @@ const ProductDetail = () => {
         imgUrl: product.images?.[0] || product.imgUrl,
         code: product.code,
         addedAt: new Date().toISOString(),
+        hyderabadOnly: product.hyderabadOnly || false, // Include hyderabadOnly property
       });
       
       message.success(`${product.name} added to cart successfully!`);
@@ -1220,7 +1390,7 @@ const ProductDetail = () => {
       </Row>
 
       {/* Service Features */}
-      <ServiceFeatures />
+      <ServiceFeatures product={product} />
 
       {/* Product Details Tabs */}
       <ProductTabs product={product} />

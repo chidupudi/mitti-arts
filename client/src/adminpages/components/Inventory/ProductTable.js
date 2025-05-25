@@ -22,6 +22,10 @@ import {
   Visibility,
   VisibilityOff,
   Image as ImageIcon,
+  LocationOn,
+  ColorLens,
+  Straighten,
+  Scale,
 } from '@mui/icons-material';
 
 const ProductTable = ({ 
@@ -42,6 +46,7 @@ const ProductTable = ({
           <TableRow sx={{ bgcolor: 'grey.50' }}>
             <TableCell sx={{ fontWeight: 600 }}>Product</TableCell>
             <TableCell sx={{ fontWeight: 600 }}>Code</TableCell>
+            <TableCell sx={{ fontWeight: 600 }}>Specifications</TableCell>
             <TableCell sx={{ fontWeight: 600 }}>Price</TableCell>
             <TableCell sx={{ fontWeight: 600 }}>Stock</TableCell>
             <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
@@ -71,9 +76,18 @@ const ProductTable = ({
                   <Box>
                     <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                       {product.name}
+                      {product.hyderabadOnly && (
+                        <Chip 
+                          icon={<LocationOn sx={{ fontSize: '0.7rem' }} />}
+                          label="Hyderabad Only" 
+                          size="small"
+                          color="secondary"
+                          sx={{ ml: 1, height: 20, '& .MuiChip-icon': { fontSize: '1rem' } }}
+                        />
+                      )}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      {product.description?.substring(0, 50)}...
+                      {product.description?.substring(0, 50)}{product.description?.length > 50 ? '...' : ''}
                     </Typography>
                   </Box>
                 </Box>
@@ -82,6 +96,42 @@ const ProductTable = ({
                 <Typography variant="body2" color="text.secondary">
                   {product.code || '-'}
                 </Typography>
+              </TableCell>
+              <TableCell>
+                <Stack spacing={0.5}>
+                  {product.color && (
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <ColorLens fontSize="small" sx={{ mr: 0.5, fontSize: '0.9rem', color: 'text.secondary' }} />
+                      <Typography variant="body2" color="text.secondary">
+                        {product.color}
+                      </Typography>
+                    </Box>
+                  )}
+                  
+                  {product.dimensions && (
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Straighten fontSize="small" sx={{ mr: 0.5, fontSize: '0.9rem', color: 'text.secondary' }} />
+                      <Typography variant="body2" color="text.secondary">
+                        {product.dimensions}
+                      </Typography>
+                    </Box>
+                  )}
+                  
+                  {product.weight && (
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Scale fontSize="small" sx={{ mr: 0.5, fontSize: '0.9rem', color: 'text.secondary' }} />
+                      <Typography variant="body2" color="text.secondary">
+                        {product.weight}
+                      </Typography>
+                    </Box>
+                  )}
+                  
+                  {!product.color && !product.dimensions && !product.weight && (
+                    <Typography variant="body2" color="text.secondary">
+                      -
+                    </Typography>
+                  )}
+                </Stack>
               </TableCell>
               <TableCell>
                 <Typography variant="subtitle2" color="primary.main" sx={{ fontWeight: 600 }}>

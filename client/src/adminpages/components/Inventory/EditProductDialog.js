@@ -13,6 +13,10 @@ import {
   IconButton,
   InputAdornment,
   CircularProgress,
+  FormControlLabel,
+  Checkbox,
+  Tooltip,
+  Divider,
 } from '@mui/material';
 import {
   Edit,
@@ -21,6 +25,12 @@ import {
   PhotoCamera,
   CloudUpload,
   Cancel as CancelIcon,
+  LocationOn,
+  ColorLens,
+  Straighten,
+  Scale,
+  DeleteForever,
+  AddPhotoAlternate,
 } from '@mui/icons-material';
 
 const EditProductDialog = ({
@@ -32,6 +42,22 @@ const EditProductDialog = ({
   onImageUpload,
 }) => {
   if (!product) return null;
+
+  // Function to delete an image at the specified index
+  const handleDeleteImage = (index) => {
+    const newImages = [...(product.images || [])];
+    newImages.splice(index, 1); // Remove the image at the index
+    onChange('images', newImages);
+  };
+
+  // Function to add an empty slot for a new image
+  const handleAddImageSlot = () => {
+    const currentImages = [...(product.images || [])];
+    if (currentImages.length < 8) {
+      currentImages.push(''); // Add an empty slot
+      onChange('images', currentImages);
+    }
+  };
 
   return (
     <Dialog 
@@ -49,6 +75,13 @@ const EditProductDialog = ({
       </DialogTitle>
       <DialogContent sx={{ p: 3 }}>
         <Grid container spacing={3}>
+          {/* Basic Information */}
+          <Grid item xs={12}>
+            <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+              Basic Information
+            </Typography>
+          </Grid>
+          
           <Grid item xs={12} md={6}>
             <TextField
               label="Product Name"
@@ -68,6 +101,7 @@ const EditProductDialog = ({
               margin="normal"
               value={product.code || ''}
               onChange={e => onChange('code', e.target.value)}
+              placeholder="SKU or product code"
             />
           </Grid>
           <Grid item xs={12}>
@@ -79,8 +113,18 @@ const EditProductDialog = ({
               rows={3}
               value={product.description || ''}
               onChange={e => onChange('description', e.target.value)}
+              placeholder="Detailed product description..."
             />
           </Grid>
+
+          {/* Pricing and Inventory */}
+          <Grid item xs={12}>
+            <Divider sx={{ my: 1 }} />
+            <Typography variant="h6" sx={{ my: 2, display: 'flex', alignItems: 'center' }}>
+              Pricing & Inventory
+            </Typography>
+          </Grid>
+          
           <Grid item xs={12} md={4}>
             <TextField
               label="Price"
@@ -114,18 +158,135 @@ const EditProductDialog = ({
               margin="normal"
               value={product.category || ''}
               onChange={e => onChange('category', e.target.value)}
+              placeholder="Product category"
             />
+          </Grid>
+
+          {/* Product Specifications */}
+          <Grid item xs={12}>
+            <Divider sx={{ my: 1 }} />
+            <Typography variant="h6" sx={{ my: 2, display: 'flex', alignItems: 'center' }}>
+              Product Specifications
+            </Typography>
+          </Grid>
+          
+          <Grid item xs={12} md={4}>
+            <TextField
+              label="Color"
+              fullWidth
+              margin="normal"
+              value={product.color || ''}
+              onChange={e => onChange('color', e.target.value)}
+              placeholder="e.g., Natural Terracotta"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <ColorLens fontSize="small" />
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <TextField
+              label="Dimensions"
+              fullWidth
+              margin="normal"
+              value={product.dimensions || ''}
+              onChange={e => onChange('dimensions', e.target.value)}
+              placeholder="e.g., 10\ x 10\ x 1.5\"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Straighten fontSize="small" />
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <TextField
+              label="Weight"
+              fullWidth
+              margin="normal"
+              value={product.weight || ''}
+              onChange={e => onChange('weight', e.target.value)}
+              placeholder="e.g., 0.8 kg"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Scale fontSize="small" />
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </Grid>
+          
+          {/* Hyderabad-only delivery option */}
+          <Grid item xs={12}>
+            <Divider sx={{ my: 1 }} />
+            <Typography variant="h6" sx={{ my: 2, display: 'flex', alignItems: 'center' }}>
+              Delivery Options
+            </Typography>
+          </Grid>
+          
+          <Grid item xs={12}>
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              p: 2, 
+              borderRadius: 2, 
+              bgcolor: 'rgba(210, 105, 30, 0.08)',
+              border: '1px dashed',
+              borderColor: 'primary.main'
+            }}>
+              <FormControlLabel
+                control={
+                  <Checkbox 
+                    checked={product.hyderabadOnly || false}
+                    onChange={(e) => onChange('hyderabadOnly', e.target.checked)}
+                    color="primary"
+                  />
+                }
+                label={
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <LocationOn color="primary" sx={{ mr: 1 }} />
+                    <Typography variant="body1" fontWeight="medium">Hyderabad Only Delivery</Typography>
+                  </Box>
+                }
+              />
+              <Tooltip title="This product will be available for delivery only within Hyderabad city limits">
+                <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>
+                  Restrict this product to be delivered only within Hyderabad
+                </Typography>
+              </Tooltip>
+            </Box>
           </Grid>
         </Grid>
 
         {/* Image Upload Section */}
         <Box sx={{ mt: 4 }}>
-          <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-            <PhotoCamera />
-            Product Images
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+            <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <PhotoCamera />
+              Product Images ({(product.images || []).filter(img => img && img !== 'loading').length}/8)
+            </Typography>
+            
+            {/* Add Image Button */}
+            {(product.images || []).length < 8 && (
+              <Button 
+                variant="outlined" 
+                startIcon={<AddPhotoAlternate />}
+                onClick={handleAddImageSlot}
+                size="small"
+              >
+                Add Image Slot
+              </Button>
+            )}
+          </Box>
+          
           <Grid container spacing={2}>
-            {product.images?.slice(0, 4).map((url, index) => (
+            {(product.images || []).map((url, index) => (
               <Grid item xs={6} sm={3} key={index}>
                 <Paper
                   sx={{
@@ -158,23 +319,28 @@ const EditProductDialog = ({
                           borderRadius: 8,
                         }}
                       />
-                      <IconButton
+                      <Box 
                         sx={{ 
                           position: 'absolute', 
                           top: 4, 
                           right: 4, 
-                          bgcolor: 'white',
-                          boxShadow: 1,
-                        }}
-                        size="small"
-                        onClick={() => {
-                          const newImages = [...(product.images || [])];
-                          newImages[index] = '';
-                          onChange('images', newImages);
+                          display: 'flex',
+                          gap: 0.5
                         }}
                       >
-                        <CancelIcon color="error" />
-                      </IconButton>
+                        {/* Delete Image Button */}
+                        <IconButton
+                          sx={{ 
+                            bgcolor: 'white',
+                            boxShadow: 1,
+                          }}
+                          size="small"
+                          onClick={() => handleDeleteImage(index)}
+                          color="error"
+                        >
+                          <DeleteForever />
+                        </IconButton>
+                      </Box>
                     </>
                   ) : (
                     <label style={{ width: '100%', height: '100%', cursor: 'pointer' }}>
@@ -203,6 +369,19 @@ const EditProductDialog = ({
               </Grid>
             ))}
           </Grid>
+          
+          {/* Image management instructions */}
+          {(product.images || []).length > 0 && (
+            <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.100', borderRadius: 2 }}>
+              <Typography variant="body2" color="text.secondary">
+                • Click on empty slots to upload new images
+                <br />
+                • Use the delete button (trash icon) to remove images
+                <br />
+                • Images are automatically saved when you upload them
+              </Typography>
+            </Box>
+          )}
         </Box>
       </DialogContent>
       <DialogActions sx={{ p: 3, gap: 1 }}>

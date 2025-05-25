@@ -39,6 +39,11 @@ export const useInventory = () => {
     code: '',
     stock: 50,
     category: '',
+    hyderabadOnly: false,
+    // Added new specification fields
+    color: '',
+    dimensions: '',
+    weight: '',
   });
   const [editProduct, setEditProduct] = useState(null);
   
@@ -97,9 +102,14 @@ export const useInventory = () => {
         price: Number(newProduct.price),
         images: newProduct.images.filter(url => url && url !== 'loading'),
         stock: Number(newProduct.stock) || 50,
+        hyderabadOnly: newProduct.hyderabadOnly || false,
         hidden: false,
         inStock: true,
-        createdAt: new Date()
+        createdAt: new Date(),
+        // Add new specification fields
+        color: newProduct.color || '',
+        dimensions: newProduct.dimensions || '',
+        weight: newProduct.weight || '',
       };
 
       const docRef = await addDoc(collection(db, 'products'), productData);
@@ -117,6 +127,10 @@ export const useInventory = () => {
         code: '',
         stock: 50,
         category: '',
+        hyderabadOnly: false,
+        color: '',
+        dimensions: '',
+        weight: '',
       });
       setAddDialogOpen(false);
       showSnackbar('Product added successfully!', 'success');
@@ -178,7 +192,16 @@ export const useInventory = () => {
 
   // Edit product handlers
   const handleEditProduct = useCallback((product) => {
-    setEditProduct({ ...product });
+    // Initialize all fields including new specifications
+    setEditProduct({ 
+      ...product,
+      hyderabadOnly: product.hyderabadOnly || false,
+      color: product.color || '',
+      dimensions: product.dimensions || '',
+      weight: product.weight || '',
+      // Ensure images array is properly initialized
+      images: Array.isArray(product.images) ? product.images : Array(8).fill('')
+    });
     setEditDialogOpen(true);
   }, []);
 
@@ -195,6 +218,9 @@ export const useInventory = () => {
         case 'price':
         case 'stock':
           processedValue = value === '' ? 0 : Number(value);
+          break;
+        case 'hyderabadOnly': // Handle boolean explicitly
+          processedValue = Boolean(value);
           break;
         default:
           processedValue = value;
@@ -225,8 +251,13 @@ export const useInventory = () => {
       const updatedProduct = {
         ...updateData,
         price: Number(updateData.price) || 0,
+        hyderabadOnly: updateData.hyderabadOnly || false,
         images: (updateData.images || []).filter(url => url && url !== 'loading'),
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        // Include specification fields
+        color: updateData.color || '',
+        dimensions: updateData.dimensions || '',
+        weight: updateData.weight || '',
       };
 
       const productRef = doc(db, 'products', id);
@@ -254,9 +285,10 @@ export const useInventory = () => {
       validateImageFile(file);
 
       const updateImages = (prevImages) => {
-        const newImages = [...prevImages];
-        newImages[index] = 'loading';
-        return newImages;
+        // Ensure prevImages is an array
+        const imageArray = Array.isArray(prevImages) ? [...prevImages] : Array(8).fill('');
+        imageArray[index] = 'loading';
+        return imageArray;
       };
 
       if (isEdit) {
@@ -275,7 +307,7 @@ export const useInventory = () => {
 
       if (isEdit) {
         setEditProduct(prev => {
-          const newImages = [...prev.images];
+          const newImages = Array.isArray(prev.images) ? [...prev.images] : Array(8).fill('');
           newImages[index] = imageUrl;
           return { ...prev, images: newImages };
         });
@@ -293,7 +325,7 @@ export const useInventory = () => {
       
       if (isEdit) {
         setEditProduct(prev => {
-          const newImages = [...prev.images];
+          const newImages = Array.isArray(prev.images) ? [...prev.images] : Array(8).fill('');
           newImages[index] = '';
           return { ...prev, images: newImages };
         });
@@ -315,12 +347,17 @@ export const useInventory = () => {
       const matchesSearch = 
         product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.code.toLowerCase().includes(searchTerm.toLowerCase());
+        (product.code && product.code.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        // Add search in specifications
+        (product.color && product.color.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (product.dimensions && product.dimensions.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (product.weight && product.weight.toLowerCase().includes(searchTerm.toLowerCase()));
       
       const matchesFilter = filterCategory === 'all' || 
         (filterCategory === 'hidden' && product.hidden) ||
         (filterCategory === 'visible' && !product.hidden) ||
-        (filterCategory === 'low-stock' && product.stock < 10);
+        (filterCategory === 'low-stock' && product.stock < 10) ||
+        (filterCategory === 'hyderabad-only' && product.hyderabadOnly);
       
       return matchesSearch && matchesFilter;
     })
@@ -333,7 +370,7 @@ export const useInventory = () => {
         case 'stock':
           return a.stock - b.stock;
         case 'created':
-          return new Date(b.createdAt) - new Date(a.createdAt);
+          return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
         default:
           return 0;
       }
@@ -344,6 +381,7 @@ export const useInventory = () => {
     totalProducts: products.length,
     hiddenProducts: products.filter(p => p.hidden).length,
     lowStockProducts: products.filter(p => p.stock < 10).length,
+    hyderabadOnlyProducts: products.filter(p => p.hyderabadOnly).length,
     totalValue: products.reduce((sum, p) => sum + (p.price * p.stock), 0)
   };
 

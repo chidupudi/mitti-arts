@@ -42,6 +42,8 @@ import {
   DialogContent,
   DialogActions,
   Avatar,
+  Switch,
+  FormControlLabel,
 } from '@mui/material';
 import {
   Search,
@@ -63,6 +65,7 @@ import {
   Add,
   Remove,
   ShoppingCart,
+  LocationOn,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../Firebase/Firebase';
@@ -170,6 +173,26 @@ const ProductCard = memo(({
           <Warning fontSize="small" sx={{ mr: 0.5 }} />
           <Typography variant="caption" fontWeight={600}>
             Out of Stock
+          </Typography>
+        </Box>
+      );
+    }
+
+    // New section for Hyderabad-only products
+    if (product.hyderabadOnly) {
+      return (
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center',
+          mt: 1,
+          p: 0.5,
+          borderRadius: 1,
+          backgroundColor: '#9C27B020', // Light purple background
+          color: '#9C27B0', // Purple text
+        }}>
+          <LocationOn fontSize="small" sx={{ mr: 0.5 }} />
+          <Typography variant="caption" fontWeight={600}>
+            Hyderabad Only Delivery
           </Typography>
         </Box>
       );
@@ -310,6 +333,25 @@ const ProductCard = memo(({
             fontWeight: 600,
             backgroundColor: terracottaColors.primary,
             color: 'white',
+          }}
+        />
+      )}
+
+      {/* Hyderabad-Only Badge */}
+      {product.hyderabadOnly && !isUnavailable && (
+        <Chip
+          icon={<LocationOn fontSize="small" />}
+          label="Hyderabad Only"
+          size="small"
+          sx={{
+            position: 'absolute',
+            top: product.isFeatured ? 46 : 12, // Position below Featured badge if present
+            left: 12,
+            zIndex: 2,
+            fontWeight: 600,
+            backgroundColor: '#9C27B0', // Use purple to make it distinct
+            color: 'white',
+            pl: 0.5,
           }}
         />
       )}
@@ -468,6 +510,8 @@ const FilterPanel = memo(({
   setPriceRange,
   sortBy,
   setSortBy,
+  hyderabadOnly,
+  setHyderabadOnly,
   onResetFilters,
   expanded,
   onToggleSection
@@ -559,6 +603,68 @@ const FilterPanel = memo(({
             <MenuItem value="newest">Newest First</MenuItem>
           </Select>
         </FormControl>
+      ),
+    },
+    // New section for location-based filtering
+    {
+      key: 'location',
+      title: 'Delivery Location',
+      icon: <LocationOn sx={{ color: terracottaColors.primary }} />,
+      content: (
+        <Box>
+          <Paper
+            elevation={0}
+            sx={{
+              p: 2,
+              borderRadius: 2,
+              border: `1px dashed ${terracottaColors.primary}50`,
+              backgroundColor: `${terracottaColors.primary}08`,
+              mb: 1,
+            }}
+          >
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={hyderabadOnly}
+                  onChange={(e) => setHyderabadOnly(e.target.checked)}
+                  sx={{
+                    '& .MuiSwitch-switchBase.Mui-checked': {
+                      color: terracottaColors.primary,
+                      '&:hover': {
+                        backgroundColor: `${terracottaColors.primary}20`,
+                      },
+                    },
+                    '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                      backgroundColor: terracottaColors.primary,
+                    },
+                  }}
+                />
+              }
+              label={
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Typography variant="body1" fontWeight={600}>
+                    Hyderabad Only
+                  </Typography>
+                  <Chip
+                    label="Local"
+                    size="small"
+                    sx={{
+                      ml: 1,
+                      backgroundColor: hyderabadOnly ? terracottaColors.primary : `${terracottaColors.primary}30`,
+                      color: hyderabadOnly ? 'white' : terracottaColors.primary,
+                      fontWeight: 600,
+                      height: 20,
+                      fontSize: '0.7rem',
+                    }}
+                  />
+                </Box>
+              }
+            />
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              Show only products available for delivery within Hyderabad city limits
+            </Typography>
+          </Paper>
+        </Box>
       ),
     },
   ];
@@ -784,6 +890,21 @@ const QuantityModal = ({
               }
             </Typography>
           </Typography>
+          
+          {/* Show delivery location restriction if applicable */}
+          {product.hyderabadOnly && (
+            <Box sx={{ 
+              mt: 1, 
+              display: 'flex', 
+              alignItems: 'center',
+              color: '#9C27B0'
+            }}>
+              <LocationOn fontSize="small" sx={{ mr: 0.5 }} />
+              <Typography variant="body2" fontWeight={600}>
+                Available for delivery in Hyderabad only
+              </Typography>
+            </Box>
+          )}
         </Box>
 
         <Divider sx={{ my: 2 }} />
@@ -998,10 +1119,12 @@ const Products = () => {
   const [priceRange, setPriceRange] = useState([1, 5000]);
   const [sortBy, setSortBy] = useState('relevance');
   const [searchQuery, setSearchQuery] = useState('');
+  const [hyderabadOnly, setHyderabadOnly] = useState(false); // New state for Hyderabad-only filter
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [expanded, setExpanded] = useState({
     price: true,
     sort: true,
+    location: true, // Initialize the location section as expanded
   });
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -1061,6 +1184,7 @@ const Products = () => {
             reviews: data.reviews || 0,
             isFeatured: data.isFeatured || false,
             hidden: data.hidden || false,
+            hyderabadOnly: data.hyderabadOnly || false, // Include the hyderabadOnly property
           };
         });
 
@@ -1106,7 +1230,7 @@ const Products = () => {
   // Debounced search
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-  // Memoized filtered and sorted products
+  // Memoized filtered and sorted products - Updated to include hyderabadOnly filter
   const filteredProducts = useMemo(() => {
     let filtered = products.filter(product => {
       const matchesPrice = product.price >= priceRange[0] && product.price <= priceRange[1];
@@ -1114,7 +1238,10 @@ const Products = () => {
         product.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
         product.code.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
       
-      return matchesPrice && matchesSearch;
+      // Filter for Hyderabad-only products
+      const matchesLocation = !hyderabadOnly || (hyderabadOnly && product.hyderabadOnly === true);
+      
+      return matchesPrice && matchesSearch && matchesLocation;
     });
 
     // Apply sorting
@@ -1140,7 +1267,7 @@ const Products = () => {
     }
 
     return filtered;
-  }, [products, priceRange, debouncedSearchQuery, sortBy]);
+  }, [products, priceRange, debouncedSearchQuery, sortBy, hyderabadOnly]); // Add hyderabadOnly dependency
 
   // Callbacks
   const showSnackbar = useCallback((message, severity = 'success') => {
@@ -1202,6 +1329,7 @@ const Products = () => {
           code: product.code,
           hidden: product.hidden,
           stock: product.stock,
+          hyderabadOnly: product.hyderabadOnly, // Include hyderabadOnly property in wishlist
         });
 
         setWishlist(prev => [...prev, { ...product, wishlistDocId: docRef.id }]);
@@ -1230,6 +1358,7 @@ const Products = () => {
         code: selectedProduct.code,
         quantity: quantity,
         imgUrl: selectedProduct.imgUrl,
+        hyderabadOnly: selectedProduct.hyderabadOnly, // Include hyderabadOnly property in cart
       });
 
       showSnackbar(`${selectedProduct.name} added to cart!`);
@@ -1245,6 +1374,7 @@ const Products = () => {
     setPriceRange([1, 5000]);
     setSortBy('relevance');
     setSearchQuery('');
+    setHyderabadOnly(false); // Reset hyderabadOnly filter
   }, []);
 
   const handleToggleSection = useCallback((section) => {
@@ -1386,6 +1516,30 @@ const Products = () => {
                 </Button>
               )}
 
+              {/* Hyderabad Only Quick Filter Button - Mobile */}
+              {isMobile && (
+                <Button
+                  variant={hyderabadOnly ? "contained" : "outlined"}
+                  startIcon={<LocationOn />}
+                  onClick={() => setHyderabadOnly(!hyderabadOnly)}
+                  sx={{ 
+                    borderRadius: 2,
+                    px: 2,
+                    py: 1.5,
+                    fontWeight: 600,
+                    borderColor: terracottaColors.primary,
+                    color: hyderabadOnly ? 'white' : terracottaColors.primary,
+                    backgroundColor: hyderabadOnly ? '#9C27B0' : 'transparent',
+                    '&:hover': {
+                      backgroundColor: hyderabadOnly ? '#7B1FA2' : 'rgba(156, 39, 176, 0.08)',
+                      borderColor: hyderabadOnly ? '#7B1FA2' : '#9C27B0',
+                    },
+                  }}
+                >
+                  Hyderabad Only
+                </Button>
+              )}
+
               {/* Results Count */}
               <Box sx={{ 
                 display: 'flex', 
@@ -1428,6 +1582,8 @@ const Products = () => {
                   setPriceRange={setPriceRange}
                   sortBy={sortBy}
                   setSortBy={setSortBy}
+                  hyderabadOnly={hyderabadOnly}
+                  setHyderabadOnly={setHyderabadOnly}
                   onResetFilters={handleResetFilters}
                   expanded={expanded}
                   onToggleSection={handleToggleSection}
@@ -1518,6 +1674,8 @@ const Products = () => {
             setPriceRange={setPriceRange}
             sortBy={sortBy}
             setSortBy={setSortBy}
+            hyderabadOnly={hyderabadOnly}
+            setHyderabadOnly={setHyderabadOnly}
             onResetFilters={handleResetFilters}
             expanded={expanded}
             onToggleSection={handleToggleSection}

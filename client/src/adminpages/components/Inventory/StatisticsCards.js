@@ -12,6 +12,7 @@ import {
   AttachMoney,
   Warning,
   VisibilityOff,
+  LocationOn,
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 
@@ -41,10 +42,14 @@ const StatCard = styled(Card)(({ theme }) => ({
   '&.info': {
     background: 'linear-gradient(135deg, #0277BD 0%, #29B6F6 100%)',
   },
+  '&.special': {
+    background: 'linear-gradient(135deg, #8E24AA 0%, #BA68C8 100%)',
+  },
 }));
 
 const StatisticsCards = ({ statistics }) => {
-  const { totalProducts, totalValue, lowStockProducts, hiddenProducts } = statistics;
+  // Extract statistics including hyderabadOnlyProducts with fallback to 0
+  const { totalProducts, totalValue, lowStockProducts, hiddenProducts, hyderabadOnlyProducts = 0 } = statistics;
 
   const statsData = [
     {
@@ -74,6 +79,13 @@ const StatisticsCards = ({ statistics }) => {
       subtitle: 'Not visible to customers',
       icon: <VisibilityOff sx={{ fontSize: 32 }} />,
       className: 'info'
+    },
+    {
+      title: 'Hyderabad Only',
+      value: hyderabadOnlyProducts,
+      subtitle: 'Location restricted',
+      icon: <LocationOn sx={{ fontSize: 32 }} />,
+      className: 'special'
     }
   ];
 

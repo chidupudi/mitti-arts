@@ -12,6 +12,9 @@ import {
   Collapse,
   IconButton,
   Divider,
+  FormGroup,
+  FormControlLabel,
+  Checkbox,
 } from '@mui/material';
 import {
   PriceChange,
@@ -19,6 +22,7 @@ import {
   Refresh,
   ExpandMore,
   ExpandLess,
+  LocationOn,
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 
@@ -86,6 +90,8 @@ const FilterPanel = memo(({
   setPriceRange,
   sortBy,
   setSortBy,
+  hyderabadOnly,
+  setHyderabadOnly,
   onResetFilters,
   expanded,
   onToggleSection,
@@ -143,6 +149,49 @@ const FilterPanel = memo(({
             <MenuItem value="newest">Newest First</MenuItem>
           </Select>
         </FormControl>
+      ),
+    },
+    {
+      key: 'delivery',
+      title: 'Delivery Options',
+      icon: <LocationOn sx={{ color: 'primary.main' }} />,
+      content: (
+        <FormGroup>
+          <FormControlLabel
+            control={
+              <Checkbox 
+                checked={hyderabadOnly} 
+                onChange={(e) => setHyderabadOnly(e.target.checked)}
+                color="primary"
+              />
+            }
+            label={
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Typography variant="body2" fontWeight="medium">
+                  Hyderabad Only
+                </Typography>
+                <Box 
+                  sx={{ 
+                    ml: 1, 
+                    px: 1, 
+                    py: 0.5, 
+                    bgcolor: 'primary.50', 
+                    borderRadius: 1,
+                    border: '1px solid',
+                    borderColor: 'primary.100'
+                  }}
+                >
+                  <Typography variant="caption" color="primary.main" fontWeight="bold">
+                    Local
+                  </Typography>
+                </Box>
+              </Box>
+            }
+          />
+          <Typography variant="caption" color="text.secondary" sx={{ pl: 4 }}>
+            Show only products available for delivery in Hyderabad
+          </Typography>
+        </FormGroup>
       ),
     },
   ];

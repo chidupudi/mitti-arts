@@ -10,6 +10,8 @@ import {
   Chip,
   Stack,
   Zoom,
+  Tooltip,
+  Divider,
 } from '@mui/material';
 import {
   Edit,
@@ -18,6 +20,10 @@ import {
   VisibilityOff,
   MoreVert,
   Image as ImageIcon,
+  LocationOn,
+  ColorLens,
+  Straighten,
+  Scale,
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 
@@ -51,27 +57,71 @@ const ProductCard = ({
     <Zoom in timeout={300}>
       <StyledProductCard isHidden={product.hidden}>
         {/* Product Image */}
-        {product.images && product.images.length > 0 && product.images[0] ? (
-          <CardMedia
-            component="img"
-            height="200"
-            image={product.images[0]}
-            alt={product.name}
-            sx={{ objectFit: 'cover' }}
-          />
-        ) : (
-          <Box
-            sx={{
-              height: 200,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              bgcolor: 'grey.100',
-            }}
-          >
-            <ImageIcon sx={{ fontSize: 64, color: 'grey.400' }} />
-          </Box>
-        )}
+        <Box sx={{ position: 'relative' }}>
+          {product.images && product.images.length > 0 && product.images[0] ? (
+            <CardMedia
+              component="img"
+              height="200"
+              image={product.images[0]}
+              alt={product.name}
+              sx={{ objectFit: 'cover' }}
+            />
+          ) : (
+            <Box
+              sx={{
+                height: 200,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                bgcolor: 'grey.100',
+              }}
+            >
+              <ImageIcon sx={{ fontSize: 64, color: 'grey.400' }} />
+            </Box>
+          )}
+          
+          {/* Status Ribbons */}
+          {product.hidden && (
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 12,
+                right: -30,
+                transform: 'rotate(35deg)',
+                width: 120,
+                textAlign: 'center',
+                padding: '4px 0',
+                fontSize: '0.7rem',
+                fontWeight: 700,
+                color: 'white',
+                zIndex: 2,
+                letterSpacing: '0.5px',
+                backgroundColor: 'warning.main',
+              }}
+            >
+              HIDDEN
+            </Box>
+          )}
+          
+          {/* Hyderabad-Only Badge */}
+          {product.hyderabadOnly && (
+            <Chip
+              icon={<LocationOn />}
+              label="Hyderabad Only"
+              size="small"
+              sx={{
+                position: 'absolute',
+                top: 12,
+                left: 12,
+                zIndex: 2,
+                fontWeight: 600,
+                backgroundColor: '#9C27B0',
+                color: 'white',
+                pl: 0.5,
+              }}
+            />
+          )}
+        </Box>
         
         <CardContent sx={{ flexGrow: 1, p: 2 }}>
           {/* Product Header */}
@@ -117,12 +167,45 @@ const ProductCard = ({
             />
           </Box>
 
-          {/* Product Code */}
-          {product.code && (
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-              Code: {product.code}
-            </Typography>
+          {/* Product Specifications */}
+          {(product.color || product.dimensions || product.weight) && (
+            <>
+              <Divider sx={{ mb: 1.5, mt: 1 }} />
+              <Box sx={{ mb: 1.5 }}>
+                {product.color && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+                    <ColorLens fontSize="small" sx={{ mr: 0.5, fontSize: '0.9rem', color: 'text.secondary' }} />
+                    <Typography variant="body2" color="text.secondary">
+                      {product.color}
+                    </Typography>
+                  </Box>
+                )}
+                
+                {product.dimensions && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+                    <Straighten fontSize="small" sx={{ mr: 0.5, fontSize: '0.9rem', color: 'text.secondary' }} />
+                    <Typography variant="body2" color="text.secondary">
+                      {product.dimensions}
+                    </Typography>
+                  </Box>
+                )}
+                
+                {product.weight && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+                    <Scale fontSize="small" sx={{ mr: 0.5, fontSize: '0.9rem', color: 'text.secondary' }} />
+                    <Typography variant="body2" color="text.secondary">
+                      {product.weight}
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+            </>
           )}
+
+          {/* Product Code */}
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+            Code: {product.code || 'N/A'}
+          </Typography>
 
           {/* Status Chips */}
           <Stack direction="row" spacing={1} flexWrap="wrap" gap={0.5}>
@@ -140,6 +223,16 @@ const ProductCard = ({
               color={product.inStock ? "success" : "error"}
               variant="outlined"
             />
+            {product.hyderabadOnly && (
+              <Chip 
+                icon={<LocationOn sx={{ fontSize: '0.7rem' }} />}
+                label="Hyderabad Only" 
+                size="small"
+                color="secondary"
+                variant="outlined"
+                sx={{ '& .MuiChip-icon': { fontSize: '1rem' } }}
+              />
+            )}
           </Stack>
 
           {/* Action Buttons */}
