@@ -1,4 +1,4 @@
-// Updated AdminOrders.js component with cancel order functionality
+// Updated AdminOrders.js component with cancel order functionality and email notifications
 import React from 'react';
 import { Box, Container } from '@mui/material';
 import { ThemeProvider } from '@mui/material/styles';
@@ -12,10 +12,14 @@ import NotificationSnackbar from './components/NotificationSnackbar';
 import LoadingScreen from './components/LoadingScreen';
 import { terracottaTheme } from '../theme/terracottaTheme';
 import { useAdminOrders } from '../hooks/useAdminOrders';
+import { useOrderNotifications } from '../hooks/useOrderNotifications'; // Import the notifications hook
 import { useMediaQuery } from '@mui/material';
 
 const AdminOrders = () => {
   const isMedium = useMediaQuery(terracottaTheme.breakpoints.down('md'));
+  
+  // 🔔 ADD THIS LINE - Enable real-time order notifications with email alerts
+  useOrderNotifications();
   
   // Custom hook for all admin orders logic
   const {

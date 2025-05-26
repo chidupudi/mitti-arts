@@ -1,0 +1,15 @@
+{
+  "name": "mittiarts-api",
+  "version": "1.0.0",
+  "description": "MittiArts serverless API functions",
+  "main": "index.js",
+  "dependencies": {
+    "nodemailer": "^6.10.1"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

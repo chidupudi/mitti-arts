@@ -1,4 +1,4 @@
-// Updated useAdminOrders.js with cancel order functionality
+// Updated useAdminOrders.js with cancel order functionality and email notifications
 import { useState, useEffect } from 'react';
 import { db } from '../Firebase/Firebase';
 import { 
@@ -12,10 +12,12 @@ import {
   Timestamp, 
   writeBatch, 
   getDoc, 
-  increment 
+  increment,
+  serverTimestamp
 } from 'firebase/firestore';
 import { useMediaQuery } from '@mui/material';
 import { terracottaTheme } from '../theme/terracottaTheme';
+import { sendOrderStatusUpdateNotification } from '../utils/emailService';
 
 // Utility function to get order date
 const getOrderDate = (order) => {
@@ -215,23 +217,42 @@ export const useAdminOrders = () => {
     setPage(0);
   }, [orders, sortBy, searchQuery, dateRange, deliveryFilter, paymentStatusFilter, orderStatusFilter]);
 
-  // Handle payment status toggle (for admin convenience)
+  // Handle payment status toggle (for admin convenience) - WITH EMAIL NOTIFICATION
   const handlePaymentToggle = async (orderId, currentStatus) => {
     try {
       const newStatus = currentStatus === 'COMPLETED' || currentStatus === 'SUCCESS' ? 'PENDING' : 'COMPLETED';
       const orderRef = doc(db, 'orders', orderId);
       
+      // Get order data before update for notification
+      const orderDoc = await getDoc(orderRef);
+      const orderData = orderDoc.data();
+      
       await updateDoc(orderRef, {
         paymentStatus: newStatus,
         adminConfirmed: newStatus === 'COMPLETED',
-        updatedAt: Timestamp.now()
+        updatedAt: serverTimestamp()
       });
       
+      // Update local state
       setOrders(prevOrders => 
         prevOrders.map(order => 
           order.id === orderId ? { ...order, paymentStatus: newStatus, adminConfirmed: newStatus === 'COMPLETED' } : order
         )
       );
+      
+      // Send email notification for status change
+      try {
+        const orderWithId = { id: orderId, ...orderData };
+        await sendOrderStatusUpdateNotification(
+          orderWithId, 
+          currentStatus, 
+          newStatus
+        );
+        console.log('✅ Payment status update email sent successfully');
+      } catch (emailError) {
+        console.error('❌ Failed to send payment status update email:', emailError);
+        // Don't fail the main operation if email fails
+      }
       
       setSnackbar({
         open: true,
@@ -248,16 +269,20 @@ export const useAdminOrders = () => {
     }
   };
 
-  // Handle delivery details update
+  // Handle delivery details update - WITH EMAIL NOTIFICATION
   const handleSaveDeliveryDetails = async (orderId, details) => {
     try {
       const orderRef = doc(db, 'orders', orderId);
       
+      // Get order data before update for notification
+      const orderDoc = await getDoc(orderRef);
+      const orderData = orderDoc.data();
+      
       await updateDoc(orderRef, {
         deliveryDetails: details,
         deliveryStatus: 'DISPATCHED',
-        dispatchedAt: Timestamp.now(),
-        updatedAt: Timestamp.now()
+        dispatchedAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
       });
       
       setDeliveryDetailsMap(prev => ({
@@ -275,6 +300,19 @@ export const useAdminOrders = () => {
         )
       );
       
+      // Send email notification for delivery details update
+      try {
+        const orderWithId = { id: orderId, ...orderData };
+        await sendOrderStatusUpdateNotification(
+          orderWithId, 
+          orderData.deliveryStatus || 'NO_DELIVERY', 
+          'DISPATCHED'
+        );
+        console.log('✅ Delivery details update email sent successfully');
+      } catch (emailError) {
+        console.error('❌ Failed to send delivery details update email:', emailError);
+      }
+      
       setSnackbar({
         open: true,
         message: 'Delivery details updated successfully',
@@ -290,16 +328,20 @@ export const useAdminOrders = () => {
     }
   };
 
-  // Handle mark as delivered
+  // Handle mark as delivered - WITH EMAIL NOTIFICATION
   const handleMarkDelivered = async (orderId) => {
     try {
       const orderRef = doc(db, 'orders', orderId);
       
+      // Get order data before update for notification
+      const orderDoc = await getDoc(orderRef);
+      const orderData = orderDoc.data();
+      
       await updateDoc(orderRef, {
         deliveryStatus: 'DELIVERED',
         status: 'COMPLETED',
-        deliveredAt: Timestamp.now(),
-        updatedAt: Timestamp.now()
+        deliveredAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
       });
       
       setOrders(prevOrders => 
@@ -312,6 +354,19 @@ export const useAdminOrders = () => {
           } : order
         )
       );
+      
+      // Send email notification for delivery completion
+      try {
+        const orderWithId = { id: orderId, ...orderData };
+        await sendOrderStatusUpdateNotification(
+          orderWithId, 
+          orderData.deliveryStatus || 'IN_TRANSIT', 
+          'DELIVERED'
+        );
+        console.log('✅ Order delivered email sent successfully');
+      } catch (emailError) {
+        console.error('❌ Failed to send order delivered email:', emailError);
+      }
       
       setSnackbar({
         open: true,
@@ -329,7 +384,7 @@ export const useAdminOrders = () => {
     }
   };
 
-  // Handle cancel order
+  // Handle cancel order - WITH EMAIL NOTIFICATION
   const handleCancelOrder = async (orderId) => {
     try {
       const orderRef = doc(db, 'orders', orderId);
@@ -340,6 +395,7 @@ export const useAdminOrders = () => {
       }
       
       const orderData = orderSnap.data();
+      const oldStatus = orderData.status;
       
       // If order was paid, restore the stock
       if (orderData.paymentStatus === 'COMPLETED' || orderData.paymentStatus === 'SUCCESS') {
@@ -351,9 +407,9 @@ export const useAdminOrders = () => {
         status: 'CANCELLED',
         paymentStatus: 'CANCELLED',
         deliveryStatus: 'CANCELLED',
-        cancelledAt: Timestamp.now(),
+        cancelledAt: serverTimestamp(),
         cancelledBy: 'admin',
-        updatedAt: Timestamp.now()
+        updatedAt: serverTimestamp()
       });
       
       setOrders(prevOrders => 
@@ -367,6 +423,19 @@ export const useAdminOrders = () => {
           } : order
         )
       );
+      
+      // Send email notification for order cancellation
+      try {
+        const orderWithId = { id: orderId, ...orderData };
+        await sendOrderStatusUpdateNotification(
+          orderWithId, 
+          oldStatus, 
+          'CANCELLED'
+        );
+        console.log('✅ Order cancellation email sent successfully');
+      } catch (emailError) {
+        console.error('❌ Failed to send order cancellation email:', emailError);
+      }
       
       setSnackbar({
         open: true,
@@ -417,7 +486,7 @@ export const useAdminOrders = () => {
       
       batch.update(productRef, {
         stock: increment(item.quantity), // Add back to stock
-        updatedAt: Timestamp.now()
+        updatedAt: serverTimestamp()
       });
       
       hasUpdates = true;
@@ -467,11 +536,68 @@ export const useAdminOrders = () => {
     setCancelDialogOpen(true);
   };
 
+  // Updated cancel confirmation with email notification
   const handleConfirmCancelOrder = async () => {
-    if (selectedOrderForCancel) {
-      await handleCancelOrder(selectedOrderForCancel.id);
+    if (!selectedOrderForCancel) return;
+    
+    try {
+      const orderRef = doc(db, 'orders', selectedOrderForCancel.id);
+      const oldStatus = selectedOrderForCancel.status;
+      
+      // If order was paid, restore the stock
+      if (selectedOrderForCancel.paymentStatus === 'COMPLETED' || selectedOrderForCancel.paymentStatus === 'SUCCESS') {
+        await restoreStockForOrder(selectedOrderForCancel);
+      }
+      
+      await updateDoc(orderRef, {
+        status: 'CANCELLED',
+        paymentStatus: 'CANCELLED',
+        deliveryStatus: 'CANCELLED',
+        cancelledAt: serverTimestamp(),
+        cancelledBy: 'Admin',
+        updatedAt: serverTimestamp()
+      });
+
+      // Update local state
+      setOrders(prevOrders => 
+        prevOrders.map(order => 
+          order.id === selectedOrderForCancel.id ? { 
+            ...order, 
+            status: 'CANCELLED',
+            paymentStatus: 'CANCELLED',
+            deliveryStatus: 'CANCELLED',
+            cancelledAt: Timestamp.now()
+          } : order
+        )
+      );
+
+      // Send cancellation notification email
+      try {
+        await sendOrderStatusUpdateNotification(
+          selectedOrderForCancel, 
+          oldStatus, 
+          'CANCELLED'
+        );
+        console.log('✅ Order cancellation confirmation email sent successfully');
+      } catch (emailError) {
+        console.error('❌ Failed to send cancellation confirmation email:', emailError);
+      }
+
       setCancelDialogOpen(false);
       setSelectedOrderForCancel(null);
+      
+      setSnackbar({
+        open: true,
+        message: 'Order cancelled successfully and stock restored',
+        severity: 'success'
+      });
+    } catch (error) {
+      console.error('Error cancelling order:', error);
+      setSnackbar({
+        open: true,
+        message: `Error: ${error.message || 'Failed to cancel order'}`,
+        severity: 'error'
+      });
     }
   };
 
