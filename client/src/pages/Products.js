@@ -795,7 +795,6 @@ const FilterPanel = memo(({
     </Box>
   );
 });
-
 // QuantityModal Component (unchanged)
 const QuantityModal = ({ 
   open, 
