@@ -1,4 +1,4 @@
-// api/password-management.js - WORKING VERSION FOR VERCEL
+// api/password-management.js - CORRECTED VERSION FOR VERCEL
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 const admin = require('firebase-admin');
@@ -37,8 +37,8 @@ const ALLOWED_ORIGINS = [
   'https://mitti-arts.vercel.app'
 ];
 
-// Create transporter
-const transporter = nodemailer.createTransporter({
+// Create transporter - FIXED: Correct method name
+const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: EMAIL_USER,
@@ -46,10 +46,10 @@ const transporter = nodemailer.createTransporter({
   }
 });
 
-// Rate limiting - simple in-memory storage (for production, use Redis)
+// Rate limiting - simple in-memory storage
 const rateLimiter = new Map();
 
-function checkRateLimit(ip, limit = 5, windowMs = 15 * 60 * 1000) { // 15 minutes
+function checkRateLimit(ip, limit = 5, windowMs = 15 * 60 * 1000) {
   const now = Date.now();
   const windowStart = now - windowMs;
   
@@ -58,7 +58,6 @@ function checkRateLimit(ip, limit = 5, windowMs = 15 * 60 * 1000) { // 15 minute
   }
   
   const requests = rateLimiter.get(ip);
-  // Remove old requests
   const recentRequests = requests.filter(time => time > windowStart);
   rateLimiter.set(ip, recentRequests);
   
@@ -81,8 +80,8 @@ function isValidOrigin(origin) {
   return ALLOWED_ORIGINS.includes(origin);
 }
 
-// Main handler
-export default async function handler(req, res) {
+// Main handler - FIXED: Using module.exports for Vercel compatibility
+module.exports = async (req, res) => {
   // Set CORS headers
   const origin = req.headers.origin;
   if (isValidOrigin(origin)) {
@@ -104,7 +103,7 @@ export default async function handler(req, res) {
   }
 
   // Rate limiting
-  const clientIp = req.headers['x-forwarded-for']?.split(',')[0] || 
+  const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
                    req.headers['x-real-ip'] || 
                    req.connection?.remoteAddress || 
                    'unknown';
@@ -139,7 +138,7 @@ export default async function handler(req, res) {
       message: 'Internal server error'
     });
   }
-}
+};
 
 async function handleForgotPassword(req, res) {
   const { email } = req.body;
@@ -152,6 +151,8 @@ async function handleForgotPassword(req, res) {
   }
 
   try {
+    console.log('Processing forgot password for:', email);
+
     // Check if user exists
     const usersSnapshot = await db.collection('users')
       .where('email', '==', email)
@@ -159,6 +160,7 @@ async function handleForgotPassword(req, res) {
       .get();
     
     if (usersSnapshot.empty) {
+      console.log('User not found for email:', email);
       // Don't reveal if email exists - security best practice
       return res.status(200).json({
         success: true,
@@ -169,6 +171,8 @@ async function handleForgotPassword(req, res) {
     const userDoc = usersSnapshot.docs[0];
     const userData = userDoc.data();
     const userId = userDoc.id;
+
+    console.log('User found, generating reset token for:', userId);
 
     // Generate reset token
     const resetToken = crypto.randomBytes(32).toString('hex');
@@ -183,6 +187,8 @@ async function handleForgotPassword(req, res) {
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       used: false
     });
+
+    console.log('Reset token stored in database');
 
     // Create reset URL
     const resetUrl = `https://mittiarts.com/reset-password?token=${resetToken}&id=${userId}`;
@@ -245,6 +251,8 @@ async function handleForgotPassword(req, res) {
       </html>
     `;
 
+    console.log('Sending email to:', email);
+
     // Send email
     await transporter.sendMail({
       from: {
@@ -255,6 +263,8 @@ async function handleForgotPassword(req, res) {
       subject: '🔐 Password Reset Request - MittiArts',
       html: emailHTML
     });
+
+    console.log('Password reset email sent successfully');
 
     return res.status(200).json({
       success: true,
@@ -296,6 +306,8 @@ async function handleResetPassword(req, res) {
   }
 
   try {
+    console.log('Processing password reset for user:', userId);
+
     // Get reset token from Firestore
     const resetDoc = await db.collection('passwordResets').doc(userId).get();
     
@@ -334,6 +346,8 @@ async function handleResetPassword(req, res) {
       });
     }
 
+    console.log('Token verified, updating password...');
+
     // Update password in Firebase Auth
     await admin.auth().updateUser(userId, {
       password: newPassword
@@ -344,6 +358,8 @@ async function handleResetPassword(req, res) {
       used: true,
       usedAt: admin.firestore.FieldValue.serverTimestamp()
     });
+
+    console.log('Password reset successful for user:', userId);
 
     return res.status(200).json({
       success: true,
@@ -392,6 +408,8 @@ async function handleChangePassword(req, res) {
   }
 
   try {
+    console.log('Processing password change for user:', userId);
+
     // Get user data
     const userDoc = await db.collection('users').doc(userId).get();
     if (!userDoc.exists) {
@@ -403,14 +421,12 @@ async function handleChangePassword(req, res) {
 
     const userData = userDoc.data();
 
-    // For security, we should verify the current password first
-    // However, Firebase Admin SDK doesn't have a direct way to verify passwords
-    // In production, you might want to use Firebase Auth REST API for this
-    
     // Update password in Firebase Auth
     await admin.auth().updateUser(userId, {
       password: newPassword
     });
+
+    console.log('Password changed successfully for user:', userId);
 
     // Send confirmation email
     try {
@@ -443,6 +459,7 @@ async function handleChangePassword(req, res) {
           </div>
         `
       });
+      console.log('Confirmation email sent successfully');
     } catch (emailError) {
       console.error('Email sending error:', emailError);
       // Don't fail the password change if email fails
