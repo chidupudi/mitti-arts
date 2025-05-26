@@ -22,7 +22,8 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signInWithPopup,
-  signOut
+  signOut,
+  sendPasswordResetEmail
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
@@ -62,6 +63,19 @@ export default function Auth() {
     setForgotEmailForm({ ...forgotEmailForm, [e.target.name]: e.target.value });
   };
 
+  const getFirebaseError = (code) => {
+    switch (code) {
+      case 'auth/user-not-found':
+        return 'No account found with this email address';
+      case 'auth/invalid-email':
+        return 'Please enter a valid email address';
+      case 'auth/too-many-requests':
+        return 'Too many attempts. Please try again later';
+      default:
+        return 'Failed to send reset email. Please try again';
+    }
+  };
+
   const handleForgotPassword = async (e) => {
     e.preventDefault();
     setError('');
@@ -69,32 +83,17 @@ export default function Auth() {
     setForgotPasswordLoading(true);
 
     try {
-      const response = await fetch('/api/password-management', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'forgot-password',
-          email: forgotEmailForm.email
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setSuccess('Password reset email sent! Please check your inbox.');
-        setForgotEmailForm({ email: '' });
-        setTimeout(() => {
-          setShowForgotPassword(false);
-          setSuccess('');
-        }, 3000);
-      } else {
-        setError(data.message || 'Failed to send reset email');
-      }
+      await sendPasswordResetEmail(auth, forgotEmailForm.email);
+      setSuccess('Password reset email sent! Check your inbox for the reset link.');
+      setForgotEmailForm({ email: '' });
+      
+      // Close the dialog after 3 seconds
+      setTimeout(() => {
+        setShowForgotPassword(false);
+      }, 3000);
     } catch (err) {
       console.error('Forgot password error:', err);
-      setError('An error occurred. Please try again.');
+      setError(getFirebaseError(err.code));
     } finally {
       setForgotPasswordLoading(false);
     }
@@ -102,8 +101,6 @@ export default function Auth() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Regular user login/signup
     setError('');
     setSuccess('');
     setLoading(true);
@@ -139,8 +136,6 @@ export default function Auth() {
         });
 
         setSuccess('Signed up successfully');
-
-        // Add phone number to localStorage after successful signup
         localStorage.setItem('userPhone', phone);
       }
 
@@ -158,16 +153,14 @@ export default function Auth() {
         confirmPassword: '',
       });
       
-      // Navigate based on action - login goes to home, signup stays on auth page but switches to login
       if (isLogin) {
         setTimeout(() => {
           navigate('/');
         }, 1000);
       } else {
-        // Sign out the user after signup so they have to login manually
         setTimeout(async () => {
           await signOut(auth);
-          localStorage.clear(); // Clear stored data
+          localStorage.clear();
           setIsLogin(true);
         }, 1000);
       }
@@ -188,30 +181,23 @@ export default function Auth() {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
 
-      // Get user data from Firestore if exists
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       
       if (!userDoc.exists()) {
-        // Create new user document with Google profile data
         const userData = {
           name: user.displayName || 'Google User',
           email: user.email,
-          phone: user.phoneNumber || '', // Get phone from Google profile if available
+          phone: user.phoneNumber || '',
           createdAt: new Date().toISOString(),
         };
 
-        // Save to Firestore
         await setDoc(doc(db, 'users', user.uid), userData);
-        
-        // Save to localStorage
         localStorage.setItem('userPhone', userData.phone);
       } else {
-        // User exists, get their phone number
         const existingData = userDoc.data();
         localStorage.setItem('userPhone', existingData.phone || '');
       }
 
-      // Save other user data to localStorage
       const token = await user.getIdToken();
       localStorage.setItem('authToken', token);
       localStorage.setItem('userEmail', user.email);

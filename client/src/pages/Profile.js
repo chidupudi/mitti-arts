@@ -29,13 +29,13 @@ import EditIcon from '@mui/icons-material/Edit';
 import LockIcon from '@mui/icons-material/Lock';
 import Chip from '@mui/material/Chip';
 import { Visibility, VisibilityOff, Security } from '@mui/icons-material';
-
 import PhoneIcon from '@mui/icons-material/Phone';
 import EmailIcon from '@mui/icons-material/Email';
 import BadgeIcon from '@mui/icons-material/Badge';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '../Firebase/Firebase';
+import { db, auth } from '../Firebase/Firebase';
+import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -89,7 +89,6 @@ const Profile = () => {
       });
       setUserId(uid);
       
-      // Show notification if phone number is missing
       if (!phone || phone === '') {
         setNotification(true);
       }
@@ -98,7 +97,7 @@ const Profile = () => {
 
   const handlePasswordFormChange = (e) => {
     setPasswordForm({ ...passwordForm, [e.target.name]: e.target.value });
-    setPasswordError(''); // Clear error when user types
+    setPasswordError('');
   };
 
   const togglePasswordVisibility = (field) => {
@@ -133,37 +132,44 @@ const Profile = () => {
     }
 
     try {
-      const response = await fetch('/api/password-management', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'change-password',
-          userId,
-          currentPassword: passwordForm.currentPassword,
-          newPassword: passwordForm.newPassword,
-          confirmPassword: passwordForm.confirmPassword
-        }),
+      const user = auth.currentUser;
+      
+      // Reauthenticate user
+      const credential = EmailAuthProvider.credential(
+        user.email,
+        passwordForm.currentPassword
+      );
+      
+      await reauthenticateWithCredential(user, credential);
+      
+      // Update password
+      await updatePassword(user, passwordForm.newPassword);
+      
+      setSuccessMessage('Password changed successfully!');
+      setShowSuccessAlert(true);
+      setOpenPasswordDialog(false);
+      setPasswordForm({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
       });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setSuccessMessage('Password changed successfully! A confirmation email has been sent.');
-        setShowSuccessAlert(true);
-        setOpenPasswordDialog(false);
-        setPasswordForm({
-          currentPassword: '',
-          newPassword: '',
-          confirmPassword: ''
-        });
-      } else {
-        setPasswordError(data.message || 'Failed to change password');
-      }
     } catch (error) {
       console.error('Change password error:', error);
-      setPasswordError('An error occurred. Please try again.');
+      
+      // User-friendly error messages
+      switch (error.code) {
+        case 'auth/wrong-password':
+          setPasswordError('Current password is incorrect');
+          break;
+        case 'auth/weak-password':
+          setPasswordError('Password is too weak');
+          break;
+        case 'auth/requires-recent-login':
+          setPasswordError('Please login again to change your password');
+          break;
+        default:
+          setPasswordError('Failed to change password. Please try again.');
+      }
     } finally {
       setPasswordLoading(false);
     }
@@ -175,15 +181,12 @@ const Profile = () => {
       
       setLoading(true);
       
-      // Update in Firebase
       await updateDoc(doc(db, 'users', userId), {
         phone: newPhone
       });
 
-      // Update localStorage
       localStorage.setItem('userPhone', newPhone);
 
-      // Update state
       setUserData(prev => ({
         ...prev,
         phone: newPhone
@@ -206,15 +209,12 @@ const Profile = () => {
       
       setLoading(true);
       
-      // Update in Firebase
       await updateDoc(doc(db, 'users', userId), {
         name: newName
       });
 
-      // Update localStorage
       localStorage.setItem('userName', newName);
 
-      // Update state
       setUserData(prev => ({
         ...prev,
         name: newName,
