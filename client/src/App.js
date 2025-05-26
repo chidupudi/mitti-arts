@@ -8,6 +8,7 @@ import { doc, getDoc } from 'firebase/firestore';
 
 // Regular components
 import Header from './components/Header';
+import ResetPassword from './pages/ResetPassword';
 import Welcome from './pages/Welcome';
 import Products from './pages/Products';
 import ProductDetail from './pages/ProductDetail';
@@ -380,6 +381,7 @@ const App = () => {
 
               {/* 👤 User Routes */}
               <Route path="/profile" element={<Profile />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/cart" element={<Cart />} />
               <Route path="/order-summary" element={<OrderSummary />} />
               <Route path="/order-confirmation" element={<OrderConfirmation />} />

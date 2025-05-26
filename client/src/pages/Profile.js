@@ -7,7 +7,6 @@ import {
   Avatar,
   Box,
   Divider,
-  Grid,
   Button,
   TextField,
   Dialog,
@@ -22,12 +21,14 @@ import {
   Card,
   CardContent,
   Badge,
-  CircularProgress
+  CircularProgress,
+  InputAdornment
 } from '@mui/material';
 import PersonIcon from '@mui/icons-material/Person';
 import EditIcon from '@mui/icons-material/Edit';
 import LockIcon from '@mui/icons-material/Lock';
 import Chip from '@mui/material/Chip';
+import { Visibility, VisibilityOff, Security } from '@mui/icons-material';
 
 import PhoneIcon from '@mui/icons-material/Phone';
 import EmailIcon from '@mui/icons-material/Email';
@@ -49,13 +50,26 @@ const Profile = () => {
   });
   const [openPhoneDialog, setOpenPhoneDialog] = useState(false);
   const [openNameDialog, setOpenNameDialog] = useState(false);
+  const [openPasswordDialog, setOpenPasswordDialog] = useState(false);
   const [newPhone, setNewPhone] = useState('');
   const [newName, setNewName] = useState('');
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false
+  });
   const [notification, setNotification] = useState(false);
   const [userId, setUserId] = useState('');
   const [loading, setLoading] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
 
   useEffect(() => {
     const token = localStorage.getItem('authToken');
@@ -81,6 +95,79 @@ const Profile = () => {
       }
     }
   }, [navigate]);
+
+  const handlePasswordFormChange = (e) => {
+    setPasswordForm({ ...passwordForm, [e.target.name]: e.target.value });
+    setPasswordError(''); // Clear error when user types
+  };
+
+  const togglePasswordVisibility = (field) => {
+    setShowPasswords(prev => ({
+      ...prev,
+      [field]: !prev[field]
+    }));
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setPasswordError('');
+    setPasswordLoading(true);
+
+    // Validation
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError('New passwords do not match');
+      setPasswordLoading(false);
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 8) {
+      setPasswordError('Password must be at least 8 characters long');
+      setPasswordLoading(false);
+      return;
+    }
+
+    if (passwordForm.currentPassword === passwordForm.newPassword) {
+      setPasswordError('New password must be different from current password');
+      setPasswordLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/password-management', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'change-password',
+          userId,
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword,
+          confirmPassword: passwordForm.confirmPassword
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setSuccessMessage('Password changed successfully! A confirmation email has been sent.');
+        setShowSuccessAlert(true);
+        setOpenPasswordDialog(false);
+        setPasswordForm({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
+      } else {
+        setPasswordError(data.message || 'Failed to change password');
+      }
+    } catch (error) {
+      console.error('Change password error:', error);
+      setPasswordError('An error occurred. Please try again.');
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
 
   const handleSavePhone = async () => {
     try {
@@ -306,6 +393,7 @@ const Profile = () => {
           <Card 
             elevation={2} 
             sx={{ 
+              mb: 2,
               borderRadius: 2, 
               border: userData.phone === 'Not provided' ? '1px dashed #BDBDBD' : '1px solid #E0E0E0',
               transition: 'transform 0.2s, box-shadow 0.2s',
@@ -353,6 +441,50 @@ const Profile = () => {
                 }}
               >
                 {userData.phone === 'Not provided' ? 'Add Phone' : 'Edit'}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Password Security Card */}
+          <Card 
+            elevation={2} 
+            sx={{ 
+              borderRadius: 2, 
+              border: '1px solid #E0E0E0',
+              transition: 'transform 0.2s, box-shadow 0.2s',
+              '&:hover': {
+                transform: 'translateY(-2px)',
+                boxShadow: '0 6px 12px rgba(0,0,0,0.1)',
+              }
+            }}
+          >
+            <CardContent sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Security sx={{ color: '#795548', mr: 2 }} />
+                <Box>
+                  <Typography variant="subtitle2" sx={{ color: '#8D6E63', fontWeight: 500 }}>
+                    Password
+                  </Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 600, color: '#9E9E9E' }}>
+                    ••••••••••
+                  </Typography>
+                </Box>
+              </Box>
+              <Button
+                variant="contained"
+                startIcon={<LockIcon />}
+                size="small"
+                onClick={() => setOpenPasswordDialog(true)}
+                sx={{
+                  bgcolor: '#795548',
+                  color: 'white',
+                  '&:hover': {
+                    bgcolor: '#5D4037'
+                  },
+                  fontWeight: 500
+                }}
+              >
+                Change Password
               </Button>
             </CardContent>
           </Card>
@@ -465,6 +597,148 @@ const Profile = () => {
         </DialogActions>
       </Dialog>
 
+      {/* Change Password Dialog */}
+      <Dialog 
+        open={openPasswordDialog} 
+        onClose={() => setOpenPasswordDialog(false)}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.15)'
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          bgcolor: '#EFEBE9', 
+          color: '#4E342E', 
+          fontWeight: 600,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1
+        }}>
+          <Security />
+          Change Password
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
+          <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
+            Please enter your current password and choose a new secure password.
+          </Typography>
+          
+          <form onSubmit={handleChangePassword}>
+            <TextField
+              margin="dense"
+              name="currentPassword"
+              label="Current Password"
+              type={showPasswords.current ? 'text' : 'password'}
+              fullWidth
+              value={passwordForm.currentPassword}
+              onChange={handlePasswordFormChange}
+              required
+              variant="outlined"
+              sx={{ mb: 2 }}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => togglePasswordVisibility('current')}
+                      edge="end"
+                    >
+                      {showPasswords.current ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+            
+            <TextField
+              margin="dense"
+              name="newPassword"
+              label="New Password"
+              type={showPasswords.new ? 'text' : 'password'}
+              fullWidth
+              value={passwordForm.newPassword}
+              onChange={handlePasswordFormChange}
+              required
+              variant="outlined"
+              sx={{ mb: 2 }}
+              helperText="Password must be at least 8 characters long"
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => togglePasswordVisibility('new')}
+                      edge="end"
+                    >
+                      {showPasswords.new ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+            
+            <TextField
+              margin="dense"
+              name="confirmPassword"
+              label="Confirm New Password"
+              type={showPasswords.confirm ? 'text' : 'password'}
+              fullWidth
+              value={passwordForm.confirmPassword}
+              onChange={handlePasswordFormChange}
+              required
+              variant="outlined"
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => togglePasswordVisibility('confirm')}
+                      edge="end"
+                    >
+                      {showPasswords.confirm ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+            
+            {passwordError && (
+              <Alert severity="error" sx={{ mt: 2 }}>
+                {passwordError}
+              </Alert>
+            )}
+          </form>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button 
+            onClick={() => {
+              setOpenPasswordDialog(false);
+              setPasswordForm({
+                currentPassword: '',
+                newPassword: '',
+                confirmPassword: ''
+              });
+              setPasswordError('');
+            }}
+            sx={{ color: '#9E9E9E' }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleChangePassword} 
+            variant="contained"
+            disabled={passwordLoading || !passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword}
+            sx={{
+              bgcolor: '#795548',
+              '&:hover': { bgcolor: '#5D4037' },
+              px: 3
+            }}
+          >
+            {passwordLoading ? <CircularProgress size={24} /> : 'Change Password'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Missing Phone Notification */}
       <Snackbar
         open={notification}
@@ -521,6 +795,5 @@ const Profile = () => {
     </Container>
   );
 };
-
 
 export default Profile;

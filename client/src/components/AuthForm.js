@@ -10,8 +10,13 @@ import {
   InputAdornment,
   Divider,
   CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Link
 } from '@mui/material';
-import { Visibility, VisibilityOff, Google } from '@mui/icons-material';
+import { Visibility, VisibilityOff, Google, Email, ArrowBack } from '@mui/icons-material';
 import { auth, db, googleProvider } from '../Firebase/Firebase';
 import {
   createUserWithEmailAndPassword,
@@ -33,6 +38,7 @@ const terracottaTheme = {
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [form, setForm] = useState({
     name: '',
     phone: '',
@@ -40,14 +46,58 @@ export default function Auth() {
     password: '',
     confirmPassword: '',
   });
+  const [forgotEmailForm, setForgotEmailForm] = useState({ email: '' });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleForgotEmailChange = (e) => {
+    setForgotEmailForm({ ...forgotEmailForm, [e.target.name]: e.target.value });
+  };
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    setForgotPasswordLoading(true);
+
+    try {
+      const response = await fetch('/api/password-management', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'forgot-password',
+          email: forgotEmailForm.email
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setSuccess('Password reset email sent! Please check your inbox.');
+        setForgotEmailForm({ email: '' });
+        setTimeout(() => {
+          setShowForgotPassword(false);
+          setSuccess('');
+        }, 3000);
+      } else {
+        setError(data.message || 'Failed to send reset email');
+      }
+    } catch (err) {
+      console.error('Forgot password error:', err);
+      setError('An error occurred. Please try again.');
+    } finally {
+      setForgotPasswordLoading(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -365,6 +415,28 @@ export default function Auth() {
             />
           )}
 
+          {/* Forgot Password Link */}
+          {isLogin && (
+            <Box sx={{ textAlign: 'right', mt: 1 }}>
+              <Link
+                component="button"
+                type="button"
+                variant="body2"
+                onClick={() => setShowForgotPassword(true)}
+                sx={{
+                  color: terracottaTheme.primary,
+                  textDecoration: 'none',
+                  '&:hover': {
+                    color: terracottaTheme.dark,
+                    textDecoration: 'underline'
+                  }
+                }}
+              >
+                Forgot Password?
+              </Link>
+            </Box>
+          )}
+
           <Button
             type="submit"
             variant="contained"
@@ -449,6 +521,102 @@ export default function Auth() {
             : '👋 Already have an account? Click here to Login'}
         </Typography>
       </Paper>
+
+      {/* Forgot Password Dialog */}
+      <Dialog 
+        open={showForgotPassword} 
+        onClose={() => setShowForgotPassword(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            p: 2
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          textAlign: 'center',
+          color: terracottaTheme.dark,
+          pb: 1
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+            <Email sx={{ color: terracottaTheme.primary }} />
+            Reset Your Password
+          </Box>
+        </DialogTitle>
+        
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 3, textAlign: 'center', color: 'text.secondary' }}>
+            Enter your email address and we'll send you a link to reset your password.
+          </Typography>
+          
+          <form onSubmit={handleForgotPassword}>
+            <TextField
+              autoFocus
+              name="email"
+              label="Email Address"
+              type="email"
+              fullWidth
+              value={forgotEmailForm.email}
+              onChange={handleForgotEmailChange}
+              required
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  '&:hover fieldset': {
+                    borderColor: terracottaTheme.primary,
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: terracottaTheme.primary,
+                  },
+                },
+                '& .MuiInputLabel-root.Mui-focused': {
+                  color: terracottaTheme.primary,
+                },
+              }}
+            />
+            
+            {error && (
+              <Alert severity="error" sx={{ mt: 2 }}>
+                {error}
+              </Alert>
+            )}
+            {success && (
+              <Alert severity="success" sx={{ mt: 2 }}>
+                {success}
+              </Alert>
+            )}
+          </form>
+        </DialogContent>
+        
+        <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
+          <Button 
+            onClick={() => setShowForgotPassword(false)}
+            startIcon={<ArrowBack />}
+            sx={{ color: terracottaTheme.primary }}
+          >
+            Back to Login
+          </Button>
+          <Button 
+            onClick={handleForgotPassword}
+            variant="contained"
+            disabled={forgotPasswordLoading || !forgotEmailForm.email}
+            sx={{
+              backgroundColor: terracottaTheme.primary,
+              '&:hover': {
+                backgroundColor: terracottaTheme.dark,
+              },
+              px: 3
+            }}
+          >
+            {forgotPasswordLoading ? (
+              <CircularProgress size={20} color="inherit" />
+            ) : (
+              'Send Reset Link'
+            )}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
