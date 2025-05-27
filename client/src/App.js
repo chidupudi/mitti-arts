@@ -36,6 +36,7 @@ import AdminSidebar from './adminpages/components/AdminSidebar';
 
 // ScrollToTop component
 import ScrollToTop from './components/ScrollToTop';
+import SSLErrorHandler from './components/SSLErrorHandler';
 
 // Create responsive theme with mobile-first approach
 const responsiveTheme = createTheme({
@@ -352,6 +353,7 @@ const App = () => {
       <CssBaseline />
       
       <Router>
+       
         {/* ScrollToTop component - must be inside Router */}
         <ScrollToTop />
         
