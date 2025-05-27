@@ -1,4 +1,3 @@
-// Products.jsx - Complete Fixed version with no infinite loops
 import React, { 
   useState, 
   useEffect, 
@@ -7,67 +6,57 @@ import React, {
   memo
 } from 'react';
 import {
-  Box,
-  Grid,
+  Layout,
+  Row,
+  Col,
   Typography,
-  Paper,
-  TextField,
-  Button,
-  IconButton,
-  InputAdornment,
-  SwipeableDrawer,
-  Skeleton,
-  Snackbar,
-  Alert,
-  Zoom,
-  Fade,
-  useTheme,
-  useMediaQuery,
-  Container,
   Card,
-  CardMedia,
-  CardContent,
-  CardActions,
-  Chip,
-  Rating,
-  Tooltip,
+  Input,
+  Button,
+  Drawer,
+  Skeleton,
+  message,
+  Rate,
   Slider,
-  FormControl,
   Select,
-  MenuItem,
   Collapse,
   Divider,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
+  Modal,
   Avatar,
   Switch,
-  FormControlLabel,
-} from '@mui/material';
+  Space,
+  Badge,
+  Tag,
+  Tooltip,
+  InputNumber,
+  Spin,
+  Empty,
+  Affix,
+  Grid
+} from 'antd';
 import {
-  Search,
-  Close,
-  TuneOutlined,
-  ViewModule,
-  AddShoppingCart,
-  Favorite,
-  FavoriteBorder,
-  Warning,
-  InfoOutlined,
-  VisibilityOff,
-  Star,
-  StarBorder,
-  PriceChange,
-  Sort,
-  Refresh,
-  ExpandMore,
-  Add,
-  Remove,
-  ShoppingCart,
-  LocationOn,
-  FlashOn,
-} from '@mui/icons-material';
+  SearchOutlined,
+  CloseOutlined,
+  SettingOutlined,
+  AppstoreOutlined,
+  ShoppingCartOutlined,
+  HeartOutlined,
+  HeartFilled,
+  WarningOutlined,
+  InfoCircleOutlined,
+  EyeInvisibleOutlined,
+  StarFilled,
+  StarOutlined,
+  DollarOutlined,
+  SortAscendingOutlined,
+  ReloadOutlined,
+  DownOutlined,
+  PlusOutlined,
+  MinusOutlined,
+  EnvironmentOutlined,
+  ThunderboltOutlined,
+  FilterOutlined
+} from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../Firebase/Firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -82,6 +71,11 @@ import {
   useLazyImage,
   useMemoryStorage,
 } from '../hooks/useProductsOptimization';
+
+const { Title, Text, Paragraph } = Typography;
+const { Option } = Select;
+const { Panel } = Collapse;
+const { useBreakpoint } = Grid;
 
 // Terracotta color scheme
 const terracottaColors = {
@@ -99,6 +93,187 @@ const terracottaColors = {
   warning: '#FF9800',
   error: '#F44336',
 };
+
+// Custom CSS styles
+const customStyles = `
+  .products-container {
+    background-color: ${terracottaColors.background};
+    min-height: 100vh;
+    padding: 16px 0;
+  }
+
+  .products-main-wrapper {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 16px;
+  }
+
+  .products-filter-sidebar {
+    position: sticky;
+    top: 20px;
+    height: fit-content;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+    z-index: 10;
+  }
+
+  .products-grid {
+    min-height: calc(100vh - 200px);
+  }
+
+  .product-card {
+    height: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid ${terracottaColors.divider};
+    cursor: pointer;
+    position: relative;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .product-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 28px ${terracottaColors.primary}25;
+  }
+
+  .product-card.unavailable {
+    opacity: 0.75;
+  }
+
+  .product-card.unavailable:hover {
+    transform: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+
+  .product-image {
+    width: 100%;
+    height: 220px;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+  }
+
+  .product-card:hover .product-image {
+    transform: scale(1.05);
+  }
+
+  .product-card.unavailable .product-image {
+    filter: grayscale(30%);
+  }
+
+  .product-card.unavailable:hover .product-image {
+    transform: none;
+  }
+
+  .status-ribbon {
+    position: absolute;
+    top: 12px;
+    right: -25px;
+    transform: rotate(35deg);
+    width: 100px;
+    text-align: center;
+    padding: 4px 0;
+    font-size: 10px;
+    font-weight: 700;
+    color: white;
+    z-index: 2;
+    letter-spacing: 0.5px;
+  }
+
+  .status-ribbon.unavailable {
+    background-color: ${terracottaColors.warning};
+  }
+
+  .status-ribbon.out-of-stock {
+    background-color: ${terracottaColors.error};
+  }
+
+  .featured-badge {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 2;
+    margin: 0;
+    background-color: ${terracottaColors.primary};
+    color: white;
+    border: none;
+  }
+
+  .hyderabad-badge {
+    position: absolute;
+    left: 12px;
+    z-index: 2;
+    margin: 0;
+    background-color: #9C27B0;
+    color: white;
+    border: none;
+  }
+
+  .hyderabad-badge.with-featured {
+    top: 46px;
+  }
+
+  .hyderabad-badge.without-featured {
+    top: 12px;
+  }
+
+  /* Mobile responsive styles */
+  @media (max-width: 576px) {
+    .products-main-wrapper {
+      padding: 0 8px;
+    }
+    
+    .product-card .ant-card-body {
+      padding: 8px;
+    }
+    
+    .product-image {
+      height: 180px;
+    }
+    
+    .header-title {
+      font-size: 24px !important;
+      text-align: center;
+    }
+    
+    .header-description {
+      text-align: center;
+      font-size: 14px;
+    }
+    
+    .search-filter-card .ant-card-body {
+      padding: 16px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .products-main-wrapper {
+      padding: 0 12px;
+    }
+    
+    .header-title {
+      font-size: 28px !important;
+    }
+  }
+
+  /* Custom scrollbar for filter sidebar */
+  .products-filter-sidebar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .products-filter-sidebar::-webkit-scrollbar-track {
+    background: ${terracottaColors.backgroundLight};
+    border-radius: 3px;
+  }
+
+  .products-filter-sidebar::-webkit-scrollbar-thumb {
+    background: ${terracottaColors.primary};
+    border-radius: 3px;
+  }
+
+  .products-filter-sidebar::-webkit-scrollbar-thumb:hover {
+    background: ${terracottaColors.primaryDark};
+  }
+`;
 
 // Format price helper
 const formatPrice = (price) => {
@@ -125,10 +300,9 @@ const ProductCard = memo(({
   const isUnavailable = isHidden || isOutOfStock;
 
   const handleCardClick = (e) => {
-    if (e.target.closest('button') || 
-        e.target.closest('[role="button"]') || 
-        e.target.closest('.MuiIconButton-root') ||
-        e.target.closest('.MuiButton-root')) {
+    if (e.target.closest('.ant-btn') || 
+        e.target.closest('.ant-rate') ||
+        e.target.closest('[role="button"]')) {
       e.preventDefault();
       e.stopPropagation();
       return;
@@ -141,412 +315,225 @@ const ProductCard = memo(({
   const renderStockStatus = () => {
     if (isHidden) {
       return (
-        <Box sx={{ 
-          display: 'flex', 
-          alignItems: 'center',
-          mt: 1,
-          p: 0.5,
-          borderRadius: 1,
-          backgroundColor: `${terracottaColors.warning}20`,
-          color: terracottaColors.warning,
-        }}>
-          <VisibilityOff fontSize="small" sx={{ mr: 0.5 }} />
-          <Typography variant="caption" fontWeight={600}>
-            Currently Unavailable
-          </Typography>
-        </Box>
+        <Tag icon={<EyeInvisibleOutlined />} color="warning">
+          Currently Unavailable
+        </Tag>
       );
     }
 
     if (isOutOfStock) {
       return (
-        <Box sx={{ 
-          display: 'flex', 
-          alignItems: 'center',
-          mt: 1,
-          p: 0.5,
-          borderRadius: 1,
-          backgroundColor: `${terracottaColors.error}20`,
-          color: terracottaColors.error,
-        }}>
-          <Warning fontSize="small" sx={{ mr: 0.5 }} />
-          <Typography variant="caption" fontWeight={600}>
-            Out of Stock
-          </Typography>
-        </Box>
+        <Tag icon={<WarningOutlined />} color="error">
+          Out of Stock
+        </Tag>
       );
     }
 
     if (product.hyderabadOnly) {
       return (
-        <Box sx={{ 
-          display: 'flex', 
-          alignItems: 'center',
-          mt: 1,
-          p: 0.5,
-          borderRadius: 1,
-          backgroundColor: '#9C27B020',
-          color: '#9C27B0',
-        }}>
-          <LocationOn fontSize="small" sx={{ mr: 0.5 }} />
-          <Typography variant="caption" fontWeight={600}>
-            Hyderabad Only Delivery
-          </Typography>
-        </Box>
+        <Tag icon={<EnvironmentOutlined />} color="purple">
+          Hyderabad Only Delivery
+        </Tag>
       );
     }
 
     if (product.stock < 10) {
       return (
-        <Box sx={{ 
-          display: 'flex', 
-          alignItems: 'center',
-          mt: 1,
-          p: 0.5,
-          borderRadius: 1,
-          backgroundColor: `${terracottaColors.error}20`,
-          color: terracottaColors.error,
-        }}>
-          <Warning fontSize="small" sx={{ mr: 0.5 }} />
-          <Typography variant="caption" fontWeight={600}>
-            Only {product.stock} left!
-          </Typography>
-        </Box>
+        <Tag icon={<WarningOutlined />} color="error">
+          Only {product.stock} left!
+        </Tag>
       );
     }
 
     if (product.stock < 20) {
       return (
-        <Box sx={{ 
-          display: 'flex', 
-          alignItems: 'center',
-          mt: 1,
-          p: 0.5,
-          borderRadius: 1,
-          backgroundColor: `${terracottaColors.warning}20`,
-          color: terracottaColors.warning,
-        }}>
-          <InfoOutlined fontSize="small" sx={{ mr: 0.5 }} />
-          <Typography variant="caption" fontWeight={600}>
-            Few items left
-          </Typography>
-        </Box>
+        <Tag icon={<InfoCircleOutlined />} color="warning">
+          Few items left
+        </Tag>
       );
     }
 
     return (
-      <Box sx={{ 
-        display: 'flex', 
-        alignItems: 'center',
-        mt: 1,
-        p: 0.5,
-        borderRadius: 1,
-        backgroundColor: `${terracottaColors.success}20`,
-        color: terracottaColors.success,
-      }}>
-        <Typography variant="caption" fontWeight={600}>
-          In Stock
-        </Typography>
-      </Box>
+      <Tag color="success">
+        In Stock
+      </Tag>
     );
   };
 
   return (
     <Card
-      sx={{
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'relative',
-        borderRadius: 3,
-        overflow: 'hidden',
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        cursor: 'pointer',
-        border: `1px solid ${terracottaColors.divider}`,
-        opacity: isUnavailable ? 0.75 : 1,
-        
-        '&:hover': {
-          transform: isUnavailable ? 'none' : 'translateY(-4px)',
-          boxShadow: isUnavailable 
-            ? 2 
-            : `0 12px 28px ${terracottaColors.primary}25`,
-        },
-      }}
+      hoverable={!isUnavailable}
+      className={`product-card ${isUnavailable ? 'unavailable' : ''}`}
+      bodyStyle={{ padding: 0 }}
       onClick={handleCardClick}
     >
       {/* Status Ribbons */}
       {isHidden && (
-        <Box
-          sx={{
-            position: 'absolute',
-            top: 12,
-            right: -25,
-            transform: 'rotate(35deg)',
-            width: 100,
-            textAlign: 'center',
-            padding: '4px 0',
-            fontSize: '0.6rem',
-            fontWeight: 700,
-            color: 'white',
-            zIndex: 2,
-            letterSpacing: '0.5px',
-            backgroundColor: terracottaColors.warning,
-          }}
-        >
+        <div className="status-ribbon unavailable">
           UNAVAILABLE
-        </Box>
+        </div>
       )}
       {!isHidden && isOutOfStock && (
-        <Box
-          sx={{
-            position: 'absolute',
-            top: 12,
-            right: -25,
-            transform: 'rotate(35deg)',
-            width: 100,
-            textAlign: 'center',
-            padding: '4px 0',
-            fontSize: '0.6rem',
-            fontWeight: 700,
-            color: 'white',
-            zIndex: 2,
-            letterSpacing: '0.5px',
-            backgroundColor: terracottaColors.error,
-          }}
-        >
+        <div className="status-ribbon out-of-stock">
           OUT OF STOCK
-        </Box>
+        </div>
       )}
 
       {/* Featured Badge */}
       {product.isFeatured && !isUnavailable && (
-        <Chip
-          label="Featured"
-          size="small"
-          sx={{
-            position: 'absolute',
-            top: 12,
-            left: 12,
-            zIndex: 2,
-            fontWeight: 600,
-            fontSize: '0.65rem',
-            height: 20,
-            backgroundColor: terracottaColors.primary,
-            color: 'white',
-          }}
-        />
+        <Tag className="featured-badge">
+          Featured
+        </Tag>
       )}
 
       {/* Hyderabad-Only Badge */}
       {product.hyderabadOnly && !isUnavailable && (
-        <Chip
-          icon={<LocationOn fontSize="small" />}
-          label="Hyderabad Only"
-          size="small"
-          sx={{
-            position: 'absolute',
-            top: product.isFeatured ? 46 : 12,
-            left: 12,
-            zIndex: 2,
-            fontWeight: 600,
-            fontSize: '0.6rem',
-            height: 20,
-            backgroundColor: '#9C27B0',
-            color: 'white',
-            pl: 0.5,
-          }}
-        />
+        <Tag
+          icon={<EnvironmentOutlined />}
+          className={`hyderabad-badge ${product.isFeatured ? 'with-featured' : 'without-featured'}`}
+        >
+          Hyderabad Only
+        </Tag>
       )}
 
-      <CardMedia
-        ref={setImageRef}
-        component="img"
-        height="220"
-        image={imageSrc}
-        alt={product.name}
-        sx={{
-          transition: 'transform 0.3s ease',
-          filter: isUnavailable ? 'grayscale(30%)' : 'none',
-          objectFit: 'cover',
-          
-          '&:hover': {
-            transform: isUnavailable ? 'none' : 'scale(1.05)',
-          },
-        }}
-      />
+      <div style={{ position: 'relative' }}>
+        <img
+          ref={setImageRef}
+          src={imageSrc}
+          alt={product.name}
+          className="product-image"
+        />
+      </div>
 
-      <CardContent sx={{ 
-        flexGrow: 1, 
-        p: 2,
-      }}>
-        <Typography 
-          variant="h6" 
-          noWrap 
-          sx={{ 
-            fontWeight: 600, 
-            mb: 1,
-            fontSize: '1rem',
+      <div style={{ padding: '16px' }}>
+        <Title 
+          level={5} 
+          ellipsis={{ rows: 1 }}
+          style={{ 
+            marginBottom: '8px',
+            fontSize: '16px',
             lineHeight: 1.3,
           }}
         >
           {product.name}
-        </Typography>
+        </Title>
 
         {/* Rating */}
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-          <Rating
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+          <Rate
             value={parseFloat(product.rating || 0)}
-            readOnly
-            precision={0.1}
-            size="small"
-            icon={<Star fontSize="inherit" />}
-            emptyIcon={<StarBorder fontSize="inherit" />}
-            sx={{
-              '& .MuiRating-iconFilled': {
-                color: terracottaColors.primary,
-              },
-            }}
+            disabled
+            allowHalf
+            style={{ fontSize: '14px', color: terracottaColors.primary }}
           />
-          <Typography 
-            variant="body2" 
-            color="text.secondary" 
-            sx={{ ml: 1, fontSize: '0.75rem' }}
+          <Text 
+            type="secondary" 
+            style={{ marginLeft: '8px', fontSize: '12px' }}
           >
             {product.rating} ({product.reviews || 0})
-          </Typography>
-        </Box>
+          </Text>
+        </div>
 
         {/* Price */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1, flexWrap: 'wrap' }}>
-          <Typography 
-            variant="h6" 
-            sx={{ 
-              fontWeight: 700, 
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
+          <Text 
+            strong 
+            style={{ 
+              fontSize: '20px',
               color: terracottaColors.primary,
-              fontSize: '1.25rem',
             }}
           >
             {formatPrice(product.price)}
-          </Typography>
+          </Text>
           {product.originalPrice > product.price && (
             <>
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ 
-                  textDecoration: 'line-through',
-                  fontSize: '0.875rem',
-                }}
+              <Text
+                delete
+                type="secondary"
+                style={{ fontSize: '14px' }}
               >
                 {formatPrice(product.originalPrice)}
-              </Typography>
-              <Chip
-                label={`${product.discount}% OFF`}
-                size="small"
-                sx={{
-                  height: 18,
-                  fontSize: '0.6rem',
-                  fontWeight: 600,
-                  backgroundColor: terracottaColors.error,
-                  color: 'white',
-                }}
-              />
+              </Text>
+              <Tag color="error" style={{ margin: 0, fontSize: '10px' }}>
+                {product.discount}% OFF
+              </Tag>
             </>
           )}
-        </Box>
+        </div>
 
         {/* Stock Status */}
-        {renderStockStatus()}
+        <div style={{ marginTop: '8px' }}>
+          {renderStockStatus()}
+        </div>
 
         {/* Product Code */}
-        <Typography 
-          variant="caption" 
-          color="text.secondary"
-          sx={{ 
+        <Text 
+          type="secondary"
+          style={{ 
             display: 'block', 
-            mt: 1,
-            fontSize: '0.7rem',
+            marginTop: '8px',
+            fontSize: '11px',
           }}
         >
           Code: {product.code}
-        </Typography>
-      </CardContent>
+        </Text>
+      </div>
 
-      {/* CardActions */}
-      <CardActions sx={{ 
-        p: 2, 
-        pt: 0, 
-        flexDirection: 'column', 
-        gap: 1,
+      {/* Card Actions */}
+      <div style={{ 
+        padding: '16px', 
+        paddingTop: 0, 
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '8px',
       }}>
         {/* Add to Cart Button */}
         <Button
-          variant="contained"
-          startIcon={<AddShoppingCart />}
+          type="primary"
+          icon={<ShoppingCartOutlined />}
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
             onAddToCart(product);
           }}
           disabled={isUnavailable}
-          fullWidth
-          sx={{
-            borderRadius: 2,
-            py: 1.5,
+          block
+          style={{
+            borderRadius: '8px',
+            height: '40px',
             fontWeight: 600,
-            fontSize: '0.875rem',
+            fontSize: '14px',
             backgroundColor: terracottaColors.primary,
-            '&:hover': {
-              backgroundColor: terracottaColors.primaryDark,
-            },
-            ...(isUnavailable && {
-              backgroundColor: 'grey.300',
-              color: 'grey.600',
-              '&:hover': {
-                backgroundColor: 'grey.300',
-              },
-            }),
+            borderColor: terracottaColors.primary,
           }}
         >
           {isOutOfStock ? 'Out of Stock' : isHidden ? 'Unavailable' : 'Add to Cart'}
         </Button>
 
         {/* Buy Now and Wishlist Row */}
-        <Box sx={{ 
+        <div style={{ 
           display: 'flex', 
-          gap: 1, 
+          gap: '8px', 
           width: '100%',
         }}>
           {/* Buy Now Button */}
           <Button
-            variant="contained"
-            startIcon={<FlashOn />}
+            type="primary"
+            icon={<ThunderboltOutlined />}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
               onBuyNow(product);
             }}
             disabled={isUnavailable}
-            sx={{
+            style={{
               flex: 1,
-              borderRadius: 2,
-              py: 1.5,
+              borderRadius: '8px',
+              height: '40px',
               fontWeight: 600,
-              fontSize: '0.85rem',
+              fontSize: '14px',
               background: `linear-gradient(135deg, ${terracottaColors.success} 0%, #4CAF50 100%)`,
-              color: 'white',
-              '&:hover': {
-                background: `linear-gradient(135deg, #4CAF50 0%, #388E3C 100%)`,
-              },
-              ...(isUnavailable && {
-                backgroundColor: 'grey.300',
-                color: 'grey.600',
-                background: 'grey.300',
-                '&:hover': {
-                  backgroundColor: 'grey.300',
-                  background: 'grey.300',
-                },
-              }),
+              borderColor: terracottaColors.success,
             }}
           >
             Buy Now
@@ -554,30 +541,23 @@ const ProductCard = memo(({
 
           {/* Wishlist Button */}
           <Tooltip title={isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}>
-            <IconButton
+            <Button
+              icon={isInWishlist ? <HeartFilled /> : <HeartOutlined />}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 onToggleWishlist(product);
               }}
-              sx={{
-                border: '1px solid',
+              style={{
+                borderRadius: '8px',
+                height: '40px',
                 borderColor: isInWishlist ? terracottaColors.error : terracottaColors.divider,
-                borderRadius: 2,
-                p: 1.5,
-                transition: 'all 0.2s ease',
-                color: isInWishlist ? terracottaColors.error : 'default',
-                '&:hover': {
-                  transform: 'scale(1.1)',
-                  backgroundColor: isInWishlist ? `${terracottaColors.error}10` : `${terracottaColors.primary}10`,
-                },
+                color: isInWishlist ? terracottaColors.error : 'inherit',
               }}
-            >
-              {isInWishlist ? <Favorite /> : <FavoriteBorder />}
-            </IconButton>
+            />
           </Tooltip>
-        </Box>
-      </CardActions>
+        </div>
+      </div>
     </Card>
   );
 });
@@ -591,241 +571,144 @@ const FilterPanel = memo(({
   hyderabadOnly,
   setHyderabadOnly,
   onResetFilters,
-  expanded,
-  onToggleSection
 }) => {
-  const sections = [
+  const filterSections = [
     {
-      key: 'price',
-      title: 'Price Range',
-      icon: <PriceChange sx={{ color: terracottaColors.primary }} />,
-      content: (
-        <Box>
+      key: '1',
+      label: (
+        <span>
+          <DollarOutlined style={{ color: terracottaColors.primary, marginRight: 8 }} />
+          Price Range
+        </span>
+      ),
+      children: (
+        <div>
           <Slider
+            range
             value={priceRange}
-            onChange={(e, newValue) => setPriceRange(newValue)}
+            onChange={setPriceRange}
             min={1}
             max={5000}
             step={50}
-            valueLabelDisplay="auto"
-            valueLabelFormat={formatPrice}
-            sx={{
-              mb: 2,
-              '& .MuiSlider-thumb': {
-                backgroundColor: terracottaColors.primary,
-                border: `2px solid white`,
-                boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
-                '&:focus, &:hover, &.Mui-active': {
-                  boxShadow: `0 3px 8px ${terracottaColors.primary}50`,
-                },
-              },
-              '& .MuiSlider-track': {
-                backgroundColor: terracottaColors.primary,
-                border: 'none',
-              },
-              '& .MuiSlider-rail': {
-                backgroundColor: terracottaColors.divider,
-              },
-              '& .MuiSlider-valueLabel': {
-                backgroundColor: terracottaColors.primary,
-                '&:before': {
-                  borderColor: terracottaColors.primary,
-                },
-              },
+            tooltip={{
+              formatter: formatPrice
             }}
+            style={{ marginBottom: '16px' }}
           />
-          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-            <Typography variant="body2" color="text.secondary">
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <Text type="secondary">
               Min: {formatPrice(priceRange[0])}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
+            </Text>
+            <Text type="secondary">
               Max: {formatPrice(priceRange[1])}
-            </Typography>
-          </Box>
-        </Box>
+            </Text>
+          </div>
+        </div>
       ),
     },
     {
-      key: 'sort',
-      title: 'Sort By',
-      icon: <Sort sx={{ color: terracottaColors.primary }} />,
-      content: (
-        <FormControl fullWidth>
-          <Select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            variant="outlined"
-            sx={{ 
-              borderRadius: 2,
-              '& .MuiOutlinedInput-notchedOutline': {
-                borderColor: `${terracottaColors.primary}30`,
-              },
-              '&:hover .MuiOutlinedInput-notchedOutline': {
-                borderColor: terracottaColors.primary,
-              },
-              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                borderColor: terracottaColors.primary,
-              },
-            }}
-          >
-            <MenuItem value="relevance">Relevance (Hyderabad First)</MenuItem>
-            <MenuItem value="priceLowToHigh">Price: Low to High</MenuItem>
-            <MenuItem value="priceHighToLow">Price: High to Low</MenuItem>
-            <MenuItem value="alphabetical">Alphabetical</MenuItem>
-            <MenuItem value="rating">Rating</MenuItem>
-            <MenuItem value="newest">Newest First</MenuItem>
-            <MenuItem value="featured">Featured First</MenuItem>
-            <MenuItem value="discount">Best Discounts</MenuItem>
-          </Select>
-        </FormControl>
+      key: '2',
+      label: (
+        <span>
+          <SortAscendingOutlined style={{ color: terracottaColors.primary, marginRight: 8 }} />
+          Sort By
+        </span>
+      ),
+      children: (
+        <Select
+          value={sortBy}
+          onChange={setSortBy}
+          style={{ width: '100%' }}
+        >
+          <Option value="relevance">Relevance (Hyderabad First)</Option>
+          <Option value="priceLowToHigh">Price: Low to High</Option>
+          <Option value="priceHighToLow">Price: High to Low</Option>
+          <Option value="alphabetical">Alphabetical</Option>
+          <Option value="rating">Rating</Option>
+          <Option value="newest">Newest First</Option>
+          <Option value="featured">Featured First</Option>
+          <Option value="discount">Best Discounts</Option>
+        </Select>
       ),
     },
     {
-      key: 'location',
-      title: 'Delivery Location',
-      icon: <LocationOn sx={{ color: terracottaColors.primary }} />,
-      content: (
-        <Box>
-          <Paper
-            elevation={0}
-            sx={{
-              p: 2,
-              borderRadius: 2,
-              border: `1px dashed ${terracottaColors.primary}50`,
-              backgroundColor: `${terracottaColors.primary}08`,
-              mb: 1,
-            }}
-          >
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={hyderabadOnly}
-                  onChange={(e) => setHyderabadOnly(e.target.checked)}
-                  sx={{
-                    '& .MuiSwitch-switchBase.Mui-checked': {
-                      color: terracottaColors.primary,
-                      '&:hover': {
-                        backgroundColor: `${terracottaColors.primary}20`,
-                      },
-                    },
-                    '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                      backgroundColor: terracottaColors.primary,
-                    },
-                  }}
-                />
-              }
-              label={
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Typography variant="body1" fontWeight={600}>
-                    Hyderabad Only
-                  </Typography>
-                  <Chip
-                    label="Local"
-                    size="small"
-                    sx={{
-                      ml: 1,
-                      backgroundColor: hyderabadOnly ? terracottaColors.primary : `${terracottaColors.primary}30`,
-                      color: hyderabadOnly ? 'white' : terracottaColors.primary,
-                      fontWeight: 600,
-                      height: 18,
-                      fontSize: '0.6rem',
-                    }}
-                  />
-                </Box>
-              }
+      key: '3',
+      label: (
+        <span>
+          <EnvironmentOutlined style={{ color: terracottaColors.primary, marginRight: 8 }} />
+          Delivery Location
+        </span>
+      ),
+      children: (
+        <div
+          style={{
+            padding: '16px',
+            borderRadius: '8px',
+            border: `1px dashed ${terracottaColors.primary}50`,
+            backgroundColor: `${terracottaColors.primary}08`,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <Text strong>Hyderabad Only</Text>
+              <Tag 
+                style={{ 
+                  marginLeft: 8,
+                  backgroundColor: hyderabadOnly ? terracottaColors.primary : `${terracottaColors.primary}30`,
+                  color: hyderabadOnly ? 'white' : terracottaColors.primary,
+                  border: 'none'
+                }}
+              >
+                Local
+              </Tag>
+            </div>
+            <Switch
+              checked={hyderabadOnly}
+              onChange={setHyderabadOnly}
             />
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              Show only products available for delivery within Hyderabad city limits
-            </Typography>
-          </Paper>
-        </Box>
+          </div>
+          <Text type="secondary" style={{ marginTop: '8px', display: 'block' }}>
+            Show only products available for delivery within Hyderabad city limits
+          </Text>
+        </div>
       ),
     },
   ];
 
   return (
-    <Box>
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+    <div>
+      <div style={{ marginBottom: '24px' }}>
+        <Title level={4} style={{ fontWeight: 700, marginBottom: '8px' }}>
           Filters
-        </Typography>
-        <Divider sx={{ borderColor: terracottaColors.divider }} />
-      </Box>
+        </Title>
+        <Divider style={{ margin: 0 }} />
+      </div>
 
-      {sections.map((section) => (
-        <Paper
-          key={section.key}
-          elevation={0}
-          sx={{
-            mb: 2,
-            borderRadius: 2,
-            border: `1px solid ${terracottaColors.divider}`,
-            overflow: 'hidden',
-          }}
-        >
-          <Box
-            sx={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: 2,
-              cursor: 'pointer',
-              transition: 'background-color 0.2s ease',
-              '&:hover': {
-                backgroundColor: `${terracottaColors.primary}08`,
-              },
-            }}
-            onClick={() => onToggleSection(section.key)}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              {section.icon}
-              <Typography variant="subtitle1" fontWeight={600}>
-                {section.title}
-              </Typography>
-            </Box>
-            <IconButton
-              size="small"
-              sx={{
-                transform: expanded[section.key] ? 'rotate(180deg)' : 'rotate(0deg)',
-                transition: 'transform 0.2s ease',
-              }}
-            >
-              <ExpandMore />
-            </IconButton>
-          </Box>
-          
-          <Collapse in={expanded[section.key]} timeout="auto" unmountOnExit>
-            <Box sx={{ p: 2, pt: 0 }}>
-              {section.content}
-            </Box>
-          </Collapse>
-        </Paper>
-      ))}
+      <Collapse
+        defaultActiveKey={['1', '2', '3']}
+        ghost
+        expandIconPosition="right"
+        items={filterSections}
+      />
 
       <Button
-        variant="outlined"
-        fullWidth
-        startIcon={<Refresh />}
+        type="default"
+        icon={<ReloadOutlined />}
         onClick={onResetFilters}
-        sx={{
-          mt: 2,
-          py: 1.5,
-          borderRadius: 2,
+        block
+        style={{
+          marginTop: '16px',
+          height: '40px',
+          borderRadius: '8px',
           fontWeight: 600,
           borderWidth: 2,
           borderColor: terracottaColors.primary,
           color: terracottaColors.primary,
-          '&:hover': {
-            borderWidth: 2,
-            backgroundColor: terracottaColors.primaryLight,
-            color: 'white',
-            borderColor: terracottaColors.primaryLight,
-          },
         }}
       >
         Reset Filters
       </Button>
-    </Box>
+    </div>
   );
 });
 
@@ -846,14 +729,14 @@ const QuantityModal = ({
     }
   }, [open]);
 
-  const handleQuantityChange = (newQuantity) => {
-    if (newQuantity < 1) return;
-    if (newQuantity > product.stock) {
+  const handleQuantityChange = (value) => {
+    if (value < 1) return;
+    if (value > product.stock) {
       setError(`Only ${product.stock} items available`);
       return;
     }
     setError('');
-    setQuantity(newQuantity);
+    setQuantity(value);
   };
 
   const handleConfirm = () => {
@@ -867,362 +750,304 @@ const QuantityModal = ({
   const totalPrice = product.price * quantity;
 
   return (
-    <Dialog
+    <Modal
+      title={
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontWeight: 700 }}>Add to Cart</span>
+        </div>
+      }
       open={open}
-      onClose={onClose}
-      maxWidth="sm"
-      fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: 3,
-          maxWidth: 500,
-          m: 3,
-        },
-      }}
+      onCancel={onClose}
+      footer={null}
+      width={500}
+      centered
     >
-      <DialogTitle>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h6" fontWeight={700}>
-            Add to Cart
-          </Typography>
-          <IconButton onClick={onClose} size="small">
-            <Close />
-          </IconButton>
-        </Box>
-      </DialogTitle>
-
-      <DialogContent sx={{ px: 3 }}>
-        {/* Product Information */}
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2,
-            p: 2,
-            backgroundColor: `${terracottaColors.primary}08`,
-            borderRadius: 2,
-            mt: 1,
-          }}
-        >
-          <Avatar
-            src={product.imgUrl}
-            alt={product.name}
-            variant="rounded"
-            sx={{ width: 80, height: 80 }}
-          />
-          <Box sx={{ flexGrow: 1 }}>
-            <Typography variant="h6" fontWeight={600} sx={{ mb: 0.5, lineHeight: 1.3 }}>
-              {product.name}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              Code: {product.code}
-            </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-              <Typography 
-                variant="h6" 
-                fontWeight={700} 
-                sx={{ color: terracottaColors.primary }}
-              >
-                {formatPrice(product.price)}
-              </Typography>
-              {product.originalPrice > product.price && (
-                <>
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ textDecoration: 'line-through' }}
-                  >
-                    {formatPrice(product.originalPrice)}
-                  </Typography>
-                  <Chip
-                    label={`${product.discount}% OFF`}
-                    size="small"
-                    sx={{
-                      height: 18,
-                      fontSize: '0.6rem',
-                      backgroundColor: terracottaColors.error,
-                      color: 'white',
-                    }}
-                  />
-                </>
-              )}
-            </Box>
-          </Box>
-        </Box>
-
-        {/* Stock Information */}
-        <Box sx={{ mt: 2 }}>
-          <Typography variant="body2" color="text.secondary">
-            Availability: {' '}
-            <Typography
-              component="span"
-              variant="body2"
-              color={product.stock > 10 ? terracottaColors.success : product.stock > 0 ? terracottaColors.warning : terracottaColors.error}
-              fontWeight={600}
+      {/* Product Information */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px',
+          padding: '16px',
+          backgroundColor: `${terracottaColors.primary}08`,
+          borderRadius: '8px',
+          marginTop: '8px',
+        }}
+      >
+        <Avatar
+          src={product.imgUrl}
+          alt={product.name}
+          shape="square"
+          size={80}
+        />
+        <div style={{ flexGrow: 1 }}>
+          <Title level={4} style={{ marginBottom: '4px', lineHeight: 1.3 }}>
+            {product.name}
+          </Title>
+          <Text type="secondary" style={{ marginBottom: '8px', display: 'block' }}>
+            Code: {product.code}
+          </Text>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <Text 
+              strong 
+              style={{ 
+                fontSize: '20px',
+                color: terracottaColors.primary 
+              }}
             >
-              {product.stock > 10 
-                ? 'In Stock' 
-                : product.stock > 0 
-                  ? `Only ${product.stock} left!`
-                  : 'Out of Stock'
-              }
-            </Typography>
-          </Typography>
-          
-          {product.hyderabadOnly && (
-            <Box sx={{ 
-              mt: 1, 
-              display: 'flex', 
-              alignItems: 'center',
-              color: '#9C27B0'
-            }}>
-              <LocationOn fontSize="small" sx={{ mr: 0.5 }} />
-              <Typography variant="body2" fontWeight={600}>
-                Available for delivery in Hyderabad only
-              </Typography>
-            </Box>
-          )}
-        </Box>
+              {formatPrice(product.price)}
+            </Text>
+            {product.originalPrice > product.price && (
+              <>
+                <Text
+                  delete
+                  type="secondary"
+                >
+                  {formatPrice(product.originalPrice)}
+                </Text>
+                <Tag color="error">
+                  {product.discount}% OFF
+                </Tag>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
 
-        <Divider sx={{ my: 2 }} />
-
-        {/* Quantity Selection */}
-        <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2 }}>
-          Select Quantity
-        </Typography>
-
-        <Box sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: 2, 
-          mb: 2,
-          justifyContent: 'center',
-        }}>
-          <IconButton
-            onClick={() => handleQuantityChange(quantity - 1)}
-            disabled={quantity <= 1}
-            sx={{
-              border: `2px solid ${terracottaColors.primary}`,
-              borderRadius: 1.5,
-              width: 40,
-              height: 40,
-              color: terracottaColors.primary,
-              '&:hover': {
-                backgroundColor: terracottaColors.primaryLight,
-                color: 'white',
-              },
-              '&:disabled': {
-                borderColor: 'action.disabled',
-                color: 'action.disabled',
-              },
+      {/* Stock Information */}
+      <div style={{ marginTop: '16px' }}>
+        <Text type="secondary">
+          Availability: {' '}
+          <Text
+            style={{
+              color: product.stock > 10 ? terracottaColors.success : product.stock > 0 ? terracottaColors.warning : terracottaColors.error,
+              fontWeight: 600
             }}
           >
-            <Remove />
-          </IconButton>
-
-          <TextField
-            value={quantity}
-            onChange={(e) => {
-              const value = parseInt(e.target.value) || 1;
-              handleQuantityChange(value);
-            }}
-            inputProps={{
-              min: 1,
-              max: product.stock,
-              style: { textAlign: 'center', fontWeight: 600, fontSize: '18px' }
-            }}
-            sx={{
-              width: 100,
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 1.5,
-                fontWeight: 600,
-                height: 40,
-                '& fieldset': {
-                  borderColor: `${terracottaColors.primary}50`,
-                },
-                '&:hover fieldset': {
-                  borderColor: terracottaColors.primary,
-                },
-                '&.Mui-focused fieldset': {
-                  borderColor: terracottaColors.primary,
-                },
-              },
-            }}
-          />
-
-          <IconButton
-            onClick={() => handleQuantityChange(quantity + 1)}
-            disabled={quantity >= product.stock}
-            sx={{
-              border: `2px solid ${terracottaColors.primary}`,
-              borderRadius: 1.5,
-              width: 40,
-              height: 40,
-              color: terracottaColors.primary,
-              '&:hover': {
-                backgroundColor: terracottaColors.primaryLight,
-                color: 'white',
-              },
-              '&:disabled': {
-                borderColor: 'action.disabled',
-                color: 'action.disabled',
-              },
-            }}
-          >
-            <Add />
-          </IconButton>
-        </Box>
-
-        {error && (
-          <Typography 
-            variant="body2" 
-            sx={{ 
-              mt: 1, 
-              color: terracottaColors.error,
-              textAlign: 'center',
-            }}
-          >
-            {error}
-          </Typography>
-        )}
-
-        {/* Price Summary */}
-        <Box
-          sx={{
-            display: 'flex',
+            {product.stock > 10 
+              ? 'In Stock' 
+              : product.stock > 0 
+                ? `Only ${product.stock} left!`
+                : 'Out of Stock'
+            }
+          </Text>
+        </Text>
+        
+        {product.hyderabadOnly && (
+          <div style={{ 
+            marginTop: '8px', 
+            display: 'flex', 
             alignItems: 'center',
-            justifyContent: 'space-between',
-            p: 2,
-            backgroundColor: `${terracottaColors.primary}15`,
-            borderRadius: 1.5,
-            border: `1px solid ${terracottaColors.primary}30`,
-            mt: 2,
-            flexDirection: { xs: 'column', sm: 'row' },
-            gap: { xs: 1, sm: 0 },
+            color: '#9C27B0'
+          }}>
+            <EnvironmentOutlined style={{ marginRight: '4px' }} />
+            <Text style={{ fontWeight: 600, color: '#9C27B0' }}>
+              Available for delivery in Hyderabad only
+            </Text>
+          </div>
+        )}
+      </div>
+
+      <Divider />
+
+      {/* Quantity Selection */}
+      <Title level={5} style={{ marginBottom: '16px' }}>
+        Select Quantity
+      </Title>
+
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: '16px', 
+        marginBottom: '16px',
+        justifyContent: 'center',
+      }}>
+        <Button
+          icon={<MinusOutlined />}
+          onClick={() => handleQuantityChange(quantity - 1)}
+          disabled={quantity <= 1}
+          style={{
+            borderColor: terracottaColors.primary,
+            color: terracottaColors.primary,
+            borderRadius: '6px',
+            width: 40,
+            height: 40,
+          }}
+        />
+
+        <InputNumber
+          value={quantity}
+          onChange={handleQuantityChange}
+          min={1}
+          max={product.stock}
+          style={{
+            width: 100,
+            textAlign: 'center',
+            fontWeight: 600,
+            fontSize: '18px'
+          }}
+        />
+
+        <Button
+          icon={<PlusOutlined />}
+          onClick={() => handleQuantityChange(quantity + 1)}
+          disabled={quantity >= product.stock}
+          style={{
+            borderColor: terracottaColors.primary,
+            color: terracottaColors.primary,
+            borderRadius: '6px',
+            width: 40,
+            height: 40,
+          }}
+        />
+      </div>
+
+      {error && (
+        <Text 
+          type="danger" 
+          style={{ 
+            display: 'block',
+            textAlign: 'center',
+            marginTop: '8px'
           }}
         >
-          <Box sx={{ textAlign: 'center' }}>
-            <Typography variant="body2" color="text.secondary">
-              Total Amount
-            </Typography>
-            <Typography 
-              variant="h5" 
-              fontWeight={700} 
-              sx={{ color: terracottaColors.primary }}
+          {error}
+        </Text>
+      )}
+
+      {/* Price Summary */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '16px',
+          backgroundColor: `${terracottaColors.primary}15`,
+          borderRadius: '6px',
+          border: `1px solid ${terracottaColors.primary}30`,
+          marginTop: '16px',
+        }}
+      >
+        <div style={{ textAlign: 'center' }}>
+          <Text type="secondary">Total Amount</Text>
+          <div>
+            <Text 
+              strong 
+              style={{ 
+                fontSize: '24px',
+                color: terracottaColors.primary 
+              }}
             >
               {formatPrice(totalPrice)}
-            </Typography>
-          </Box>
-          <Box sx={{ textAlign: 'center' }}>
-            <Typography variant="body2" color="text.secondary">
-              {quantity} × {formatPrice(product.price)}
-            </Typography>
-            {product.originalPrice > product.price && (
-              <Typography 
-                variant="body2" 
-                fontWeight={600} 
-                sx={{ color: terracottaColors.success }}
+            </Text>
+          </div>
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <Text type="secondary">
+            {quantity} × {formatPrice(product.price)}
+          </Text>
+          {product.originalPrice > product.price && (
+            <div>
+              <Text 
+                style={{ 
+                  fontWeight: 600,
+                  color: terracottaColors.success 
+                }}
               >
                 You save {formatPrice((product.originalPrice - product.price) * quantity)}
-              </Typography>
-            )}
-          </Box>
-        </Box>
-      </DialogContent>
+              </Text>
+            </div>
+          )}
+        </div>
+      </div>
 
-      <DialogActions sx={{ 
-        px: 3, 
-        pb: 3, 
-        pt: 1,
-        gap: 1,
+      {/* Modal Actions */}
+      <div style={{ 
+        marginTop: '24px',
+        display: 'flex',
         flexDirection: 'column',
+        gap: '8px'
       }}>
         <Button
           onClick={onClose}
-          variant="outlined"
-          fullWidth
-          sx={{ 
-            borderRadius: 2,
-            px: 3,
-            py: 1,
+          style={{ 
+            borderRadius: '8px',
+            height: '40px',
             fontWeight: 600,
             borderColor: terracottaColors.primary,
             color: terracottaColors.primary,
-            '&:hover': {
-              borderColor: terracottaColors.primaryDark,
-              backgroundColor: `${terracottaColors.primary}08`,
-            },
           }}
+          block
         >
           Cancel
         </Button>
         <Button
+          type="primary"
+          icon={<ShoppingCartOutlined />}
           onClick={handleConfirm}
-          variant="contained"
-          startIcon={<ShoppingCart />}
           disabled={quantity > product.stock || product.stock === 0}
-          fullWidth
-          sx={{
-            borderRadius: 2,
-            px: 3,
-            py: 1,
+          style={{
+            borderRadius: '8px',
+            height: '40px',
             fontWeight: 600,
             backgroundColor: terracottaColors.primary,
-            boxShadow: `0 4px 12px ${terracottaColors.primary}30`,
-            '&:hover': {
-              backgroundColor: terracottaColors.primaryDark,
-            },
+            borderColor: terracottaColors.primary,
           }}
+          block
         >
           Add to Cart
         </Button>
-      </DialogActions>
-    </Dialog>
+      </div>
+    </Modal>
   );
 };
 
 // Loading skeleton component
 const ProductSkeleton = () => {
+  const screens = useBreakpoint();
+  
+  // Responsive grid based on screen size
+  const getGridCols = () => {
+    if (!screens.sm) return { xs: 24 }; // 1 column on mobile
+    if (!screens.md) return { xs: 24, sm: 12 }; // 2 columns on small screens
+    if (!screens.lg) return { xs: 24, sm: 12, md: 8 }; // 3 columns on medium screens
+    return { xs: 24, sm: 12, md: 8, lg: 6 }; // 4 columns on large screens
+  };
+
+  const gridCols = getGridCols();
+
   return (
-    <Grid container spacing={3}>
+    <Row gutter={[16, 16]}>
       {Array(8).fill(0).map((_, index) => (
-        <Grid item xs={12} sm={6} md={4} lg={3} key={index}>
-          <Paper sx={{ 
-            p: 0, 
-            borderRadius: 3, 
-            overflow: 'hidden',
-            border: `1px solid ${terracottaColors.divider}`,
-          }}>
-            <Skeleton 
-              variant="rectangular" 
-              height={220}
-              sx={{ backgroundColor: `${terracottaColors.primaryLight}20` }}
+        <Col {...gridCols} key={index}>
+          <Card
+            className="product-card"
+            bodyStyle={{ padding: 0 }}
+          >
+            <Skeleton.Image 
+              style={{ width: '100%', height: '220px' }}
+              active
             />
-            <Box sx={{ p: 2 }}>
-              <Skeleton variant="text" width="80%" height={24} />
-              <Skeleton variant="text" width="60%" height={20} />
-              <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-                <Skeleton variant="text" width="30%" height={20} />
-                <Skeleton variant="text" width="25%" height={20} />
-              </Box>
-              <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
-                <Skeleton variant="rectangular" height={44} sx={{ flexGrow: 1 }} />
-                <Skeleton variant="rectangular" width={44} height={44} />
-              </Box>
-            </Box>
-          </Paper>
-        </Grid>
+            <div style={{ padding: '16px' }}>
+              <Skeleton active paragraph={{ rows: 3 }} />
+              <div style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
+                <Skeleton.Button style={{ flexGrow: 1, height: '40px' }} active />
+                <Skeleton.Button style={{ width: '40px', height: '40px' }} active />
+              </div>
+            </div>
+          </Card>
+        </Col>
       ))}
-    </Grid>
+    </Row>
   );
 };
 
-// Main Products Component - FIXED VERSION
+// Main Products Component
 const Products = () => {
-  const theme = useTheme();
   const navigate = useNavigate();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
+  const screens = useBreakpoint();
+  const isMobile = !screens.md;
+  const isSmallScreen = !screens.sm;
   
   // State
   const [user, setUser] = useState(null);
@@ -1231,18 +1056,8 @@ const Products = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [hyderabadOnly, setHyderabadOnly] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [expanded, setExpanded] = useState({
-    price: true,
-    sort: true,
-    location: true,
-  });
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: '',
-    severity: 'success',
-  });
 
   // Use FIXED optimization hooks
   const { products, loading: productsLoading, error: productsError } = useProducts();
@@ -1256,9 +1071,9 @@ const Products = () => {
     sortBy,
     hyderabadOnly,
     hideOutOfStock: false,
-  }), [priceRange[0], priceRange[1], sortBy, hyderabadOnly]); // Stable dependencies
+  }), [priceRange[0], priceRange[1], sortBy, hyderabadOnly]);
 
-  // Search and filter with Hyderabad priority - FIXED
+  // Search and filter with Hyderabad priority
   const { 
     products: filteredProducts, 
     totalCount, 
@@ -1274,20 +1089,30 @@ const Products = () => {
     return unsubscribe;
   }, []);
 
+  // Responsive grid configuration
+  const getProductGridCols = () => {
+    if (!screens.sm) return { xs: 24 }; // 1 column on mobile (< 576px)
+    if (!screens.md) return { xs: 24, sm: 12 }; // 2 columns on small screens (576px - 768px)
+    if (!screens.lg) return { xs: 24, sm: 12, md: 8 }; // 3 columns on medium screens (768px - 992px)
+    if (!screens.xl) return { xs: 24, sm: 12, md: 8, lg: 6 }; // 4 columns on large screens (992px - 1200px)
+    return { xs: 24, sm: 12, md: 6, lg: 6, xl: 6 }; // 4 columns on extra large screens (> 1200px)
+  };
+
+  const productGridCols = getProductGridCols();
+
   // Stable callbacks to prevent infinite loops
-  const showSnackbar = useCallback((message, severity = 'success') => {
-    setSnackbar({ open: true, message, severity });
+  const showMessage = useCallback((content, type = 'success') => {
+    message[type](content);
   }, []);
 
   const handleProductClick = useCallback((id, code) => {
     console.log('Product clicked:', { id, code });
-    // Force page navigation to fix routing issue
     window.location.href = `/product/${id}?code=${code}`;
   }, []);
 
   const handleAddToCart = useCallback(async (product) => {
     if (product.hidden || product.stock === 0) {
-      showSnackbar(
+      showMessage(
         product.hidden ? 'This product is currently unavailable.' : 'This product is out of stock.',
         'warning'
       );
@@ -1295,18 +1120,18 @@ const Products = () => {
     }
 
     if (!user) {
-      showSnackbar('Please log in to add items to cart.', 'warning');
+      showMessage('Please log in to add items to cart.', 'warning');
       setTimeout(() => navigate('/auth'), 1500);
       return;
     }
 
     setSelectedProduct(product);
     setModalOpen(true);
-  }, [user, navigate, showSnackbar]);
+  }, [user, navigate, showMessage]);
 
   const handleBuyNow = useCallback(async (product) => {
     if (product.hidden || product.stock === 0) {
-      showSnackbar(
+      showMessage(
         product.hidden ? 'This product is currently unavailable.' : 'This product is out of stock.',
         'warning'
       );
@@ -1314,7 +1139,7 @@ const Products = () => {
     }
 
     if (!user) {
-      showSnackbar('Please log in to purchase items.', 'warning');
+      showMessage('Please log in to purchase items.', 'warning');
       setTimeout(() => navigate('/auth'), 1500);
       return;
     }
@@ -1322,22 +1147,22 @@ const Products = () => {
     try {
       const result = await addToCart(product, 1);
       if (result.success) {
-        showSnackbar(result.message, 'success');
+        showMessage(result.message, 'success');
         setTimeout(() => {
           navigate('/cart');
         }, 1000);
       } else {
-        showSnackbar(result.message, 'error');
+        showMessage(result.message, 'error');
       }
     } catch (error) {
       console.error('Error in Buy Now:', error);
-      showSnackbar('Error processing your request', 'error');
+      showMessage('Error processing your request', 'error');
     }
-  }, [user, navigate, showSnackbar, addToCart]);
+  }, [user, navigate, showMessage, addToCart]);
 
   const handleToggleWishlist = useCallback(async (product) => {
     if (!user) {
-      showSnackbar('Please log in to manage your wishlist.', 'warning');
+      showMessage('Please log in to manage your wishlist.', 'warning');
       setTimeout(() => navigate('/auth'), 1500);
       return;
     }
@@ -1345,38 +1170,38 @@ const Products = () => {
     try {
       const result = await toggleWishlistItem(product);
       if (result.success) {
-        showSnackbar(result.message, 'success');
+        showMessage(result.message, 'success');
       } else {
-        showSnackbar(result.message, 'error');
+        showMessage(result.message, 'error');
       }
     } catch (error) {
       console.error("Error toggling wishlist:", error);
-      showSnackbar('Error updating wishlist', 'error');
+      showMessage('Error updating wishlist', 'error');
     }
-  }, [user, navigate, showSnackbar, toggleWishlistItem]);
+  }, [user, navigate, showMessage, toggleWishlistItem]);
 
   const handleConfirmAddToCart = useCallback(async (quantity) => {
     if (!selectedProduct || !user) return;
 
     if (selectedProduct.stock < quantity) {
-      showSnackbar(`Only ${selectedProduct.stock} items available in stock.`, 'error');
+      showMessage(`Only ${selectedProduct.stock} items available in stock.`, 'error');
       return;
     }
 
     try {
       const result = await addToCart(selectedProduct, quantity);
       if (result.success) {
-        showSnackbar(result.message, 'success');
+        showMessage(result.message, 'success');
       } else {
-        showSnackbar(result.message, 'error');
+        showMessage(result.message, 'error');
       }
       setModalOpen(false);
       setSelectedProduct(null);
     } catch (error) {
       console.error('Error adding to cart:', error);
-      showSnackbar('Error adding to cart', 'error');
+      showMessage('Error adding to cart', 'error');
     }
-  }, [selectedProduct, user, showSnackbar, addToCart]);
+  }, [selectedProduct, user, showMessage, addToCart]);
 
   const handleResetFilters = useCallback(() => {
     setPriceRange([1, 5000]);
@@ -1385,342 +1210,274 @@ const Products = () => {
     setHyderabadOnly(false);
   }, []);
 
-  const handleToggleSection = useCallback((section) => {
-    setExpanded(prev => ({
-      ...prev,
-      [section]: !prev[section],
-    }));
-  }, []);
-
   const handleDrawerToggle = useCallback(() => {
     setDrawerOpen(prev => !prev);
   }, []);
 
   return (
-    <Box sx={{ 
-      bgcolor: terracottaColors.background, 
-      minHeight: '100vh',
-      pt: 2,
-    }}>
-      {/* Snackbar */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      >
-        <Alert 
-          onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
-          severity={snackbar.severity}
-          variant="filled"
-          sx={{ borderRadius: 2 }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-
-      <Container maxWidth="xl" sx={{ px: { xs: 1, sm: 2, md: 3 } }}>
-        {/* Header Section */}
-        <Box sx={{ mb: 4 }}>
-          <Fade in timeout={800}>
-            <Box>
-              <Typography 
-                variant="h4" 
-                sx={{ 
+    <>
+      {/* Inject custom styles */}
+      <style dangerouslySetInnerHTML={{ __html: customStyles }} />
+      
+      <div className="products-container">
+        <div className="products-main-wrapper">
+          {/* Header Section */}
+          <div style={{ marginBottom: '32px' }}>
+            <div style={{ marginBottom: '24px' }}>
+              <Title 
+                level={1} 
+                className="header-title"
+                style={{ 
                   fontWeight: 700,
                   background: `linear-gradient(135deg, ${terracottaColors.primary} 0%, ${terracottaColors.secondary} 100%)`,
                   backgroundClip: 'text',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
-                  mb: 1,
-                  textAlign: { xs: 'center', sm: 'left' },
+                  marginBottom: '8px',
+                  textAlign: isMobile ? 'center' : 'left',
+                  fontSize: isMobile ? '28px' : '36px'
                 }}
               >
                 Discover Our Products
-              </Typography>
-              <Typography 
-                variant="body1" 
-                color="text.secondary" 
-                sx={{ 
-                  mb: 3,
-                  textAlign: { xs: 'center', sm: 'left' },
+              </Title>
+              <Paragraph 
+                className="header-description"
+                style={{ 
+                  marginBottom: '24px',
+                  textAlign: isMobile ? 'center' : 'left',
+                  fontSize: '16px',
+                  color: 'rgba(0, 0, 0, 0.65)'
                 }}
               >
                 Explore our curated collection of premium items
-              </Typography>
+              </Paragraph>
               
               {/* Products Stats */}
-              <Box sx={{ 
+              <div style={{ 
                 display: 'flex', 
-                gap: 2, 
+                gap: '16px', 
                 flexWrap: 'wrap',
-                justifyContent: { xs: 'center', sm: 'flex-start' },
-                mb: 2,
+                justifyContent: isMobile ? 'center' : 'flex-start',
+                marginBottom: '16px',
               }}>
-                <Chip
-                  label={`${totalCount} Total Products`}
-                  sx={{
+                <Tag
+                  style={{
                     backgroundColor: `${terracottaColors.primary}15`,
                     color: terracottaColors.primaryDark,
                     fontWeight: 600,
+                    border: 'none',
+                    padding: '4px 12px',
+                    borderRadius: '16px'
                   }}
-                />
+                >
+                  {totalCount} Total Products
+                </Tag>
                 {hyderabadCount > 0 && (
-                  <Chip
-                    icon={<LocationOn fontSize="small" />}
-                    label={`${hyderabadCount} Hyderabad Available`}
-                    sx={{
+                  <Tag
+                    icon={<EnvironmentOutlined />}
+                    style={{
                       backgroundColor: '#9C27B015',
                       color: '#9C27B0',
                       fontWeight: 600,
+                      border: 'none',
+                      padding: '4px 12px',
+                      borderRadius: '16px'
+                    }}
+                  >
+                    {hyderabadCount} Hyderabad Available
+                  </Tag>
+                )}
+              </div>
+            </div>
+
+            {/* Search and Filter Bar */}
+            <Card
+              className="search-filter-card"
+              style={{
+                borderRadius: '12px',
+                background: `linear-gradient(135deg, rgba(255,255,255,0.9) 0%, ${terracottaColors.backgroundLight}30 100%)`,
+                backdropFilter: 'blur(10px)',
+                border: `1px solid ${terracottaColors.primary}20`,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+              }}
+              bodyStyle={{ padding: isMobile ? '16px' : '24px' }}
+            >
+              <Row gutter={[16, 16]} align="middle">
+                {/* Search */}
+                <Col xs={24} sm={24} md={12} lg={14}>
+                  <Input
+                    size="large"
+                    placeholder="Search products..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    prefix={<SearchOutlined style={{ color: terracottaColors.primary }} />}
+                    suffix={searchQuery && (
+                      <Button 
+                        type="text" 
+                        size="small" 
+                        icon={<CloseOutlined />}
+                        onClick={() => setSearchQuery('')}
+                      />
+                    )}
+                    style={{
+                      borderRadius: '8px',
+                      borderColor: `${terracottaColors.primary}30`,
                     }}
                   />
-                )}
-              </Box>
-            </Box>
-          </Fade>
+                </Col>
 
-          {/* Search and Filter Bar */}
-          <Paper
-            elevation={2}
-            sx={{
-              p: 3,
-              borderRadius: 3,
-              background: `linear-gradient(135deg, rgba(255,255,255,0.9) 0%, ${terracottaColors.backgroundLight}30 100%)`,
-              backdropFilter: 'blur(10px)',
-              border: `1px solid ${terracottaColors.primary}20`,
-            }}
-          >
-            <Box sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 2,
-              flexWrap: 'wrap',
-            }}>
-              {/* Search */}
-              <Box sx={{ flexGrow: 1, minWidth: { xs: '100%', sm: 250 } }}>
-                <TextField
-                  fullWidth
-                  placeholder="Search products..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Search sx={{ color: terracottaColors.primary }} />
-                      </InputAdornment>
-                    ),
-                    endAdornment: searchQuery && (
-                      <InputAdornment position="end">
-                        <IconButton 
-                          size="small" 
-                          onClick={() => setSearchQuery('')}
-                          edge="end"
-                        >
-                          <Close fontSize="small" />
-                        </IconButton>
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      backgroundColor: 'white',
-                      borderRadius: 2,
-                      height: 56,
-                      '& fieldset': {
-                        borderColor: `${terracottaColors.primary}30`,
-                      },
-                      '&:hover fieldset': {
-                        borderColor: terracottaColors.primary,
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: terracottaColors.primary,
-                      },
-                    },
-                  }}
-                />
-              </Box>
+                {/* Filter Controls */}
+                <Col xs={24} sm={24} md={12} lg={10}>
+                  <Space wrap style={{ width: '100%', justifyContent: isMobile ? 'center' : 'flex-end' }}>
+                    {/* Mobile Filter Button */}
+                    {isMobile && (
+                      <Button
+                        type="primary"
+                        icon={<FilterOutlined />}
+                        onClick={handleDrawerToggle}
+                        style={{ 
+                          borderRadius: '8px',
+                          backgroundColor: terracottaColors.primary,
+                          borderColor: terracottaColors.primary,
+                        }}
+                      >
+                        Filters
+                      </Button>
+                    )}
 
-              {/* Mobile Filter Button */}
-              {isMobile && (
-                <Button
-                  variant="contained"
-                  startIcon={<TuneOutlined />}
-                  onClick={handleDrawerToggle}
-                  sx={{ 
-                    borderRadius: 2,
-                    px: 3,
-                    py: 1.5,
-                    fontWeight: 600,
-                    backgroundColor: terracottaColors.primary,
-                    '&:hover': {
-                      backgroundColor: terracottaColors.primaryDark,
-                    },
-                  }}
-                >
-                  Filters
-                </Button>
-              )}
+                    {/* Hyderabad Only Quick Filter Button */}
+                    <Button
+                      type={hyderabadOnly ? "primary" : "default"}
+                      icon={<EnvironmentOutlined />}
+                      onClick={() => setHyderabadOnly(!hyderabadOnly)}
+                      style={{ 
+                        borderRadius: '8px',
+                        borderColor: '#9C27B0',
+                        color: hyderabadOnly ? 'white' : '#9C27B0',
+                        backgroundColor: hyderabadOnly ? '#9C27B0' : 'transparent',
+                      }}
+                    >
+                      {isSmallScreen ? 'HYD' : 'Hyderabad Only'}
+                    </Button>
 
-              {/* Hyderabad Only Quick Filter Button - Mobile */}
-              {isMobile && (
-                <Button
-                  variant={hyderabadOnly ? "contained" : "outlined"}
-                  startIcon={<LocationOn />}
-                  onClick={() => setHyderabadOnly(!hyderabadOnly)}
-                  sx={{ 
-                    borderRadius: 2,
-                    px: 2,
-                    py: 1.5,
-                    fontWeight: 600,
-                    fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                    borderColor: '#9C27B0',
-                    color: hyderabadOnly ? 'white' : '#9C27B0',
-                    backgroundColor: hyderabadOnly ? '#9C27B0' : 'transparent',
-                    '&:hover': {
-                      backgroundColor: hyderabadOnly ? '#7B1FA2' : 'rgba(156, 39, 176, 0.08)',
-                      borderColor: hyderabadOnly ? '#7B1FA2' : '#9C27B0',
-                    },
-                  }}
-                >
-                  {isSmallScreen ? 'HYD' : 'Hyderabad Only'}
-                </Button>
-              )}
+                    {/* Results Count */}
+                    <Tag
+                      icon={<AppstoreOutlined />}
+                      style={{
+                        backgroundColor: `${terracottaColors.primary}15`,
+                        color: terracottaColors.primaryDark,
+                        border: 'none',
+                        padding: '8px 16px',
+                        borderRadius: '8px',
+                        fontWeight: 600
+                      }}
+                    >
+                      {filteredProducts.length} Products
+                      {isSearching && ' (searching...)'}
+                    </Tag>
+                  </Space>
+                </Col>
+              </Row>
+            </Card>
+          </div>
 
-              {/* Results Count */}
-              <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'center',
-                backgroundColor: `${terracottaColors.primary}15`,
-                px: 2,
-                py: 1,
-                borderRadius: 2,
-                order: { xs: -1, sm: 0 },
-                width: { xs: '100%', sm: 'auto' },
-                justifyContent: { xs: 'center', sm: 'flex-start' },
-              }}>
-                <ViewModule sx={{ mr: 1, color: terracottaColors.primary }} />
-                <Typography 
-                  variant="body2" 
-                  fontWeight={600} 
-                  sx={{ color: terracottaColors.primaryDark }}
-                >
-                  {filteredProducts.length} Products
-                  {isSearching && ' (searching...)'}
-                </Typography>
-              </Box>
-            </Box>
-          </Paper>
-        </Box>
-
-        {/* Main Content */}
-        <Box sx={{ display: 'flex', gap: { xs: 0, md: 3 } }}>
-          {/* Desktop Filter Panel */}
-          {!isMobile && (
-            <Box sx={{ width: 320, flexShrink: 0 }}>
-              <Paper
-                elevation={2}
-                sx={{
-                  p: 3,
-                  borderRadius: 3,
-                  position: 'sticky',
-                  top: 20,
-                  maxHeight: 'calc(100vh - 40px)',
-                  overflowY: 'auto',
-                  background: `linear-gradient(135deg, rgba(255,255,255,0.9) 0%, ${terracottaColors.backgroundLight}30 100%)`,
-                  backdropFilter: 'blur(10px)',
-                  border: `1px solid ${terracottaColors.primary}20`,
-                }}
-              >
-                <FilterPanel
-                  priceRange={priceRange}
-                  setPriceRange={setPriceRange}
-                  sortBy={sortBy}
-                  setSortBy={setSortBy}
-                  hyderabadOnly={hyderabadOnly}
-                  setHyderabadOnly={setHyderabadOnly}
-                  onResetFilters={handleResetFilters}
-                  expanded={expanded}
-                  onToggleSection={handleToggleSection}
-                />
-              </Paper>
-            </Box>
-          )}
-
-          {/* Products Grid */}
-          <Box sx={{ flexGrow: 1 }}>
-            {productsLoading ? (
-              <ProductSkeleton />
-            ) : productsError ? (
-              <Paper
-                sx={{
-                  p: 6,
-                  textAlign: 'center',
-                  borderRadius: 3,
-                  background: `linear-gradient(135deg, rgba(255,255,255,0.9) 0%, ${terracottaColors.backgroundLight}30 100%)`,
-                }}
-              >
-                <Typography variant="h6" color="error" sx={{ mb: 2 }}>
-                  Error Loading Products
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                  {productsError}
-                </Typography>
-                <Button
-                  variant="contained"
-                  onClick={() => window.location.reload()}
-                  sx={{ 
-                    borderRadius: 2, 
-                    px: 4,
-                    backgroundColor: terracottaColors.primary,
-                    '&:hover': {
-                      backgroundColor: terracottaColors.primaryDark,
-                    },
-                  }}
-                >
-                  Try Again
-                </Button>
-              </Paper>
-            ) : filteredProducts.length === 0 ? (
-              <Paper
-                sx={{
-                  p: 6,
-                  textAlign: 'center',
-                  borderRadius: 3,
-                  background: `linear-gradient(135deg, rgba(255,255,255,0.9) 0%, ${terracottaColors.backgroundLight}30 100%)`,
-                }}
-              >
-                <Typography variant="h6" color="text.secondary" sx={{ mb: 2 }}>
-                  No products found matching your criteria
-                </Typography>
-                <Button
-                  variant="contained"
-                  onClick={handleResetFilters}
-                  sx={{ 
-                    borderRadius: 2, 
-                    px: 4,
-                    backgroundColor: terracottaColors.primary,
-                    '&:hover': {
-                      backgroundColor: terracottaColors.primaryDark,
-                    },
-                  }}
-                >
-                  Reset Filters
-                </Button>
-              </Paper>
-            ) : (
-              <Grid container spacing={3}>
-                {filteredProducts.map((product, index) => (
-                  <Grid 
-                    item 
-                    xs={12} 
-                    sm={6} 
-                    md={4} 
-                    xl={3} 
-                    key={product.id}
+          {/* Main Content */}
+          <Row gutter={[24, 0]}>
+            {/* Desktop Filter Panel */}
+            {!isMobile && (
+              <Col span={6}>
+                <div className="products-filter-sidebar">
+                  <Card
+                    style={{
+                      borderRadius: '12px',
+                      background: `linear-gradient(135deg, rgba(255,255,255,0.9) 0%, ${terracottaColors.backgroundLight}30 100%)`,
+                      backdropFilter: 'blur(10px)',
+                      border: `1px solid ${terracottaColors.primary}20`,
+                    }}
+                    bodyStyle={{ padding: '24px' }}
                   >
-                    <Zoom in timeout={500 + index * 50}>
-                      <Box>
+                    <FilterPanel
+                      priceRange={priceRange}
+                      setPriceRange={setPriceRange}
+                      sortBy={sortBy}
+                      setSortBy={setSortBy}
+                      hyderabadOnly={hyderabadOnly}
+                      setHyderabadOnly={setHyderabadOnly}
+                      onResetFilters={handleResetFilters}
+                    />
+                  </Card>
+                </div>
+              </Col>
+            )}
+
+            {/* Products Grid */}
+            <Col xs={24} md={18}>
+              <div className="products-grid">
+                {productsLoading ? (
+                  <ProductSkeleton />
+                ) : productsError ? (
+                  <Card
+                    style={{
+                      borderRadius: '12px',
+                      background: `linear-gradient(135deg, rgba(255,255,255,0.9) 0%, ${terracottaColors.backgroundLight}30 100%)`,
+                      textAlign: 'center'
+                    }}
+                    bodyStyle={{ padding: '48px' }}
+                  >
+                    <Title level={4} type="danger" style={{ marginBottom: '16px' }}>
+                      Error Loading Products
+                    </Title>
+                    <Paragraph type="secondary" style={{ marginBottom: '24px' }}>
+                      {productsError}
+                    </Paragraph>
+                    <Button
+                      type="primary"
+                      onClick={() => window.location.reload()}
+                      style={{ 
+                        borderRadius: '8px',
+                        backgroundColor: terracottaColors.primary,
+                        borderColor: terracottaColors.primary,
+                      }}
+                    >
+                      Try Again
+                    </Button>
+                  </Card>
+                ) : filteredProducts.length === 0 ? (
+                  <Card
+                    style={{
+                      borderRadius: '12px',
+                      background: `linear-gradient(135deg, rgba(255,255,255,0.9) 0%, ${terracottaColors.backgroundLight}30 100%)`,
+                    }}
+                    bodyStyle={{ padding: '48px' }}
+                  >
+                    <Empty
+                      description={
+                        <div>
+                          <Title level={4} type="secondary" style={{ marginBottom: '16px' }}>
+                            No products found matching your criteria
+                          </Title>
+                          <Button
+                            type="primary"
+                            onClick={handleResetFilters}
+                            style={{ 
+                              borderRadius: '8px',
+                              backgroundColor: terracottaColors.primary,
+                              borderColor: terracottaColors.primary,
+                            }}
+                          >
+                            Reset Filters
+                          </Button>
+                        </div>
+                      }
+                    />
+                  </Card>
+                ) : (
+                  <Row gutter={[16, 16]}>
+                    {filteredProducts.map((product, index) => (
+                      <Col 
+                        {...productGridCols}
+                        key={product.id}
+                      >
                         <ProductCard
                           product={product}
                           onAddToCart={handleAddToCart}
@@ -1729,45 +1486,30 @@ const Products = () => {
                           onProductClick={handleProductClick}
                           isInWishlist={isInWishlist(product.id)}
                         />
-                      </Box>
-                    </Zoom>
-                  </Grid>
-                ))}
-              </Grid>
-            )}
-          </Box>
-        </Box>
-      </Container>
+                      </Col>
+                    ))}
+                  </Row>
+                )}
+              </div>
+            </Col>
+          </Row>
+        </div>
 
-      {/* Mobile Filter Drawer */}
-      <SwipeableDrawer
-        anchor="left"
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        onOpen={() => setDrawerOpen(true)}
-        PaperProps={{
-          sx: {
-            width: { xs: '90vw', sm: 300 },
-            maxWidth: 350,
+        {/* Mobile Filter Drawer */}
+        <Drawer
+          title="Filters"
+          placement="left"
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          width={isMobile ? '90vw' : 300}
+          style={{
+            maxWidth: '350px'
+          }}
+          bodyStyle={{
             background: `linear-gradient(135deg, rgba(255,255,255,0.95) 0%, ${terracottaColors.backgroundLight}50 100%)`,
             backdropFilter: 'blur(10px)',
-          }
-        }}
-      >
-        <Box sx={{ p: 3 }}>
-          <Box sx={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center', 
-            mb: 3,
-          }}>
-            <Typography variant="h6" fontWeight={700}>
-              Filters
-            </Typography>
-            <IconButton onClick={() => setDrawerOpen(false)} size="small">
-              <Close />
-            </IconButton>
-          </Box>
+          }}
+        >
           <FilterPanel
             priceRange={priceRange}
             setPriceRange={setPriceRange}
@@ -1776,43 +1518,41 @@ const Products = () => {
             hyderabadOnly={hyderabadOnly}
             setHyderabadOnly={setHyderabadOnly}
             onResetFilters={handleResetFilters}
-            expanded={expanded}
-            onToggleSection={handleToggleSection}
           />
-        </Box>
-      </SwipeableDrawer>
+        </Drawer>
 
-      {/* Quantity Modal */}
-      {modalOpen && selectedProduct && (
-        <QuantityModal
-          open={modalOpen}
-          onClose={() => setModalOpen(false)}
-          product={selectedProduct}
-          onConfirm={handleConfirmAddToCart}
-        />
-      )}
+        {/* Quantity Modal */}
+        {modalOpen && selectedProduct && (
+          <QuantityModal
+            open={modalOpen}
+            onClose={() => setModalOpen(false)}
+            product={selectedProduct}
+            onConfirm={handleConfirmAddToCart}
+          />
+        )}
 
-      {/* Performance Debug (Development only) */}
-      {process.env.NODE_ENV === 'development' && (
-        <Box
-          sx={{
-            position: 'fixed',
-            bottom: 10,
-            right: 10,
-            backgroundColor: 'rgba(0,0,0,0.8)',
-            color: 'white',
-            p: 1,
-            borderRadius: 1,
-            fontSize: '0.7rem',
-            fontFamily: 'monospace',
-            zIndex: 9999,
-            display: { xs: 'none', md: 'block' },
-          }}
-        >
-          Products: {filteredProducts.length} | Total: {totalCount}
-        </Box>
-      )}
-    </Box>
+        {/* Performance Debug (Development only) */}
+        {process.env.NODE_ENV === 'development' && (
+          <div
+            style={{
+              position: 'fixed',
+              bottom: 10,
+              right: 10,
+              backgroundColor: 'rgba(0,0,0,0.8)',
+              color: 'white',
+              padding: '8px',
+              borderRadius: '4px',
+              fontSize: '11px',
+              fontFamily: 'monospace',
+              zIndex: 9999,
+              display: isMobile ? 'none' : 'block',
+            }}
+          >
+            Products: {filteredProducts.length} | Total: {totalCount}
+          </div>
+        )}
+      </div>
+    </>
   );
 };
 
