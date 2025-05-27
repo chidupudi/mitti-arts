@@ -1,5 +1,5 @@
-// hooks/useProductsOptimization.js
-import { useState, useEffect, useMemo, useCallback } from 'react';
+// hooks/useProductsOptimization.js - FIXED VERSION
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { collection, getDocs, query, where, addDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../Firebase/Firebase';
 
@@ -47,8 +47,9 @@ export const useVirtualization = (items, containerHeight, itemHeight) => {
   return { visibleItems, handleScroll };
 };
 
-// Optimized product data processing with Hyderabad priority
+// FIXED: Stable product processor without dependencies
 export const useProductProcessor = () => {
+  // Use useCallback with empty dependencies to prevent recreation
   const processProduct = useCallback((docData, docId) => {
     const price = Number(docData.price) || 0;
     
@@ -98,14 +99,30 @@ export const useProductProcessor = () => {
       // Priority score for sorting (Hyderabad products get higher priority)
       priorityScore: docData.hyderabadOnly ? 1000 : 0,
     };
-  }, []);
+  }, []); // Empty dependencies to prevent infinite recreation
 
   return { processProduct };
 };
 
-// Enhanced search and filter with Hyderabad priority
+// FIXED: Enhanced search with stable dependencies
 export const useProductSearch = (products, searchQuery, filters, prioritizeHyderabad = true) => {
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
+  
+  // Memoize filters to prevent unnecessary recalculations
+  const stableFilters = useMemo(() => ({
+    priceRange: filters.priceRange,
+    category: filters.category,
+    hideOutOfStock: filters.hideOutOfStock,
+    hyderabadOnly: filters.hyderabadOnly,
+    sortBy: filters.sortBy,
+  }), [
+    filters.priceRange?.[0], 
+    filters.priceRange?.[1], 
+    filters.category, 
+    filters.hideOutOfStock, 
+    filters.hyderabadOnly, 
+    filters.sortBy
+  ]);
   
   const filteredProducts = useMemo(() => {
     if (!products.length) return [];
@@ -121,41 +138,41 @@ export const useProductSearch = (products, searchQuery, filters, prioritizeHyder
     }
     
     // Apply price range filter
-    if (filters.priceRange) {
-      const [min, max] = filters.priceRange;
+    if (stableFilters.priceRange) {
+      const [min, max] = stableFilters.priceRange;
       filtered = filtered.filter(product => 
         product.price >= min && product.price <= max
       );
     }
     
     // Apply category filter
-    if (filters.category && filters.category !== 'all') {
+    if (stableFilters.category && stableFilters.category !== 'all') {
       filtered = filtered.filter(product => 
-        product.category === filters.category
+        product.category === stableFilters.category
       );
     }
     
     // Apply availability filter
-    if (filters.hideOutOfStock) {
+    if (stableFilters.hideOutOfStock) {
       filtered = filtered.filter(product => 
         product.stock > 0 && !product.hidden
       );
     }
     
     // Apply Hyderabad filter
-    if (filters.hyderabadOnly) {
+    if (stableFilters.hyderabadOnly) {
       filtered = filtered.filter(product => product.hyderabadOnly === true);
     }
     
     return filtered;
-  }, [products, debouncedSearchQuery, filters]);
+  }, [products, debouncedSearchQuery, stableFilters]);
   
   const sortedProducts = useMemo(() => {
     if (!filteredProducts.length) return [];
     
     const sorted = [...filteredProducts];
     
-    switch (filters.sortBy) {
+    switch (stableFilters.sortBy) {
       case 'priceLowToHigh':
         return sorted.sort((a, b) => {
           if (prioritizeHyderabad) {
@@ -198,15 +215,12 @@ export const useProductSearch = (products, searchQuery, filters, prioritizeHyder
         });
       case 'featured':
         return sorted.sort((a, b) => {
-          // First priority: Hyderabad products
           if (prioritizeHyderabad) {
             if (a.hyderabadOnly && !b.hyderabadOnly) return -1;
             if (!a.hyderabadOnly && b.hyderabadOnly) return 1;
           }
-          // Second priority: Featured products
           if (a.isFeatured && !b.isFeatured) return -1;
           if (!a.isFeatured && b.isFeatured) return 1;
-          // Third priority: Rating
           return b.rating - a.rating;
         });
       case 'discount':
@@ -218,21 +232,17 @@ export const useProductSearch = (products, searchQuery, filters, prioritizeHyder
           return b.discount - a.discount;
         });
       default:
-        // Relevance sorting - Hyderabad first, then featured, then by rating
         return sorted.sort((a, b) => {
-          // First priority: Hyderabad products
           if (prioritizeHyderabad) {
             if (a.hyderabadOnly && !b.hyderabadOnly) return -1;
             if (!a.hyderabadOnly && b.hyderabadOnly) return 1;
           }
-          // Second priority: Featured products
           if (a.isFeatured && !b.isFeatured) return -1;
           if (!a.isFeatured && b.isFeatured) return 1;
-          // Third priority: Rating
           return b.rating - a.rating;
         });
     }
-  }, [filteredProducts, filters.sortBy, prioritizeHyderabad]);
+  }, [filteredProducts, stableFilters.sortBy, prioritizeHyderabad]);
   
   return {
     products: sortedProducts,
@@ -242,7 +252,7 @@ export const useProductSearch = (products, searchQuery, filters, prioritizeHyder
   };
 };
 
-// Optimized cart operations
+// FIXED: Optimized cart operations
 export const useCartOperations = (user) => {
   const [loading, setLoading] = useState(false);
   
@@ -269,7 +279,7 @@ export const useCartOperations = (user) => {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user?.uid]); // Only depend on user.uid, not entire user object
 
   const removeFromCart = useCallback(async (cartItemId) => {
     if (!user) throw new Error('User not authenticated');
@@ -284,22 +294,26 @@ export const useCartOperations = (user) => {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user?.uid]);
 
   return { addToCart, removeFromCart, loading };
 };
 
-// Enhanced wishlist operations
+// FIXED: Enhanced wishlist operations
 export const useWishlistOperations = (user) => {
   const [wishlist, setWishlist] = useState([]);
   const [loading, setLoading] = useState(false);
+  const fetchedRef = useRef(false);
 
-  // Fetch wishlist
+  // Fetch wishlist - FIXED to prevent infinite loops
   useEffect(() => {
-    if (!user) {
+    if (!user?.uid) {
       setWishlist([]);
+      fetchedRef.current = false;
       return;
     }
+
+    if (fetchedRef.current) return; // Prevent multiple fetches
 
     const fetchWishlist = async () => {
       setLoading(true);
@@ -315,6 +329,7 @@ export const useWishlistOperations = (user) => {
         }));
         
         setWishlist(items);
+        fetchedRef.current = true;
       } catch (error) {
         console.error("Error fetching wishlist:", error);
       } finally {
@@ -323,7 +338,7 @@ export const useWishlistOperations = (user) => {
     };
 
     fetchWishlist();
-  }, [user]);
+  }, [user?.uid]); // Only depend on user.uid
 
   const toggleWishlistItem = useCallback(async (product) => {
     if (!user) throw new Error('User not authenticated');
@@ -332,7 +347,6 @@ export const useWishlistOperations = (user) => {
     
     try {
       if (isInWishlist) {
-        // Remove from wishlist
         const itemToRemove = wishlist.find(item => item.id === product.id);
         if (itemToRemove?.wishlistDocId) {
           await deleteDoc(doc(db, 'wishlist', itemToRemove.wishlistDocId));
@@ -340,7 +354,6 @@ export const useWishlistOperations = (user) => {
           return { success: true, message: 'Removed from wishlist', action: 'removed' };
         }
       } else {
-        // Add to wishlist
         const docRef = await addDoc(collection(db, 'wishlist'), {
           userId: user.uid,
           productId: product.id,
@@ -366,7 +379,7 @@ export const useWishlistOperations = (user) => {
       console.error("Error toggling wishlist:", error);
       return { success: false, message: 'Failed to update wishlist' };
     }
-  }, [user, wishlist]);
+  }, [user?.uid, wishlist]);
 
   const isInWishlist = useCallback((productId) => {
     return wishlist.some(item => item.id === productId);
@@ -380,7 +393,7 @@ export const useWishlistOperations = (user) => {
   };
 };
 
-// Performance monitoring hook
+// FIXED: Performance monitoring hook
 export const usePerformanceMonitor = () => {
   const [metrics, setMetrics] = useState({
     loadTime: 0,
@@ -388,21 +401,30 @@ export const usePerformanceMonitor = () => {
     searchTime: 0,
   });
 
+  // Use useRef to prevent recreation on every render
+  const timersRef = useRef(new Map());
+
   const startTimer = useCallback((name) => {
     const startTime = performance.now();
-    return () => {
+    const timerId = `${name}_${Date.now()}`;
+    
+    const endTimer = () => {
       const endTime = performance.now();
       setMetrics(prev => ({
         ...prev,
         [name]: endTime - startTime,
       }));
+      timersRef.current.delete(timerId);
     };
+
+    timersRef.current.set(timerId, endTimer);
+    return endTimer;
   }, []);
 
   return { metrics, startTimer };
 };
 
-// Enhanced image lazy loading hook with better mobile support
+// FIXED: Enhanced image lazy loading hook
 export const useLazyImage = (src, placeholder = '/api/placeholder/300/220') => {
   const [imageSrc, setImageSrc] = useState(placeholder);
   const [imageRef, setImageRef] = useState();
@@ -410,7 +432,7 @@ export const useLazyImage = (src, placeholder = '/api/placeholder/300/220') => {
   useEffect(() => {
     let observer;
     
-    if (imageRef && imageSrc === placeholder) {
+    if (imageRef && imageSrc === placeholder && src !== placeholder) {
       observer = new IntersectionObserver(
         entries => {
           entries.forEach(entry => {
@@ -435,9 +457,8 @@ export const useLazyImage = (src, placeholder = '/api/placeholder/300/220') => {
   return [imageSrc, setImageRef];
 };
 
-// In-memory storage hook (replaces localStorage for Claude.ai compatibility)
+// FIXED: In-memory storage hook
 export const useMemoryStorage = (key, initialValue, expirationMinutes = 60) => {
-  // Use a Map to store data in memory with expiration
   const storage = useMemo(() => new Map(), []);
   
   const [storedValue, setStoredValue] = useState(() => {
@@ -479,14 +500,18 @@ export const useMemoryStorage = (key, initialValue, expirationMinutes = 60) => {
   return [storedValue, setValue];
 };
 
-// Products data fetching hook
+// FIXED: Products data fetching hook - NO MORE INFINITE LOOPS
 export const useProducts = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { processProduct } = useProductProcessor();
+  const fetchedRef = useRef(false);
 
+  // Create stable fetchProducts function
   const fetchProducts = useCallback(async () => {
+    if (fetchedRef.current && products.length > 0) return; // Prevent refetch if already loaded
+    
     setLoading(true);
     setError(null);
     
@@ -497,15 +522,23 @@ export const useProducts = () => {
       );
 
       setProducts(productsData);
+      fetchedRef.current = true;
     } catch (err) {
       console.error('Error fetching products:', err);
       setError('Failed to load products');
     } finally {
       setLoading(false);
     }
-  }, [processProduct]);
+  }, [processProduct]); // processProduct is now stable
 
+  // Only fetch once on mount
   useEffect(() => {
+    fetchProducts();
+  }, []); // Empty dependency array - only run once
+
+  // Manual refetch function
+  const refetch = useCallback(() => {
+    fetchedRef.current = false;
     fetchProducts();
   }, [fetchProducts]);
 
@@ -513,6 +546,6 @@ export const useProducts = () => {
     products, 
     loading, 
     error, 
-    refetch: fetchProducts 
+    refetch 
   };
 };

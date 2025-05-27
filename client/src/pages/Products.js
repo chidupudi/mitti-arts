@@ -1,4 +1,4 @@
-// Products.jsx - Clean terracotta theme with responsive grid
+// Products.jsx - Complete Fixed version with no infinite loops
 import React, { 
   useState, 
   useEffect, 
@@ -72,7 +72,7 @@ import { useNavigate } from 'react-router-dom';
 import { auth } from '../Firebase/Firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
-// Import optimization hooks
+// Import FIXED optimization hooks
 import {
   useProducts,
   useProductSearch,
@@ -125,11 +125,16 @@ const ProductCard = memo(({
   const isUnavailable = isHidden || isOutOfStock;
 
   const handleCardClick = (e) => {
-    if (e.target.closest('button') || e.target.closest('[role="button"]') || e.target.closest('.MuiIconButton-root')) {
+    if (e.target.closest('button') || 
+        e.target.closest('[role="button"]') || 
+        e.target.closest('.MuiIconButton-root') ||
+        e.target.closest('.MuiButton-root')) {
       e.preventDefault();
       e.stopPropagation();
       return;
     }
+    
+    e.preventDefault();
     onProductClick(product.id, product.code);
   };
 
@@ -1212,7 +1217,7 @@ const ProductSkeleton = () => {
   );
 };
 
-// Main Products Component
+// Main Products Component - FIXED VERSION
 const Products = () => {
   const theme = useTheme();
   const navigate = useNavigate();
@@ -1239,24 +1244,27 @@ const Products = () => {
     severity: 'success',
   });
 
-  // Use optimization hooks
+  // Use FIXED optimization hooks
   const { products, loading: productsLoading, error: productsError } = useProducts();
   const { addToCart } = useCartOperations(user);
   const { wishlist, toggleWishlistItem, isInWishlist } = useWishlistOperations(user);
   const { metrics, startTimer } = usePerformanceMonitor();
   
-  // Search and filter with Hyderabad priority
+  // Memoize search parameters to prevent unnecessary re-renders
+  const searchParams = useMemo(() => ({
+    priceRange,
+    sortBy,
+    hyderabadOnly,
+    hideOutOfStock: false,
+  }), [priceRange[0], priceRange[1], sortBy, hyderabadOnly]); // Stable dependencies
+
+  // Search and filter with Hyderabad priority - FIXED
   const { 
     products: filteredProducts, 
     totalCount, 
     hyderabadCount,
     isSearching 
-  } = useProductSearch(products, searchQuery, {
-    priceRange,
-    sortBy,
-    hyderabadOnly,
-    hideOutOfStock: false,
-  }, true);
+  } = useProductSearch(products, searchQuery, searchParams, true);
 
   // Auth effect
   useEffect(() => {
@@ -1266,20 +1274,16 @@ const Products = () => {
     return unsubscribe;
   }, []);
 
-  // Performance monitoring
-  useEffect(() => {
-    const timer = startTimer('renderTime');
-    return timer;
-  }, [filteredProducts, startTimer]);
-
-  // Callbacks
+  // Stable callbacks to prevent infinite loops
   const showSnackbar = useCallback((message, severity = 'success') => {
     setSnackbar({ open: true, message, severity });
   }, []);
 
   const handleProductClick = useCallback((id, code) => {
-    navigate(`/product/${id}?code=${code}`);
-  }, [navigate]);
+    console.log('Product clicked:', { id, code });
+    // Force page navigation to fix routing issue
+    window.location.href = `/product/${id}?code=${code}`;
+  }, []);
 
   const handleAddToCart = useCallback(async (product) => {
     if (product.hidden || product.stock === 0) {
@@ -1786,6 +1790,27 @@ const Products = () => {
           product={selectedProduct}
           onConfirm={handleConfirmAddToCart}
         />
+      )}
+
+      {/* Performance Debug (Development only) */}
+      {process.env.NODE_ENV === 'development' && (
+        <Box
+          sx={{
+            position: 'fixed',
+            bottom: 10,
+            right: 10,
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            color: 'white',
+            p: 1,
+            borderRadius: 1,
+            fontSize: '0.7rem',
+            fontFamily: 'monospace',
+            zIndex: 9999,
+            display: { xs: 'none', md: 'block' },
+          }}
+        >
+          Products: {filteredProducts.length} | Total: {totalCount}
+        </Box>
       )}
     </Box>
   );
