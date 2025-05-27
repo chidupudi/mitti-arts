@@ -1,4 +1,4 @@
-// Products.jsx - Optimized with iPhone fixes and hooks integration
+// Products.jsx - iPhone-optimized with Android compatibility
 import React, { 
   useState, 
   useEffect, 
@@ -84,6 +84,15 @@ import {
   useMemoryStorage,
 } from '../hooks/useProductsOptimization';
 
+// iPhone detection utility
+const isIPhone = () => {
+  return /iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+};
+
+const isIOSDeviceCheck = () => {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+};
+
 // Terracotta color scheme with better contrast for iPhone
 const terracottaColors = {
   primary: '#D2691E',
@@ -101,13 +110,42 @@ const terracottaColors = {
   error: '#F44336',
 };
 
+// iPhone-specific styles
+const iPhoneStyles = {
+  // Prevent zoom on input focus
+  input: {
+    fontSize: '16px !important', // Critical for preventing zoom
+    WebkitAppearance: 'none',
+    WebkitBorderRadius: '0',
+  },
+  // Better touch targets
+  touchTarget: {
+    minHeight: '44px',
+    minWidth: '44px',
+  },
+  // Prevent text selection and highlighting
+  noSelect: {
+    WebkitTapHighlightColor: 'transparent',
+    WebkitTouchCallout: 'none',
+    WebkitUserSelect: 'none',
+    userSelect: 'none',
+  },
+  // Safe area handling
+  safeArea: {
+    paddingTop: 'env(safe-area-inset-top)',
+    paddingBottom: 'env(safe-area-inset-bottom)',
+    paddingLeft: 'env(safe-area-inset-left)',
+    paddingRight: 'env(safe-area-inset-right)',
+  },
+};
+
 // Format price helper
 const formatPrice = (price) => {
   if (typeof price !== 'number' || isNaN(price)) return '₹0';
   return `₹${price.toLocaleString('en-IN')}`;
 };
 
-// ProductCard Component - Enhanced for iPhone compatibility
+// ProductCard Component - iPhone-optimized
 const ProductCard = memo(({ 
   product, 
   onAddToCart, 
@@ -124,9 +162,13 @@ const ProductCard = memo(({
   const isOutOfStock = product.stock === 0;
   const isHidden = product.hidden;
   const isUnavailable = isHidden || isOutOfStock;
+  const isIPhoneDevice = isIPhone();
 
   const handleCardClick = (e) => {
-    if (e.target.closest('button') || e.target.closest('[role="button"]')) {
+    // Prevent card click on interactive elements
+    if (e.target.closest('button') || e.target.closest('[role="button"]') || e.target.closest('.MuiIconButton-root')) {
+      e.preventDefault();
+      e.stopPropagation();
       return;
     }
     onProductClick(product.id, product.code);
@@ -258,11 +300,9 @@ const ProductCard = memo(({
         cursor: 'pointer',
         border: `1px solid ${terracottaColors.divider}`,
         opacity: isUnavailable ? 0.75 : 1,
-        // Enhanced iPhone compatibility
-        WebkitTapHighlightColor: 'transparent',
-        WebkitTouchCallout: 'none',
-        WebkitUserSelect: 'none',
-        userSelect: 'none',
+        
+        // iPhone-specific optimizations
+        ...iPhoneStyles.noSelect,
         
         '&:hover': {
           transform: isUnavailable ? 'none' : 'translateY(-4px)',
@@ -271,14 +311,17 @@ const ProductCard = memo(({
             : `0 12px 28px ${terracottaColors.primary}25`,
         },
         
-        // Improved touch targets for iPhone
+        // Enhanced touch targets for iPhone
         '& .MuiButton-root': {
-          minHeight: 44, // Apple's recommended minimum touch target
-          fontSize: { xs: '0.875rem', sm: '1rem' },
+          ...iPhoneStyles.touchTarget,
+          fontSize: isIPhoneDevice ? '16px' : { xs: '0.875rem', sm: '1rem' },
+          fontWeight: 600,
         },
         '& .MuiIconButton-root': {
-          minWidth: 44,
-          minHeight: 44,
+          ...iPhoneStyles.touchTarget,
+        },
+        '& .MuiTextField-root input': {
+          ...iPhoneStyles.input,
         },
       }}
       onClick={handleCardClick}
@@ -289,12 +332,12 @@ const ProductCard = memo(({
           sx={{
             position: 'absolute',
             top: 12,
-            right: { xs: -25, sm: -30 }, // Adjusted for iPhone
+            right: isIPhoneDevice ? -20 : { xs: -25, sm: -30 },
             transform: 'rotate(35deg)',
-            width: { xs: 100, sm: 120 }, // Responsive width
+            width: isIPhoneDevice ? 90 : { xs: 100, sm: 120 },
             textAlign: 'center',
             padding: '4px 0',
-            fontSize: { xs: '0.6rem', sm: '0.7rem' }, // Responsive font size
+            fontSize: isIPhoneDevice ? '0.55rem' : { xs: '0.6rem', sm: '0.7rem' },
             fontWeight: 700,
             color: 'white',
             zIndex: 2,
@@ -310,12 +353,12 @@ const ProductCard = memo(({
           sx={{
             position: 'absolute',
             top: 12,
-            right: { xs: -25, sm: -30 },
+            right: isIPhoneDevice ? -20 : { xs: -25, sm: -30 },
             transform: 'rotate(35deg)',
-            width: { xs: 100, sm: 120 },
+            width: isIPhoneDevice ? 90 : { xs: 100, sm: 120 },
             textAlign: 'center',
             padding: '4px 0',
-            fontSize: { xs: '0.6rem', sm: '0.7rem' },
+            fontSize: isIPhoneDevice ? '0.55rem' : { xs: '0.6rem', sm: '0.7rem' },
             fontWeight: 700,
             color: 'white',
             zIndex: 2,
@@ -327,19 +370,19 @@ const ProductCard = memo(({
         </Box>
       )}
 
-      {/* Featured Badge - Better positioning */}
+      {/* Featured Badge */}
       {product.isFeatured && !isUnavailable && (
         <Chip
           label="Featured"
           size="small"
           sx={{
             position: 'absolute',
-            top: { xs: 8, sm: 12 },
-            left: { xs: 8, sm: 12 },
+            top: isIPhoneDevice ? 6 : { xs: 8, sm: 12 },
+            left: isIPhoneDevice ? 6 : { xs: 8, sm: 12 },
             zIndex: 2,
             fontWeight: 600,
-            fontSize: { xs: '0.65rem', sm: '0.75rem' },
-            height: { xs: 20, sm: 24 },
+            fontSize: isIPhoneDevice ? '0.6rem' : { xs: '0.65rem', sm: '0.75rem' },
+            height: isIPhoneDevice ? 18 : { xs: 20, sm: 24 },
             backgroundColor: terracottaColors.primary,
             color: 'white',
           }}
@@ -354,12 +397,14 @@ const ProductCard = memo(({
           size="small"
           sx={{
             position: 'absolute',
-            top: product.isFeatured ? { xs: 34, sm: 46 } : { xs: 8, sm: 12 },
-            left: { xs: 8, sm: 12 },
+            top: product.isFeatured 
+              ? (isIPhoneDevice ? 26 : { xs: 34, sm: 46 })
+              : (isIPhoneDevice ? 6 : { xs: 8, sm: 12 }),
+            left: isIPhoneDevice ? 6 : { xs: 8, sm: 12 },
             zIndex: 2,
             fontWeight: 600,
-            fontSize: { xs: '0.6rem', sm: '0.7rem' },
-            height: { xs: 20, sm: 24 },
+            fontSize: isIPhoneDevice ? '0.55rem' : { xs: '0.6rem', sm: '0.7rem' },
+            height: isIPhoneDevice ? 18 : { xs: 20, sm: 24 },
             backgroundColor: '#9C27B0',
             color: 'white',
             pl: 0.5,
@@ -370,7 +415,7 @@ const ProductCard = memo(({
       <CardMedia
         ref={setImageRef}
         component="img"
-        height="220"
+        height={isIPhoneDevice ? "200" : "220"}
         image={imageSrc}
         alt={product.name}
         sx={{
@@ -384,14 +429,17 @@ const ProductCard = memo(({
         }}
       />
 
-      <CardContent sx={{ flexGrow: 1, p: { xs: 1.5, sm: 2 } }}>
+      <CardContent sx={{ 
+        flexGrow: 1, 
+        p: isIPhoneDevice ? 1.2 : { xs: 1.5, sm: 2 },
+      }}>
         <Typography 
           variant="h6" 
           noWrap 
           sx={{ 
             fontWeight: 600, 
             mb: 1,
-            fontSize: { xs: '0.9rem', sm: '1rem' },
+            fontSize: isIPhoneDevice ? '0.85rem' : { xs: '0.9rem', sm: '1rem' },
             lineHeight: 1.3,
           }}
         >
@@ -412,7 +460,7 @@ const ProductCard = memo(({
                 color: terracottaColors.primary,
               },
               '& .MuiRating-icon': {
-                fontSize: { xs: '1rem', sm: '1.2rem' },
+                fontSize: isIPhoneDevice ? '0.9rem' : { xs: '1rem', sm: '1.2rem' },
               },
             }}
           />
@@ -421,7 +469,7 @@ const ProductCard = memo(({
             color="text.secondary" 
             sx={{ 
               ml: 1,
-              fontSize: { xs: '0.75rem', sm: '0.875rem' },
+              fontSize: isIPhoneDevice ? '0.7rem' : { xs: '0.75rem', sm: '0.875rem' },
             }}
           >
             {product.rating} ({product.reviews || 0})
@@ -435,7 +483,7 @@ const ProductCard = memo(({
             sx={{ 
               fontWeight: 700, 
               color: terracottaColors.primary,
-              fontSize: { xs: '1rem', sm: '1.25rem' },
+              fontSize: isIPhoneDevice ? '0.95rem' : { xs: '1rem', sm: '1.25rem' },
             }}
           >
             {formatPrice(product.price)}
@@ -447,7 +495,7 @@ const ProductCard = memo(({
                 color="text.secondary"
                 sx={{ 
                   textDecoration: 'line-through',
-                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                  fontSize: isIPhoneDevice ? '0.7rem' : { xs: '0.75rem', sm: '0.875rem' },
                 }}
               >
                 {formatPrice(product.originalPrice)}
@@ -456,8 +504,8 @@ const ProductCard = memo(({
                 label={`${product.discount}% OFF`}
                 size="small"
                 sx={{
-                  height: { xs: 18, sm: 20 },
-                  fontSize: { xs: '0.6rem', sm: '0.7rem' },
+                  height: isIPhoneDevice ? 16 : { xs: 18, sm: 20 },
+                  fontSize: isIPhoneDevice ? '0.55rem' : { xs: '0.6rem', sm: '0.7rem' },
                   fontWeight: 600,
                   backgroundColor: terracottaColors.error,
                   color: 'white',
@@ -477,7 +525,7 @@ const ProductCard = memo(({
           sx={{ 
             display: 'block', 
             mt: 1,
-            fontSize: { xs: '0.7rem', sm: '0.75rem' },
+            fontSize: isIPhoneDevice ? '0.65rem' : { xs: '0.7rem', sm: '0.75rem' },
           }}
         >
           Code: {product.code}
@@ -486,16 +534,17 @@ const ProductCard = memo(({
 
       {/* Enhanced CardActions with better iPhone touch targets */}
       <CardActions sx={{ 
-        p: { xs: 1.5, sm: 2 }, 
+        p: isIPhoneDevice ? 1.2 : { xs: 1.5, sm: 2 }, 
         pt: 0, 
         flexDirection: 'column', 
-        gap: { xs: 1, sm: 1.5 },
+        gap: isIPhoneDevice ? 0.8 : { xs: 1, sm: 1.5 },
       }}>
         {/* Add to Cart Button */}
         <Button
           variant="contained"
           startIcon={<AddShoppingCart />}
           onClick={(e) => {
+            e.preventDefault();
             e.stopPropagation();
             onAddToCart(product);
           }}
@@ -503,10 +552,10 @@ const ProductCard = memo(({
           fullWidth
           sx={{
             borderRadius: 2,
-            py: { xs: 1.2, sm: 1.5 },
+            py: isIPhoneDevice ? 1.5 : { xs: 1.2, sm: 1.5 },
             fontWeight: 600,
-            fontSize: { xs: '0.875rem', sm: '1rem' },
-            minHeight: 44, // iPhone touch target
+            fontSize: isIPhoneDevice ? '14px' : { xs: '0.875rem', sm: '1rem' },
+            ...iPhoneStyles.touchTarget,
             backgroundColor: terracottaColors.primary,
             '&:hover': {
               backgroundColor: terracottaColors.primaryDark,
@@ -524,12 +573,17 @@ const ProductCard = memo(({
         </Button>
 
         {/* Buy Now and Wishlist Row */}
-        <Box sx={{ display: 'flex', gap: { xs: 1, sm: 1.5 }, width: '100%' }}>
+        <Box sx={{ 
+          display: 'flex', 
+          gap: isIPhoneDevice ? 0.8 : { xs: 1, sm: 1.5 }, 
+          width: '100%',
+        }}>
           {/* Buy Now Button */}
           <Button
             variant="contained"
             startIcon={<FlashOn />}
             onClick={(e) => {
+              e.preventDefault();
               e.stopPropagation();
               onBuyNow(product);
             }}
@@ -537,10 +591,10 @@ const ProductCard = memo(({
             sx={{
               flex: 1,
               borderRadius: 2,
-              py: { xs: 1.2, sm: 1.5 },
+              py: isIPhoneDevice ? 1.5 : { xs: 1.2, sm: 1.5 },
               fontWeight: 600,
-              fontSize: { xs: '0.8rem', sm: '0.85rem' },
-              minHeight: 44,
+              fontSize: isIPhoneDevice ? '13px' : { xs: '0.8rem', sm: '0.85rem' },
+              ...iPhoneStyles.touchTarget,
               background: `linear-gradient(135deg, ${terracottaColors.success} 0%, #4CAF50 100%)`,
               color: 'white',
               '&:hover': {
@@ -564,6 +618,7 @@ const ProductCard = memo(({
           <Tooltip title={isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}>
             <IconButton
               onClick={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 onToggleWishlist(product);
               }}
@@ -571,9 +626,8 @@ const ProductCard = memo(({
                 border: '1px solid',
                 borderColor: isInWishlist ? terracottaColors.error : terracottaColors.divider,
                 borderRadius: 2,
-                p: { xs: 1.2, sm: 1.5 },
-                minWidth: 44,
-                minHeight: 44,
+                p: isIPhoneDevice ? 1.5 : { xs: 1.2, sm: 1.5 },
+                ...iPhoneStyles.touchTarget,
                 transition: 'all 0.2s ease',
                 color: isInWishlist ? terracottaColors.error : 'default',
                 '&:hover': {
@@ -591,7 +645,7 @@ const ProductCard = memo(({
   );
 });
 
-// FilterPanel Component - Enhanced for iPhone
+// FilterPanel Component - iPhone-optimized
 const FilterPanel = memo(({
   priceRange,
   setPriceRange,
@@ -603,6 +657,8 @@ const FilterPanel = memo(({
   expanded,
   onToggleSection
 }) => {
+  const isIPhoneDevice = isIPhone();
+
   const sections = [
     {
       key: 'price',
@@ -621,8 +677,8 @@ const FilterPanel = memo(({
             sx={{
               mb: 2,
               '& .MuiSlider-thumb': {
-                height: { xs: 24, sm: 20 }, // Larger for iPhone
-                width: { xs: 24, sm: 20 },
+                height: isIPhoneDevice ? 28 : { xs: 24, sm: 20 },
+                width: isIPhoneDevice ? 28 : { xs: 24, sm: 20 },
                 backgroundColor: terracottaColors.primary,
                 border: `2px solid white`,
                 boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
@@ -633,15 +689,15 @@ const FilterPanel = memo(({
               '& .MuiSlider-track': {
                 backgroundColor: terracottaColors.primary,
                 border: 'none',
-                height: { xs: 6, sm: 4 }, // Thicker for iPhone
+                height: isIPhoneDevice ? 8 : { xs: 6, sm: 4 },
               },
               '& .MuiSlider-rail': {
                 backgroundColor: terracottaColors.divider,
-                height: { xs: 6, sm: 4 },
+                height: isIPhoneDevice ? 8 : { xs: 6, sm: 4 },
               },
               '& .MuiSlider-valueLabel': {
                 backgroundColor: terracottaColors.primary,
-                fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                fontSize: isIPhoneDevice ? '0.7rem' : { xs: '0.75rem', sm: '0.875rem' },
                 '&:before': {
                   borderColor: terracottaColors.primary,
                 },
@@ -652,14 +708,14 @@ const FilterPanel = memo(({
             <Typography 
               variant="body2" 
               color="text.secondary"
-              sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+              sx={{ fontSize: isIPhoneDevice ? '0.7rem' : { xs: '0.75rem', sm: '0.875rem' } }}
             >
               Min: {formatPrice(priceRange[0])}
             </Typography>
             <Typography 
               variant="body2" 
               color="text.secondary"
-              sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+              sx={{ fontSize: isIPhoneDevice ? '0.7rem' : { xs: '0.75rem', sm: '0.875rem' } }}
             >
               Max: {formatPrice(priceRange[1])}
             </Typography>
@@ -680,8 +736,8 @@ const FilterPanel = memo(({
             sx={{ 
               borderRadius: 2,
               '& .MuiSelect-select': { 
-                py: { xs: 1.8, sm: 1.5 }, // Better touch target for iPhone
-                fontSize: { xs: '0.875rem', sm: '1rem' },
+                py: isIPhoneDevice ? 2 : { xs: 1.8, sm: 1.5 },
+                fontSize: isIPhoneDevice ? '16px' : { xs: '0.875rem', sm: '1rem' },
               },
               '& .MuiOutlinedInput-notchedOutline': {
                 borderColor: `${terracottaColors.primary}30`,
@@ -715,7 +771,7 @@ const FilterPanel = memo(({
           <Paper
             elevation={0}
             sx={{
-              p: { xs: 1.5, sm: 2 },
+              p: isIPhoneDevice ? 1.2 : { xs: 1.5, sm: 2 },
               borderRadius: 2,
               border: `1px dashed ${terracottaColors.primary}50`,
               backgroundColor: `${terracottaColors.primary}08`,
@@ -729,7 +785,7 @@ const FilterPanel = memo(({
                   onChange={(e) => setHyderabadOnly(e.target.checked)}
                   sx={{
                     '& .MuiSwitch-switchBase': {
-                      padding: { xs: 1.5, sm: 1 }, // Better touch target
+                      padding: isIPhoneDevice ? 2 : { xs: 1.5, sm: 1 },
                     },
                     '& .MuiSwitch-switchBase.Mui-checked': {
                       color: terracottaColors.primary,
@@ -741,11 +797,11 @@ const FilterPanel = memo(({
                       backgroundColor: terracottaColors.primary,
                     },
                     '& .MuiSwitch-thumb': {
-                      width: { xs: 24, sm: 20 },
-                      height: { xs: 24, sm: 20 },
+                      width: isIPhoneDevice ? 28 : { xs: 24, sm: 20 },
+                      height: isIPhoneDevice ? 28 : { xs: 24, sm: 20 },
                     },
                     '& .MuiSwitch-track': {
-                      borderRadius: { xs: 14, sm: 11 },
+                      borderRadius: isIPhoneDevice ? 16 : { xs: 14, sm: 11 },
                     },
                   }}
                 />
@@ -755,7 +811,7 @@ const FilterPanel = memo(({
                   <Typography 
                     variant="body1" 
                     fontWeight={600}
-                    sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+                    sx={{ fontSize: isIPhoneDevice ? '0.85rem' : { xs: '0.875rem', sm: '1rem' } }}
                   >
                     Hyderabad Only
                   </Typography>
@@ -767,8 +823,8 @@ const FilterPanel = memo(({
                       backgroundColor: hyderabadOnly ? terracottaColors.primary : `${terracottaColors.primary}30`,
                       color: hyderabadOnly ? 'white' : terracottaColors.primary,
                       fontWeight: 600,
-                      height: { xs: 18, sm: 20 },
-                      fontSize: { xs: '0.6rem', sm: '0.7rem' },
+                      height: isIPhoneDevice ? 16 : { xs: 18, sm: 20 },
+                      fontSize: isIPhoneDevice ? '0.55rem' : { xs: '0.6rem', sm: '0.7rem' },
                     }}
                   />
                 </Box>
@@ -779,7 +835,7 @@ const FilterPanel = memo(({
               color="text.secondary" 
               sx={{ 
                 mt: 1,
-                fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                fontSize: isIPhoneDevice ? '0.7rem' : { xs: '0.75rem', sm: '0.875rem' },
               }}
             >
               Show only products available for delivery within Hyderabad city limits
@@ -798,7 +854,7 @@ const FilterPanel = memo(({
           sx={{ 
             fontWeight: 700, 
             mb: 1,
-            fontSize: { xs: '1.1rem', sm: '1.25rem' },
+            fontSize: isIPhoneDevice ? '1.05rem' : { xs: '1.1rem', sm: '1.25rem' },
           }}
         >
           Filters
@@ -822,10 +878,11 @@ const FilterPanel = memo(({
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              padding: { xs: 1.5, sm: 2 },
-              minHeight: 44, // iPhone touch target
+              padding: isIPhoneDevice ? 1.2 : { xs: 1.5, sm: 2 },
+              ...iPhoneStyles.touchTarget,
               cursor: 'pointer',
               transition: 'background-color 0.2s ease',
+              ...iPhoneStyles.noSelect,
               '&:hover': {
                 backgroundColor: `${terracottaColors.primary}08`,
               },
@@ -837,7 +894,7 @@ const FilterPanel = memo(({
               <Typography 
                 variant="subtitle1" 
                 fontWeight={600}
-                sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+                sx={{ fontSize: isIPhoneDevice ? '0.85rem' : { xs: '0.875rem', sm: '1rem' } }}
               >
                 {section.title}
               </Typography>
@@ -847,9 +904,8 @@ const FilterPanel = memo(({
               sx={{
                 transform: expanded[section.key] ? 'rotate(180deg)' : 'rotate(0deg)',
                 transition: 'transform 0.2s ease',
-                padding: { xs: 1, sm: 0.5 },
-                minWidth: 44,
-                minHeight: 44,
+                padding: isIPhoneDevice ? 1.2 : { xs: 1, sm: 0.5 },
+                ...iPhoneStyles.touchTarget,
               }}
             >
               <ExpandMore />
@@ -857,7 +913,7 @@ const FilterPanel = memo(({
           </Box>
           
           <Collapse in={expanded[section.key]} timeout="auto" unmountOnExit>
-            <Box sx={{ p: { xs: 1.5, sm: 2 }, pt: 0 }}>
+            <Box sx={{ p: isIPhoneDevice ? 1.2 : { xs: 1.5, sm: 2 }, pt: 0 }}>
               {section.content}
             </Box>
           </Collapse>
@@ -871,11 +927,11 @@ const FilterPanel = memo(({
         onClick={onResetFilters}
         sx={{
           mt: 2,
-          py: { xs: 1.8, sm: 1.5 },
+          py: isIPhoneDevice ? 2 : { xs: 1.8, sm: 1.5 },
           borderRadius: 2,
           fontWeight: 600,
-          fontSize: { xs: '0.875rem', sm: '1rem' },
-          minHeight: 44,
+          fontSize: isIPhoneDevice ? '16px' : { xs: '0.875rem', sm: '1rem' },
+          ...iPhoneStyles.touchTarget,
           borderWidth: 2,
           borderColor: terracottaColors.primary,
           color: terracottaColors.primary,
@@ -893,7 +949,7 @@ const FilterPanel = memo(({
   );
 });
 
-// QuantityModal Component - Enhanced for iPhone
+// QuantityModal Component - iPhone-optimized
 const QuantityModal = ({ 
   open, 
   onClose, 
@@ -902,6 +958,7 @@ const QuantityModal = ({
 }) => {
   const [quantity, setQuantity] = useState(1);
   const [error, setError] = useState('');
+  const isIPhoneDevice = isIPhone();
 
   useEffect(() => {
     if (open) {
@@ -939,13 +996,18 @@ const QuantityModal = ({
       PaperProps={{
         sx: {
           borderRadius: 3,
-          maxWidth: { xs: '95vw', sm: 500 },
-          m: { xs: 1, sm: 3 },
-          // Better iPhone positioning
-          position: { xs: 'fixed', sm: 'relative' },
-          bottom: { xs: 0, sm: 'auto' },
-          top: { xs: 'auto', sm: '50%' },
-          transform: { xs: 'none', sm: 'translateY(-50%)' },
+          maxWidth: isIPhoneDevice ? '92vw' : { xs: '95vw', sm: 500 },
+          m: isIPhoneDevice ? 0.5 : { xs: 1, sm: 3 },
+          // iPhone-specific positioning
+          ...(isIPhoneDevice && {
+            position: 'fixed',
+            bottom: 0,
+            top: 'auto',
+            transform: 'none',
+            marginBottom: 0,
+            borderBottomLeftRadius: 0,
+            borderBottomRightRadius: 0,
+          }),
         },
       }}
     >
@@ -954,28 +1016,28 @@ const QuantityModal = ({
           <Typography 
             variant="h6" 
             fontWeight={700}
-            sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}
+            sx={{ fontSize: isIPhoneDevice ? '1.05rem' : { xs: '1.1rem', sm: '1.25rem' } }}
           >
             Add to Cart
           </Typography>
           <IconButton 
             onClick={onClose} 
             size="small"
-            sx={{ minWidth: 44, minHeight: 44 }}
+            sx={{ ...iPhoneStyles.touchTarget }}
           >
             <Close />
           </IconButton>
         </Box>
       </DialogTitle>
 
-      <DialogContent sx={{ px: { xs: 2, sm: 3 } }}>
+      <DialogContent sx={{ px: isIPhoneDevice ? 1.5 : { xs: 2, sm: 3 } }}>
         {/* Product Information */}
         <Box
           sx={{
             display: 'flex',
             alignItems: 'center',
-            gap: { xs: 1.5, sm: 2 },
-            p: { xs: 1.5, sm: 2 },
+            gap: isIPhoneDevice ? 1.2 : { xs: 1.5, sm: 2 },
+            p: isIPhoneDevice ? 1.2 : { xs: 1.5, sm: 2 },
             backgroundColor: `${terracottaColors.primary}08`,
             borderRadius: 2,
             mt: 1,
@@ -985,7 +1047,10 @@ const QuantityModal = ({
             src={product.imgUrl}
             alt={product.name}
             variant="rounded"
-            sx={{ width: { xs: 70, sm: 80 }, height: { xs: 70, sm: 80 } }}
+            sx={{ 
+              width: isIPhoneDevice ? 60 : { xs: 70, sm: 80 }, 
+              height: isIPhoneDevice ? 60 : { xs: 70, sm: 80 } 
+            }}
           />
           <Box sx={{ flexGrow: 1 }}>
             <Typography 
@@ -993,7 +1058,7 @@ const QuantityModal = ({
               fontWeight={600} 
               sx={{ 
                 mb: 0.5,
-                fontSize: { xs: '1rem', sm: '1.25rem' },
+                fontSize: isIPhoneDevice ? '0.9rem' : { xs: '1rem', sm: '1.25rem' },
                 lineHeight: 1.3,
               }}
             >
@@ -1004,7 +1069,7 @@ const QuantityModal = ({
               color="text.secondary" 
               sx={{ 
                 mb: 1,
-                fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                fontSize: isIPhoneDevice ? '0.7rem' : { xs: '0.75rem', sm: '0.875rem' },
               }}
             >
               Code: {product.code}
@@ -1015,7 +1080,7 @@ const QuantityModal = ({
                 fontWeight={700} 
                 sx={{ 
                   color: terracottaColors.primary,
-                  fontSize: { xs: '1rem', sm: '1.25rem' },
+                  fontSize: isIPhoneDevice ? '0.9rem' : { xs: '1rem', sm: '1.25rem' },
                 }}
               >
                 {formatPrice(product.price)}
@@ -1027,7 +1092,7 @@ const QuantityModal = ({
                     color="text.secondary"
                     sx={{ 
                       textDecoration: 'line-through',
-                      fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                      fontSize: isIPhoneDevice ? '0.7rem' : { xs: '0.75rem', sm: '0.875rem' },
                     }}
                   >
                     {formatPrice(product.originalPrice)}
@@ -1036,8 +1101,8 @@ const QuantityModal = ({
                     label={`${product.discount}% OFF`}
                     size="small"
                     sx={{
-                      height: { xs: 18, sm: 20 },
-                      fontSize: { xs: '0.6rem', sm: '0.7rem' },
+                      height: isIPhoneDevice ? 16 : { xs: 18, sm: 20 },
+                      fontSize: isIPhoneDevice ? '0.55rem' : { xs: '0.6rem', sm: '0.7rem' },
                       backgroundColor: terracottaColors.error,
                       color: 'white',
                     }}
@@ -1053,7 +1118,7 @@ const QuantityModal = ({
           <Typography 
             variant="body2" 
             color="text.secondary"
-            sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}
+            sx={{ fontSize: isIPhoneDevice ? '0.75rem' : { xs: '0.8rem', sm: '0.875rem' } }}
           >
             Availability: {' '}
             <Typography
@@ -1082,7 +1147,7 @@ const QuantityModal = ({
               <Typography 
                 variant="body2" 
                 fontWeight={600}
-                sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}
+                sx={{ fontSize: isIPhoneDevice ? '0.75rem' : { xs: '0.8rem', sm: '0.875rem' } }}
               >
                 Available for delivery in Hyderabad only
               </Typography>
@@ -1098,7 +1163,7 @@ const QuantityModal = ({
           fontWeight={600} 
           sx={{ 
             mb: 2,
-            fontSize: { xs: '1rem', sm: '1.125rem' },
+            fontSize: isIPhoneDevice ? '0.95rem' : { xs: '1rem', sm: '1.125rem' },
           }}
         >
           Select Quantity
@@ -1107,7 +1172,7 @@ const QuantityModal = ({
         <Box sx={{ 
           display: 'flex', 
           alignItems: 'center', 
-          gap: { xs: 1.5, sm: 2 }, 
+          gap: isIPhoneDevice ? 1.2 : { xs: 1.5, sm: 2 }, 
           mb: 2,
           justifyContent: 'center',
         }}>
@@ -1117,8 +1182,9 @@ const QuantityModal = ({
             sx={{
               border: `2px solid ${terracottaColors.primary}`,
               borderRadius: 1.5,
-              width: { xs: 48, sm: 40 },
-              height: { xs: 48, sm: 40 },
+              width: isIPhoneDevice ? 50 : { xs: 48, sm: 40 },
+              height: isIPhoneDevice ? 50 : { xs: 48, sm: 40 },
+              ...iPhoneStyles.touchTarget,
               color: terracottaColors.primary,
               '&:hover': {
                 backgroundColor: terracottaColors.primaryLight,
@@ -1145,15 +1211,15 @@ const QuantityModal = ({
               style: { 
                 textAlign: 'center', 
                 fontWeight: 600,
-                fontSize: 18,
+                fontSize: isIPhoneDevice ? '16px' : '18px', // Prevent zoom on iPhone
               }
             }}
             sx={{
-              width: { xs: 120, sm: 100 },
+              width: isIPhoneDevice ? 100 : { xs: 120, sm: 100 },
               '& .MuiOutlinedInput-root': {
                 borderRadius: 1.5,
                 fontWeight: 600,
-                height: { xs: 48, sm: 40 },
+                height: isIPhoneDevice ? 50 : { xs: 48, sm: 40 },
                 '& fieldset': {
                   borderColor: `${terracottaColors.primary}50`,
                 },
@@ -1173,8 +1239,9 @@ const QuantityModal = ({
             sx={{
               border: `2px solid ${terracottaColors.primary}`,
               borderRadius: 1.5,
-              width: { xs: 48, sm: 40 },
-              height: { xs: 48, sm: 40 },
+              width: isIPhoneDevice ? 50 : { xs: 48, sm: 40 },
+              height: isIPhoneDevice ? 50 : { xs: 48, sm: 40 },
+              ...iPhoneStyles.touchTarget,
               color: terracottaColors.primary,
               '&:hover': {
                 backgroundColor: terracottaColors.primaryLight,
@@ -1197,7 +1264,7 @@ const QuantityModal = ({
               mt: 1, 
               color: terracottaColors.error,
               textAlign: 'center',
-              fontSize: { xs: '0.8rem', sm: '0.875rem' },
+              fontSize: isIPhoneDevice ? '0.75rem' : { xs: '0.8rem', sm: '0.875rem' },
             }}
           >
             {error}
@@ -1210,20 +1277,20 @@ const QuantityModal = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            p: { xs: 1.5, sm: 2 },
+            p: isIPhoneDevice ? 1.2 : { xs: 1.5, sm: 2 },
             backgroundColor: `${terracottaColors.primary}15`,
             borderRadius: 1.5,
             border: `1px solid ${terracottaColors.primary}30`,
             mt: 2,
-            flexDirection: { xs: 'column', sm: 'row' },
-            gap: { xs: 1, sm: 0 },
+            flexDirection: isIPhoneDevice ? 'column' : { xs: 'column', sm: 'row' },
+            gap: isIPhoneDevice ? 0.8 : { xs: 1, sm: 0 },
           }}
         >
-          <Box sx={{ textAlign: { xs: 'center', sm: 'left' } }}>
+          <Box sx={{ textAlign: 'center' }}>
             <Typography 
               variant="body2" 
               color="text.secondary"
-              sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}
+              sx={{ fontSize: isIPhoneDevice ? '0.75rem' : { xs: '0.8rem', sm: '0.875rem' } }}
             >
               Total Amount
             </Typography>
@@ -1232,17 +1299,17 @@ const QuantityModal = ({
               fontWeight={700} 
               sx={{ 
                 color: terracottaColors.primary,
-                fontSize: { xs: '1.5rem', sm: '1.75rem' },
+                fontSize: isIPhoneDevice ? '1.3rem' : { xs: '1.5rem', sm: '1.75rem' },
               }}
             >
               {formatPrice(totalPrice)}
             </Typography>
           </Box>
-          <Box sx={{ textAlign: { xs: 'center', sm: 'right' } }}>
+          <Box sx={{ textAlign: 'center' }}>
             <Typography 
               variant="body2" 
               color="text.secondary"
-              sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}
+              sx={{ fontSize: isIPhoneDevice ? '0.75rem' : { xs: '0.8rem', sm: '0.875rem' } }}
             >
               {quantity} × {formatPrice(product.price)}
             </Typography>
@@ -1252,7 +1319,7 @@ const QuantityModal = ({
                 fontWeight={600} 
                 sx={{ 
                   color: terracottaColors.success,
-                  fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                  fontSize: isIPhoneDevice ? '0.75rem' : { xs: '0.8rem', sm: '0.875rem' },
                 }}
               >
                 You save {formatPrice((product.originalPrice - product.price) * quantity)}
@@ -1263,11 +1330,11 @@ const QuantityModal = ({
       </DialogContent>
 
       <DialogActions sx={{ 
-        px: { xs: 2, sm: 3 }, 
-        pb: { xs: 2, sm: 3 }, 
+        px: isIPhoneDevice ? 1.5 : { xs: 2, sm: 3 }, 
+        pb: isIPhoneDevice ? 2 : { xs: 2, sm: 3 }, 
         pt: 1,
-        gap: { xs: 1, sm: 1.5 },
-        flexDirection: { xs: 'column', sm: 'row' },
+        gap: isIPhoneDevice ? 0.8 : { xs: 1, sm: 1.5 },
+        flexDirection: 'column',
       }}>
         <Button
           onClick={onClose}
@@ -1276,10 +1343,10 @@ const QuantityModal = ({
           sx={{ 
             borderRadius: 2,
             px: 3,
-            py: { xs: 1.5, sm: 1 },
+            py: isIPhoneDevice ? 2 : { xs: 1.5, sm: 1 },
             fontWeight: 600,
-            fontSize: { xs: '0.875rem', sm: '1rem' },
-            minHeight: 44,
+            fontSize: isIPhoneDevice ? '16px' : { xs: '0.875rem', sm: '1rem' },
+            ...iPhoneStyles.touchTarget,
             borderColor: terracottaColors.primary,
             color: terracottaColors.primary,
             '&:hover': {
@@ -1299,10 +1366,10 @@ const QuantityModal = ({
           sx={{
             borderRadius: 2,
             px: 3,
-            py: { xs: 1.5, sm: 1 },
+            py: isIPhoneDevice ? 2 : { xs: 1.5, sm: 1 },
             fontWeight: 600,
-            fontSize: { xs: '0.875rem', sm: '1rem' },
-            minHeight: 44,
+            fontSize: isIPhoneDevice ? '16px' : { xs: '0.875rem', sm: '1rem' },
+            ...iPhoneStyles.touchTarget,
             backgroundColor: terracottaColors.primary,
             boxShadow: `0 4px 12px ${terracottaColors.primary}30`,
             '&:hover': {
@@ -1317,46 +1384,52 @@ const QuantityModal = ({
   );
 };
 
-// Loading skeleton component - Enhanced for iPhone
-const ProductSkeleton = () => (
-  <Grid container spacing={{ xs: 2, sm: 3 }}>
-    {Array(8).fill(0).map((_, index) => (
-      <Grid item xs={12} sm={6} md={4} lg={3} key={index}>
-        <Paper sx={{ 
-          p: 0, 
-          borderRadius: 3, 
-          overflow: 'hidden',
-          border: `1px solid ${terracottaColors.divider}`,
-        }}>
-          <Skeleton 
-            variant="rectangular" 
-            height={220}
-            sx={{ backgroundColor: `${terracottaColors.primaryLight}20` }}
-          />
-          <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
-            <Skeleton variant="text" width="80%" height={24} />
-            <Skeleton variant="text" width="60%" height={20} />
-            <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-              <Skeleton variant="text" width="30%" height={20} />
-              <Skeleton variant="text" width="25%" height={20} />
+// Loading skeleton component - iPhone-optimized
+const ProductSkeleton = () => {
+  const isIPhoneDevice = isIPhone();
+  
+  return (
+    <Grid container spacing={isIPhoneDevice ? 1.5 : { xs: 2, sm: 3 }}>
+      {Array(8).fill(0).map((_, index) => (
+        <Grid item xs={12} sm={6} md={4} lg={3} key={index}>
+          <Paper sx={{ 
+            p: 0, 
+            borderRadius: 3, 
+            overflow: 'hidden',
+            border: `1px solid ${terracottaColors.divider}`,
+          }}>
+            <Skeleton 
+              variant="rectangular" 
+              height={isIPhoneDevice ? 180 : 220}
+              sx={{ backgroundColor: `${terracottaColors.primaryLight}20` }}
+            />
+            <Box sx={{ p: isIPhoneDevice ? 1.2 : { xs: 1.5, sm: 2 } }}>
+              <Skeleton variant="text" width="80%" height={24} />
+              <Skeleton variant="text" width="60%" height={20} />
+              <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                <Skeleton variant="text" width="30%" height={20} />
+                <Skeleton variant="text" width="25%" height={20} />
+              </Box>
+              <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
+                <Skeleton variant="rectangular" height={isIPhoneDevice ? 48 : 44} sx={{ flexGrow: 1 }} />
+                <Skeleton variant="rectangular" width={isIPhoneDevice ? 48 : 44} height={isIPhoneDevice ? 48 : 44} />
+              </Box>
             </Box>
-            <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
-              <Skeleton variant="rectangular" height={44} sx={{ flexGrow: 1 }} />
-              <Skeleton variant="rectangular" width={44} height={44} />
-            </Box>
-          </Box>
-        </Paper>
-      </Grid>
-    ))}
-  </Grid>
-);
+          </Paper>
+        </Grid>
+      ))}
+    </Grid>
+  );
+};
 
-// Main Products Component - Enhanced with hooks and iPhone fixes
+// Main Products Component - iPhone-optimized
 const Products = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const isVerySmall = useMediaQuery(theme.breakpoints.down('sm'));
+  const isIPhoneDevice = isIPhone();
+  const isIOSDevice = isIOSDeviceCheck();
   
   // State
   const [user, setUser] = useState(null);
@@ -1410,6 +1483,32 @@ const Products = () => {
     const timer = startTimer('renderTime');
     return timer;
   }, [filteredProducts, startTimer]);
+
+  // iPhone-specific effects
+  useEffect(() => {
+    if (isIPhoneDevice) {
+      // Disable zoom on double tap
+      document.addEventListener('touchstart', function(event) {
+        if (event.touches.length > 1) {
+          event.preventDefault();
+        }
+      }, { passive: false });
+
+      // Add viewport meta tag adjustments for iPhone
+      const viewport = document.querySelector('meta[name=viewport]');
+      if (viewport) {
+        viewport.setAttribute('content', 
+          'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover'
+        );
+      }
+
+      // Add safe area CSS variables
+      document.documentElement.style.setProperty('--safe-area-inset-top', 'env(safe-area-inset-top)');
+      document.documentElement.style.setProperty('--safe-area-inset-bottom', 'env(safe-area-inset-bottom)');
+      document.documentElement.style.setProperty('--safe-area-inset-left', 'env(safe-area-inset-left)');
+      document.documentElement.style.setProperty('--safe-area-inset-right', 'env(safe-area-inset-right)');
+    }
+  }, [isIPhoneDevice]);
 
   // Callbacks
   const showSnackbar = useCallback((message, severity = 'success') => {
@@ -1537,11 +1636,15 @@ const Products = () => {
     <Box sx={{ 
       bgcolor: terracottaColors.background, 
       minHeight: '100vh',
-      pt: { xs: 1, sm: 2 },
+      pt: isIPhoneDevice ? 0.5 : { xs: 1, sm: 2 },
       // iPhone-specific optimizations
-      WebkitTapHighlightColor: 'transparent',
-      WebkitTouchCallout: 'none',
+      ...iPhoneStyles.noSelect,
       overflow: 'hidden auto',
+      // iPhone safe area support
+      ...(isIPhoneDevice && {
+        paddingTop: 'max(0.5rem, env(safe-area-inset-top))',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+      }),
     }}>
       {/* Snackbar */}
       <Snackbar
@@ -1551,7 +1654,7 @@ const Products = () => {
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
         sx={{
           '& .MuiSnackbar-root': {
-            top: { xs: 80, sm: 24 }, // Avoid iPhone notch
+            top: isIPhoneDevice ? 100 : { xs: 80, sm: 24 }, // Avoid iPhone notch
           },
         }}
       >
@@ -1561,16 +1664,18 @@ const Products = () => {
           variant="filled"
           sx={{ 
             borderRadius: 2,
-            fontSize: { xs: '0.875rem', sm: '1rem' },
+            fontSize: isIPhoneDevice ? '0.85rem' : { xs: '0.875rem', sm: '1rem' },
           }}
         >
           {snackbar.message}
         </Alert>
       </Snackbar>
 
-      <Container maxWidth="xl" sx={{ px: { xs: 1, sm: 2, md: 3 } }}>
+      <Container maxWidth="xl" sx={{ 
+        px: isIPhoneDevice ? 1 : { xs: 1, sm: 2, md: 3 },
+      }}>
         {/* Header Section */}
-        <Box sx={{ mb: { xs: 2, sm: 4 } }}>
+        <Box sx={{ mb: isIPhoneDevice ? 1.5 : { xs: 2, sm: 4 } }}>
           <Fade in timeout={800}>
             <Box>
               <Typography 
@@ -1582,7 +1687,7 @@ const Products = () => {
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                   mb: 1,
-                  fontSize: { xs: '1.75rem', sm: '2.125rem' },
+                  fontSize: isIPhoneDevice ? '1.6rem' : { xs: '1.75rem', sm: '2.125rem' },
                   textAlign: { xs: 'center', sm: 'left' },
                 }}
               >
@@ -1592,8 +1697,8 @@ const Products = () => {
                 variant="body1" 
                 color="text.secondary" 
                 sx={{ 
-                  mb: { xs: 2, sm: 3 },
-                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                  mb: isIPhoneDevice ? 1.5 : { xs: 2, sm: 3 },
+                  fontSize: isIPhoneDevice ? '0.85rem' : { xs: '0.875rem', sm: '1rem' },
                   textAlign: { xs: 'center', sm: 'left' },
                 }}
               >
@@ -1603,7 +1708,7 @@ const Products = () => {
               {/* Products Stats */}
               <Box sx={{ 
                 display: 'flex', 
-                gap: 2, 
+                gap: isIPhoneDevice ? 1.5 : 2, 
                 flexWrap: 'wrap',
                 justifyContent: { xs: 'center', sm: 'flex-start' },
                 mb: 2,
@@ -1614,7 +1719,7 @@ const Products = () => {
                     backgroundColor: `${terracottaColors.primary}15`,
                     color: terracottaColors.primaryDark,
                     fontWeight: 600,
-                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                    fontSize: isIPhoneDevice ? '0.7rem' : { xs: '0.75rem', sm: '0.875rem' },
                   }}
                 />
                 {hyderabadCount > 0 && (
@@ -1625,7 +1730,7 @@ const Products = () => {
                       backgroundColor: '#9C27B015',
                       color: '#9C27B0',
                       fontWeight: 600,
-                      fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                      fontSize: isIPhoneDevice ? '0.7rem' : { xs: '0.75rem', sm: '0.875rem' },
                     }}
                   />
                 )}
@@ -1637,7 +1742,7 @@ const Products = () => {
           <Paper
             elevation={2}
             sx={{
-              p: { xs: 2, sm: 3 },
+              p: isIPhoneDevice ? 1.5 : { xs: 2, sm: 3 },
               borderRadius: 3,
               background: `linear-gradient(135deg, rgba(255,255,255,0.9) 0%, ${terracottaColors.backgroundLight}30 100%)`,
               backdropFilter: 'blur(10px)',
@@ -1647,7 +1752,7 @@ const Products = () => {
             <Box sx={{ 
               display: 'flex', 
               alignItems: 'center', 
-              gap: { xs: 1.5, sm: 2 },
+              gap: isIPhoneDevice ? 1 : { xs: 1.5, sm: 2 },
               flexWrap: 'wrap',
             }}>
               {/* Search */}
@@ -1669,7 +1774,7 @@ const Products = () => {
                           size="small" 
                           onClick={() => setSearchQuery('')}
                           edge="end"
-                          sx={{ minWidth: 32, minHeight: 32 }}
+                          sx={{ ...iPhoneStyles.touchTarget }}
                         >
                           <Close fontSize="small" />
                         </IconButton>
@@ -1680,8 +1785,10 @@ const Products = () => {
                     '& .MuiOutlinedInput-root': {
                       backgroundColor: 'white',
                       borderRadius: 2,
-                      height: { xs: 48, sm: 56 }, // Better touch target for iPhone
-                      fontSize: { xs: '0.875rem', sm: '1rem' },
+                      height: isIPhoneDevice ? 50 : { xs: 48, sm: 56 },
+                      '& input': {
+                        ...iPhoneStyles.input, // Prevent zoom on iPhone
+                      },
                       '& fieldset': {
                         borderColor: `${terracottaColors.primary}30`,
                       },
@@ -1704,11 +1811,11 @@ const Products = () => {
                   onClick={handleDrawerToggle}
                   sx={{ 
                     borderRadius: 2,
-                    px: { xs: 2, sm: 3 },
-                    py: { xs: 1.8, sm: 1.5 },
+                    px: isIPhoneDevice ? 1.5 : { xs: 2, sm: 3 },
+                    py: isIPhoneDevice ? 2 : { xs: 1.8, sm: 1.5 },
                     fontWeight: 600,
-                    fontSize: { xs: '0.875rem', sm: '1rem' },
-                    minHeight: 48,
+                    fontSize: isIPhoneDevice ? '16px' : { xs: '0.875rem', sm: '1rem' },
+                    ...iPhoneStyles.touchTarget,
                     backgroundColor: terracottaColors.primary,
                     '&:hover': {
                       backgroundColor: terracottaColors.primaryDark,
@@ -1727,11 +1834,11 @@ const Products = () => {
                   onClick={() => setHyderabadOnly(!hyderabadOnly)}
                   sx={{ 
                     borderRadius: 2,
-                    px: { xs: 1.5, sm: 2 },
-                    py: { xs: 1.8, sm: 1.5 },
+                    px: isIPhoneDevice ? 1.2 : { xs: 1.5, sm: 2 },
+                    py: isIPhoneDevice ? 2 : { xs: 1.8, sm: 1.5 },
                     fontWeight: 600,
-                    fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                    minHeight: 48,
+                    fontSize: isIPhoneDevice ? '14px' : { xs: '0.8rem', sm: '0.875rem' },
+                    ...iPhoneStyles.touchTarget,
                     borderColor: '#9C27B0',
                     color: hyderabadOnly ? 'white' : '#9C27B0',
                     backgroundColor: hyderabadOnly ? '#9C27B0' : 'transparent',
@@ -1741,7 +1848,7 @@ const Products = () => {
                     },
                   }}
                 >
-                  {isVerySmall ? 'HYD' : 'Hyderabad Only'}
+                  {(isVerySmall || isIPhoneDevice) ? 'HYD' : 'Hyderabad Only'}
                 </Button>
               )}
 
@@ -1750,8 +1857,8 @@ const Products = () => {
                 display: 'flex', 
                 alignItems: 'center',
                 backgroundColor: `${terracottaColors.primary}15`,
-                px: { xs: 1.5, sm: 2 },
-                py: { xs: 1, sm: 1 },
+                px: isIPhoneDevice ? 1.2 : { xs: 1.5, sm: 2 },
+                py: isIPhoneDevice ? 0.8 : { xs: 1, sm: 1 },
                 borderRadius: 2,
                 order: { xs: -1, sm: 0 },
                 width: { xs: '100%', sm: 'auto' },
@@ -1763,7 +1870,7 @@ const Products = () => {
                   fontWeight={600} 
                   sx={{ 
                     color: terracottaColors.primaryDark,
-                    fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                    fontSize: isIPhoneDevice ? '0.75rem' : { xs: '0.8rem', sm: '0.875rem' },
                   }}
                 >
                   {filteredProducts.length} Products
@@ -1815,7 +1922,7 @@ const Products = () => {
             ) : productsError ? (
               <Paper
                 sx={{
-                  p: { xs: 4, sm: 6 },
+                  p: isIPhoneDevice ? 3 : { xs: 4, sm: 6 },
                   textAlign: 'center',
                   borderRadius: 3,
                   background: `linear-gradient(135deg, rgba(255,255,255,0.9) 0%, ${terracottaColors.backgroundLight}30 100%)`,
@@ -1826,7 +1933,7 @@ const Products = () => {
                   color="error" 
                   sx={{ 
                     mb: 2,
-                    fontSize: { xs: '1.1rem', sm: '1.25rem' },
+                    fontSize: isIPhoneDevice ? '1.05rem' : { xs: '1.1rem', sm: '1.25rem' },
                   }}
                 >
                   Error Loading Products
@@ -1836,7 +1943,7 @@ const Products = () => {
                   color="text.secondary" 
                   sx={{ 
                     mb: 3,
-                    fontSize: { xs: '0.875rem', sm: '1rem' },
+                    fontSize: isIPhoneDevice ? '0.85rem' : { xs: '0.875rem', sm: '1rem' },
                   }}
                 >
                   {productsError}
@@ -1847,7 +1954,9 @@ const Products = () => {
                   sx={{ 
                     borderRadius: 2, 
                     px: 4,
-                    py: { xs: 1.5, sm: 1 },
+                    py: isIPhoneDevice ? 2 : { xs: 1.5, sm: 1 },
+                    fontSize: isIPhoneDevice ? '16px' : 'inherit',
+                    ...iPhoneStyles.touchTarget,
                     backgroundColor: terracottaColors.primary,
                     '&:hover': {
                       backgroundColor: terracottaColors.primaryDark,
@@ -1860,7 +1969,7 @@ const Products = () => {
             ) : filteredProducts.length === 0 ? (
               <Paper
                 sx={{
-                  p: { xs: 4, sm: 6 },
+                  p: isIPhoneDevice ? 3 : { xs: 4, sm: 6 },
                   textAlign: 'center',
                   borderRadius: 3,
                   background: `linear-gradient(135deg, rgba(255,255,255,0.9) 0%, ${terracottaColors.backgroundLight}30 100%)`,
@@ -1871,7 +1980,7 @@ const Products = () => {
                   color="text.secondary" 
                   sx={{ 
                     mb: 2,
-                    fontSize: { xs: '1.1rem', sm: '1.25rem' },
+                    fontSize: isIPhoneDevice ? '1.05rem' : { xs: '1.1rem', sm: '1.25rem' },
                   }}
                 >
                   No products found matching your criteria
@@ -1882,7 +1991,9 @@ const Products = () => {
                   sx={{ 
                     borderRadius: 2, 
                     px: 4,
-                    py: { xs: 1.5, sm: 1 },
+                    py: isIPhoneDevice ? 2 : { xs: 1.5, sm: 1 },
+                    fontSize: isIPhoneDevice ? '16px' : 'inherit',
+                    ...iPhoneStyles.touchTarget,
                     backgroundColor: terracottaColors.primary,
                     '&:hover': {
                       backgroundColor: terracottaColors.primaryDark,
@@ -1893,7 +2004,7 @@ const Products = () => {
                 </Button>
               </Paper>
             ) : (
-              <Grid container spacing={{ xs: 2, sm: 3 }}>
+              <Grid container spacing={isIPhoneDevice ? 1.5 : { xs: 2, sm: 3 }}>
                 {filteredProducts.map((product, index) => (
                   <Grid item xs={12} sm={6} lg={4} xl={3} key={product.id}>
                     <Zoom in timeout={500 + index * 50}>
@@ -1924,35 +2035,40 @@ const Products = () => {
         onOpen={() => setDrawerOpen(true)}
         PaperProps={{
           sx: {
-            width: { xs: '90vw', sm: 300 },
-            maxWidth: 350,
+            width: isIPhoneDevice ? '85vw' : { xs: '90vw', sm: 300 },
+            maxWidth: isIPhoneDevice ? 320 : 350,
             background: `linear-gradient(135deg, rgba(255,255,255,0.95) 0%, ${terracottaColors.backgroundLight}50 100%)`,
             backdropFilter: 'blur(10px)',
+            // iPhone safe area support
+            ...(isIPhoneDevice && {
+              paddingTop: 'env(safe-area-inset-top)',
+              paddingBottom: 'env(safe-area-inset-bottom)',
+            }),
           }
         }}
         // iPhone-specific optimizations
-        disableBackdropTransition={true}
-        disableDiscovery={true}
+        disableBackdropTransition={isIPhoneDevice}
+        disableDiscovery={isIPhoneDevice}
       >
-        <Box sx={{ p: { xs: 2, sm: 3 } }}>
+        <Box sx={{ p: isIPhoneDevice ? 1.5 : { xs: 2, sm: 3 } }}>
           <Box sx={{ 
             display: 'flex', 
             justifyContent: 'space-between', 
             alignItems: 'center', 
             mb: 3,
-            minHeight: 44,
+            ...iPhoneStyles.touchTarget,
           }}>
             <Typography 
               variant="h6" 
               fontWeight={700}
-              sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}
+              sx={{ fontSize: isIPhoneDevice ? '1.05rem' : { xs: '1.1rem', sm: '1.25rem' } }}
             >
               Filters
             </Typography>
             <IconButton 
               onClick={() => setDrawerOpen(false)} 
               size="small"
-              sx={{ minWidth: 44, minHeight: 44 }}
+              sx={{ ...iPhoneStyles.touchTarget }}
             >
               <Close />
             </IconButton>
@@ -1982,7 +2098,7 @@ const Products = () => {
       )}
 
       {/* Performance Debug (Development only) */}
-      {process.env.NODE_ENV === 'development' && (
+      {process.env.NODE_ENV === 'development' && !isIPhoneDevice && (
         <Box
           sx={{
             position: 'fixed',
