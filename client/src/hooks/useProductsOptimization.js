@@ -47,7 +47,7 @@ export const useVirtualization = (items, containerHeight, itemHeight) => {
   return { visibleItems, handleScroll };
 };
 
-// Optimized product data processing
+// Optimized product data processing with Hyderabad priority
 export const useProductProcessor = () => {
   const processProduct = useCallback((docData, docId) => {
     const price = Number(docData.price) || 0;
@@ -67,7 +67,7 @@ export const useProductProcessor = () => {
     else if (stock < 10) stockStatus = 'critical';
     else if (stock < 20) stockStatus = 'low';
 
-    // Process images
+    // Process images with fallback
     const images = Array.isArray(docData.images) ? docData.images : [];
     const imgUrl = images.length > 0 ? images[0] : '/api/placeholder/300/220';
 
@@ -87,6 +87,7 @@ export const useProductProcessor = () => {
       reviews: Number(docData.reviews) || 0,
       isFeatured: Boolean(docData.isFeatured),
       hidden: Boolean(docData.hidden),
+      hyderabadOnly: Boolean(docData.hyderabadOnly),
       createdAt: docData.createdAt || new Date().toISOString(),
       // Add search terms for better filtering
       searchTerms: [
@@ -94,14 +95,16 @@ export const useProductProcessor = () => {
         docData.code?.toLowerCase() || '',
         docData.description?.toLowerCase() || '',
       ].filter(Boolean).join(' '),
+      // Priority score for sorting (Hyderabad products get higher priority)
+      priorityScore: docData.hyderabadOnly ? 1000 : 0,
     };
   }, []);
 
   return { processProduct };
 };
 
-// Optimized search and filter
-export const useProductSearch = (products, searchQuery, filters) => {
+// Enhanced search and filter with Hyderabad priority
+export const useProductSearch = (products, searchQuery, filters, prioritizeHyderabad = true) => {
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   
   const filteredProducts = useMemo(() => {
@@ -139,6 +142,11 @@ export const useProductSearch = (products, searchQuery, filters) => {
       );
     }
     
+    // Apply Hyderabad filter
+    if (filters.hyderabadOnly) {
+      filtered = filtered.filter(product => product.hyderabadOnly === true);
+    }
+    
     return filtered;
   }, [products, debouncedSearchQuery, filters]);
   
@@ -149,36 +157,87 @@ export const useProductSearch = (products, searchQuery, filters) => {
     
     switch (filters.sortBy) {
       case 'priceLowToHigh':
-        return sorted.sort((a, b) => a.price - b.price);
+        return sorted.sort((a, b) => {
+          if (prioritizeHyderabad) {
+            if (a.hyderabadOnly && !b.hyderabadOnly) return -1;
+            if (!a.hyderabadOnly && b.hyderabadOnly) return 1;
+          }
+          return a.price - b.price;
+        });
       case 'priceHighToLow':
-        return sorted.sort((a, b) => b.price - a.price);
+        return sorted.sort((a, b) => {
+          if (prioritizeHyderabad) {
+            if (a.hyderabadOnly && !b.hyderabadOnly) return -1;
+            if (!a.hyderabadOnly && b.hyderabadOnly) return 1;
+          }
+          return b.price - a.price;
+        });
       case 'alphabetical':
-        return sorted.sort((a, b) => a.name.localeCompare(b.name));
+        return sorted.sort((a, b) => {
+          if (prioritizeHyderabad) {
+            if (a.hyderabadOnly && !b.hyderabadOnly) return -1;
+            if (!a.hyderabadOnly && b.hyderabadOnly) return 1;
+          }
+          return a.name.localeCompare(b.name);
+        });
       case 'rating':
-        return sorted.sort((a, b) => b.rating - a.rating);
+        return sorted.sort((a, b) => {
+          if (prioritizeHyderabad) {
+            if (a.hyderabadOnly && !b.hyderabadOnly) return -1;
+            if (!a.hyderabadOnly && b.hyderabadOnly) return 1;
+          }
+          return b.rating - a.rating;
+        });
       case 'newest':
-        return sorted.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        return sorted.sort((a, b) => {
+          if (prioritizeHyderabad) {
+            if (a.hyderabadOnly && !b.hyderabadOnly) return -1;
+            if (!a.hyderabadOnly && b.hyderabadOnly) return 1;
+          }
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        });
       case 'featured':
         return sorted.sort((a, b) => {
+          // First priority: Hyderabad products
+          if (prioritizeHyderabad) {
+            if (a.hyderabadOnly && !b.hyderabadOnly) return -1;
+            if (!a.hyderabadOnly && b.hyderabadOnly) return 1;
+          }
+          // Second priority: Featured products
           if (a.isFeatured && !b.isFeatured) return -1;
           if (!a.isFeatured && b.isFeatured) return 1;
-          return b.rating - a.rating; // Secondary sort by rating
+          // Third priority: Rating
+          return b.rating - a.rating;
         });
       case 'discount':
-        return sorted.sort((a, b) => b.discount - a.discount);
-      default:
-        // Relevance sorting - featured first, then by rating
         return sorted.sort((a, b) => {
+          if (prioritizeHyderabad) {
+            if (a.hyderabadOnly && !b.hyderabadOnly) return -1;
+            if (!a.hyderabadOnly && b.hyderabadOnly) return 1;
+          }
+          return b.discount - a.discount;
+        });
+      default:
+        // Relevance sorting - Hyderabad first, then featured, then by rating
+        return sorted.sort((a, b) => {
+          // First priority: Hyderabad products
+          if (prioritizeHyderabad) {
+            if (a.hyderabadOnly && !b.hyderabadOnly) return -1;
+            if (!a.hyderabadOnly && b.hyderabadOnly) return 1;
+          }
+          // Second priority: Featured products
           if (a.isFeatured && !b.isFeatured) return -1;
           if (!a.isFeatured && b.isFeatured) return 1;
+          // Third priority: Rating
           return b.rating - a.rating;
         });
     }
-  }, [filteredProducts, filters.sortBy]);
+  }, [filteredProducts, filters.sortBy, prioritizeHyderabad]);
   
   return {
     products: sortedProducts,
     totalCount: filteredProducts.length,
+    hyderabadCount: filteredProducts.filter(p => p.hyderabadOnly).length,
     isSearching: debouncedSearchQuery !== searchQuery,
   };
 };
@@ -200,6 +259,7 @@ export const useCartOperations = (user) => {
         code: product.code,
         quantity: quantity,
         imgUrl: product.imgUrl,
+        hyderabadOnly: product.hyderabadOnly || false,
         addedAt: new Date().toISOString(),
       });
       return { success: true, message: `${product.name} added to cart!` };
@@ -229,7 +289,7 @@ export const useCartOperations = (user) => {
   return { addToCart, removeFromCart, loading };
 };
 
-// Optimized wishlist operations
+// Enhanced wishlist operations
 export const useWishlistOperations = (user) => {
   const [wishlist, setWishlist] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -294,6 +354,7 @@ export const useWishlistOperations = (user) => {
           code: product.code,
           hidden: product.hidden,
           stock: product.stock,
+          hyderabadOnly: product.hyderabadOnly || false,
           addedAt: new Date().toISOString(),
         });
 
@@ -341,7 +402,7 @@ export const usePerformanceMonitor = () => {
   return { metrics, startTimer };
 };
 
-// Image lazy loading hook
+// Enhanced image lazy loading hook with better mobile support
 export const useLazyImage = (src, placeholder = '/api/placeholder/300/220') => {
   const [imageSrc, setImageSrc] = useState(placeholder);
   const [imageRef, setImageRef] = useState();
@@ -365,7 +426,7 @@ export const useLazyImage = (src, placeholder = '/api/placeholder/300/220') => {
     }
     
     return () => {
-      if (observer && observer.unobserve) {
+      if (observer && observer.unobserve && imageRef) {
         observer.unobserve(imageRef);
       }
     };
@@ -374,24 +435,26 @@ export const useLazyImage = (src, placeholder = '/api/placeholder/300/220') => {
   return [imageSrc, setImageRef];
 };
 
-// Local storage hook with expiration
-export const useLocalStorageWithExpiry = (key, initialValue, expirationMinutes = 60) => {
+// In-memory storage hook (replaces localStorage for Claude.ai compatibility)
+export const useMemoryStorage = (key, initialValue, expirationMinutes = 60) => {
+  // Use a Map to store data in memory with expiration
+  const storage = useMemo(() => new Map(), []);
+  
   const [storedValue, setStoredValue] = useState(() => {
     try {
-      const item = window.localStorage.getItem(key);
+      const item = storage.get(key);
       if (!item) return initialValue;
       
-      const parsedItem = JSON.parse(item);
       const now = new Date().getTime();
       
-      if (now > parsedItem.expiry) {
-        window.localStorage.removeItem(key);
+      if (now > item.expiry) {
+        storage.delete(key);
         return initialValue;
       }
       
-      return parsedItem.value;
+      return item.value;
     } catch (error) {
-      console.error(`Error reading localStorage key "${key}":`, error);
+      console.error(`Error reading memory storage key "${key}":`, error);
       return initialValue;
     }
   });
@@ -406,12 +469,50 @@ export const useLocalStorageWithExpiry = (key, initialValue, expirationMinutes =
         expiry,
       };
       
-      window.localStorage.setItem(key, JSON.stringify(item));
+      storage.set(key, item);
       setStoredValue(value);
     } catch (error) {
-      console.error(`Error setting localStorage key "${key}":`, error);
+      console.error(`Error setting memory storage key "${key}":`, error);
     }
-  }, [key, expirationMinutes]);
+  }, [key, expirationMinutes, storage]);
 
   return [storedValue, setValue];
+};
+
+// Products data fetching hook
+export const useProducts = () => {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const { processProduct } = useProductProcessor();
+
+  const fetchProducts = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const querySnapshot = await getDocs(collection(db, 'products'));
+      const productsData = querySnapshot.docs.map(doc => 
+        processProduct(doc.data(), doc.id)
+      );
+
+      setProducts(productsData);
+    } catch (err) {
+      console.error('Error fetching products:', err);
+      setError('Failed to load products');
+    } finally {
+      setLoading(false);
+    }
+  }, [processProduct]);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
+
+  return { 
+    products, 
+    loading, 
+    error, 
+    refetch: fetchProducts 
+  };
 };

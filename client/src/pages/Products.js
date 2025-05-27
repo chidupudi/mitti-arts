@@ -1,4 +1,4 @@
-// Products.jsx - Updated with Buy Now functionality
+// Products.jsx - Optimized with iPhone fixes and hooks integration
 import React, { 
   useState, 
   useEffect, 
@@ -67,22 +67,24 @@ import {
   Remove,
   ShoppingCart,
   LocationOn,
-  FlashOn, // Icon for Buy Now button
+  FlashOn,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { auth, db } from '../Firebase/Firebase';
+import { auth } from '../Firebase/Firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { 
-  collection, 
-  addDoc, 
-  getDocs, 
-  query, 
-  where, 
-  deleteDoc, 
-  doc 
-} from 'firebase/firestore';
 
-// Terracotta color scheme
+// Import optimization hooks
+import {
+  useProducts,
+  useProductSearch,
+  useCartOperations,
+  useWishlistOperations,
+  usePerformanceMonitor,
+  useLazyImage,
+  useMemoryStorage,
+} from '../hooks/useProductsOptimization';
+
+// Terracotta color scheme with better contrast for iPhone
 const terracottaColors = {
   primary: '#D2691E',
   primaryLight: '#E8A857',
@@ -105,32 +107,20 @@ const formatPrice = (price) => {
   return `₹${price.toLocaleString('en-IN')}`;
 };
 
-// Custom debounce hook
-const useDebounce = (value, delay) => {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-
-  return debouncedValue;
-};
-
-// ProductCard Component - Updated with Buy Now button
+// ProductCard Component - Enhanced for iPhone compatibility
 const ProductCard = memo(({ 
   product, 
   onAddToCart, 
-  onBuyNow, // New prop for Buy Now functionality
+  onBuyNow,
   onToggleWishlist, 
   onProductClick,
   isInWishlist
 }) => {
+  const [imageSrc, setImageRef] = useLazyImage(
+    product.imgUrl, 
+    'https://via.placeholder.com/300x220/D2691E/FFFFFF?text=Product'
+  );
+  
   const isOutOfStock = product.stock === 0;
   const isHidden = product.hidden;
   const isUnavailable = isHidden || isOutOfStock;
@@ -268,6 +258,11 @@ const ProductCard = memo(({
         cursor: 'pointer',
         border: `1px solid ${terracottaColors.divider}`,
         opacity: isUnavailable ? 0.75 : 1,
+        // Enhanced iPhone compatibility
+        WebkitTapHighlightColor: 'transparent',
+        WebkitTouchCallout: 'none',
+        WebkitUserSelect: 'none',
+        userSelect: 'none',
         
         '&:hover': {
           transform: isUnavailable ? 'none' : 'translateY(-4px)',
@@ -275,21 +270,31 @@ const ProductCard = memo(({
             ? 2 
             : `0 12px 28px ${terracottaColors.primary}25`,
         },
+        
+        // Improved touch targets for iPhone
+        '& .MuiButton-root': {
+          minHeight: 44, // Apple's recommended minimum touch target
+          fontSize: { xs: '0.875rem', sm: '1rem' },
+        },
+        '& .MuiIconButton-root': {
+          minWidth: 44,
+          minHeight: 44,
+        },
       }}
       onClick={handleCardClick}
     >
-      {/* Status Ribbons */}
+      {/* Status Ribbons - Better positioning for iPhone */}
       {isHidden && (
         <Box
           sx={{
             position: 'absolute',
             top: 12,
-            right: -30,
+            right: { xs: -25, sm: -30 }, // Adjusted for iPhone
             transform: 'rotate(35deg)',
-            width: 120,
+            width: { xs: 100, sm: 120 }, // Responsive width
             textAlign: 'center',
             padding: '4px 0',
-            fontSize: '0.7rem',
+            fontSize: { xs: '0.6rem', sm: '0.7rem' }, // Responsive font size
             fontWeight: 700,
             color: 'white',
             zIndex: 2,
@@ -305,12 +310,12 @@ const ProductCard = memo(({
           sx={{
             position: 'absolute',
             top: 12,
-            right: -30,
+            right: { xs: -25, sm: -30 },
             transform: 'rotate(35deg)',
-            width: 120,
+            width: { xs: 100, sm: 120 },
             textAlign: 'center',
             padding: '4px 0',
-            fontSize: '0.7rem',
+            fontSize: { xs: '0.6rem', sm: '0.7rem' },
             fontWeight: 700,
             color: 'white',
             zIndex: 2,
@@ -322,17 +327,19 @@ const ProductCard = memo(({
         </Box>
       )}
 
-      {/* Featured Badge */}
+      {/* Featured Badge - Better positioning */}
       {product.isFeatured && !isUnavailable && (
         <Chip
           label="Featured"
           size="small"
           sx={{
             position: 'absolute',
-            top: 12,
-            left: 12,
+            top: { xs: 8, sm: 12 },
+            left: { xs: 8, sm: 12 },
             zIndex: 2,
             fontWeight: 600,
+            fontSize: { xs: '0.65rem', sm: '0.75rem' },
+            height: { xs: 20, sm: 24 },
             backgroundColor: terracottaColors.primary,
             color: 'white',
           }}
@@ -347,10 +354,12 @@ const ProductCard = memo(({
           size="small"
           sx={{
             position: 'absolute',
-            top: product.isFeatured ? 46 : 12,
-            left: 12,
+            top: product.isFeatured ? { xs: 34, sm: 46 } : { xs: 8, sm: 12 },
+            left: { xs: 8, sm: 12 },
             zIndex: 2,
             fontWeight: 600,
+            fontSize: { xs: '0.6rem', sm: '0.7rem' },
+            height: { xs: 20, sm: 24 },
             backgroundColor: '#9C27B0',
             color: 'white',
             pl: 0.5,
@@ -359,13 +368,15 @@ const ProductCard = memo(({
       )}
 
       <CardMedia
+        ref={setImageRef}
         component="img"
         height="220"
-        image={product.imgUrl || 'https://via.placeholder.com/300x220/D2691E/FFFFFF?text=Product'}
+        image={imageSrc}
         alt={product.name}
         sx={{
           transition: 'transform 0.3s ease',
           filter: isUnavailable ? 'grayscale(30%)' : 'none',
+          objectFit: 'cover',
           
           '&:hover': {
             transform: isUnavailable ? 'none' : 'scale(1.05)',
@@ -373,14 +384,15 @@ const ProductCard = memo(({
         }}
       />
 
-      <CardContent sx={{ flexGrow: 1, p: 2 }}>
+      <CardContent sx={{ flexGrow: 1, p: { xs: 1.5, sm: 2 } }}>
         <Typography 
           variant="h6" 
           noWrap 
           sx={{ 
             fontWeight: 600, 
             mb: 1,
-            fontSize: '1rem',
+            fontSize: { xs: '0.9rem', sm: '1rem' },
+            lineHeight: 1.3,
           }}
         >
           {product.name}
@@ -399,16 +411,33 @@ const ProductCard = memo(({
               '& .MuiRating-iconFilled': {
                 color: terracottaColors.primary,
               },
+              '& .MuiRating-icon': {
+                fontSize: { xs: '1rem', sm: '1.2rem' },
+              },
             }}
           />
-          <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
+          <Typography 
+            variant="body2" 
+            color="text.secondary" 
+            sx={{ 
+              ml: 1,
+              fontSize: { xs: '0.75rem', sm: '0.875rem' },
+            }}
+          >
             {product.rating} ({product.reviews || 0})
           </Typography>
         </Box>
 
         {/* Price */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-          <Typography variant="h6" sx={{ fontWeight: 700, color: terracottaColors.primary }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1, flexWrap: 'wrap' }}>
+          <Typography 
+            variant="h6" 
+            sx={{ 
+              fontWeight: 700, 
+              color: terracottaColors.primary,
+              fontSize: { xs: '1rem', sm: '1.25rem' },
+            }}
+          >
             {formatPrice(product.price)}
           </Typography>
           {product.originalPrice > product.price && (
@@ -416,7 +445,10 @@ const ProductCard = memo(({
               <Typography
                 variant="body2"
                 color="text.secondary"
-                sx={{ textDecoration: 'line-through' }}
+                sx={{ 
+                  textDecoration: 'line-through',
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                }}
               >
                 {formatPrice(product.originalPrice)}
               </Typography>
@@ -424,8 +456,8 @@ const ProductCard = memo(({
                 label={`${product.discount}% OFF`}
                 size="small"
                 sx={{
-                  height: 20,
-                  fontSize: '0.7rem',
+                  height: { xs: 18, sm: 20 },
+                  fontSize: { xs: '0.6rem', sm: '0.7rem' },
                   fontWeight: 600,
                   backgroundColor: terracottaColors.error,
                   color: 'white',
@@ -442,14 +474,23 @@ const ProductCard = memo(({
         <Typography 
           variant="caption" 
           color="text.secondary"
-          sx={{ display: 'block', mt: 1 }}
+          sx={{ 
+            display: 'block', 
+            mt: 1,
+            fontSize: { xs: '0.7rem', sm: '0.75rem' },
+          }}
         >
           Code: {product.code}
         </Typography>
       </CardContent>
 
-      {/* Updated CardActions with Buy Now button */}
-      <CardActions sx={{ p: 2, pt: 0, flexDirection: 'column', gap: 1 }}>
+      {/* Enhanced CardActions with better iPhone touch targets */}
+      <CardActions sx={{ 
+        p: { xs: 1.5, sm: 2 }, 
+        pt: 0, 
+        flexDirection: 'column', 
+        gap: { xs: 1, sm: 1.5 },
+      }}>
         {/* Add to Cart Button */}
         <Button
           variant="contained"
@@ -462,8 +503,10 @@ const ProductCard = memo(({
           fullWidth
           sx={{
             borderRadius: 2,
-            py: 1,
+            py: { xs: 1.2, sm: 1.5 },
             fontWeight: 600,
+            fontSize: { xs: '0.875rem', sm: '1rem' },
+            minHeight: 44, // iPhone touch target
             backgroundColor: terracottaColors.primary,
             '&:hover': {
               backgroundColor: terracottaColors.primaryDark,
@@ -481,7 +524,7 @@ const ProductCard = memo(({
         </Button>
 
         {/* Buy Now and Wishlist Row */}
-        <Box sx={{ display: 'flex', gap: 1, width: '100%' }}>
+        <Box sx={{ display: 'flex', gap: { xs: 1, sm: 1.5 }, width: '100%' }}>
           {/* Buy Now Button */}
           <Button
             variant="contained"
@@ -494,9 +537,10 @@ const ProductCard = memo(({
             sx={{
               flex: 1,
               borderRadius: 2,
-              py: 1,
+              py: { xs: 1.2, sm: 1.5 },
               fontWeight: 600,
-              fontSize: '0.85rem',
+              fontSize: { xs: '0.8rem', sm: '0.85rem' },
+              minHeight: 44,
               background: `linear-gradient(135deg, ${terracottaColors.success} 0%, #4CAF50 100%)`,
               color: 'white',
               '&:hover': {
@@ -527,7 +571,9 @@ const ProductCard = memo(({
                 border: '1px solid',
                 borderColor: isInWishlist ? terracottaColors.error : terracottaColors.divider,
                 borderRadius: 2,
-                p: 1,
+                p: { xs: 1.2, sm: 1.5 },
+                minWidth: 44,
+                minHeight: 44,
                 transition: 'all 0.2s ease',
                 color: isInWishlist ? terracottaColors.error : 'default',
                 '&:hover': {
@@ -545,7 +591,7 @@ const ProductCard = memo(({
   );
 });
 
-// FilterPanel Component (unchanged)
+// FilterPanel Component - Enhanced for iPhone
 const FilterPanel = memo(({
   priceRange,
   setPriceRange,
@@ -575,8 +621,8 @@ const FilterPanel = memo(({
             sx={{
               mb: 2,
               '& .MuiSlider-thumb': {
-                height: 20,
-                width: 20,
+                height: { xs: 24, sm: 20 }, // Larger for iPhone
+                width: { xs: 24, sm: 20 },
                 backgroundColor: terracottaColors.primary,
                 border: `2px solid white`,
                 boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
@@ -587,12 +633,15 @@ const FilterPanel = memo(({
               '& .MuiSlider-track': {
                 backgroundColor: terracottaColors.primary,
                 border: 'none',
+                height: { xs: 6, sm: 4 }, // Thicker for iPhone
               },
               '& .MuiSlider-rail': {
                 backgroundColor: terracottaColors.divider,
+                height: { xs: 6, sm: 4 },
               },
               '& .MuiSlider-valueLabel': {
                 backgroundColor: terracottaColors.primary,
+                fontSize: { xs: '0.75rem', sm: '0.875rem' },
                 '&:before': {
                   borderColor: terracottaColors.primary,
                 },
@@ -600,10 +649,18 @@ const FilterPanel = memo(({
             }}
           />
           <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-            <Typography variant="body2" color="text.secondary">
+            <Typography 
+              variant="body2" 
+              color="text.secondary"
+              sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+            >
               Min: {formatPrice(priceRange[0])}
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography 
+              variant="body2" 
+              color="text.secondary"
+              sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+            >
               Max: {formatPrice(priceRange[1])}
             </Typography>
           </Box>
@@ -623,7 +680,8 @@ const FilterPanel = memo(({
             sx={{ 
               borderRadius: 2,
               '& .MuiSelect-select': { 
-                py: 1.5 
+                py: { xs: 1.8, sm: 1.5 }, // Better touch target for iPhone
+                fontSize: { xs: '0.875rem', sm: '1rem' },
               },
               '& .MuiOutlinedInput-notchedOutline': {
                 borderColor: `${terracottaColors.primary}30`,
@@ -636,12 +694,14 @@ const FilterPanel = memo(({
               },
             }}
           >
-            <MenuItem value="relevance">Relevance</MenuItem>
+            <MenuItem value="relevance">Relevance (Hyderabad First)</MenuItem>
             <MenuItem value="priceLowToHigh">Price: Low to High</MenuItem>
             <MenuItem value="priceHighToLow">Price: High to Low</MenuItem>
             <MenuItem value="alphabetical">Alphabetical</MenuItem>
             <MenuItem value="rating">Rating</MenuItem>
             <MenuItem value="newest">Newest First</MenuItem>
+            <MenuItem value="featured">Featured First</MenuItem>
+            <MenuItem value="discount">Best Discounts</MenuItem>
           </Select>
         </FormControl>
       ),
@@ -655,7 +715,7 @@ const FilterPanel = memo(({
           <Paper
             elevation={0}
             sx={{
-              p: 2,
+              p: { xs: 1.5, sm: 2 },
               borderRadius: 2,
               border: `1px dashed ${terracottaColors.primary}50`,
               backgroundColor: `${terracottaColors.primary}08`,
@@ -668,6 +728,9 @@ const FilterPanel = memo(({
                   checked={hyderabadOnly}
                   onChange={(e) => setHyderabadOnly(e.target.checked)}
                   sx={{
+                    '& .MuiSwitch-switchBase': {
+                      padding: { xs: 1.5, sm: 1 }, // Better touch target
+                    },
                     '& .MuiSwitch-switchBase.Mui-checked': {
                       color: terracottaColors.primary,
                       '&:hover': {
@@ -677,12 +740,23 @@ const FilterPanel = memo(({
                     '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
                       backgroundColor: terracottaColors.primary,
                     },
+                    '& .MuiSwitch-thumb': {
+                      width: { xs: 24, sm: 20 },
+                      height: { xs: 24, sm: 20 },
+                    },
+                    '& .MuiSwitch-track': {
+                      borderRadius: { xs: 14, sm: 11 },
+                    },
                   }}
                 />
               }
               label={
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Typography variant="body1" fontWeight={600}>
+                  <Typography 
+                    variant="body1" 
+                    fontWeight={600}
+                    sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+                  >
                     Hyderabad Only
                   </Typography>
                   <Chip
@@ -693,14 +767,21 @@ const FilterPanel = memo(({
                       backgroundColor: hyderabadOnly ? terracottaColors.primary : `${terracottaColors.primary}30`,
                       color: hyderabadOnly ? 'white' : terracottaColors.primary,
                       fontWeight: 600,
-                      height: 20,
-                      fontSize: '0.7rem',
+                      height: { xs: 18, sm: 20 },
+                      fontSize: { xs: '0.6rem', sm: '0.7rem' },
                     }}
                   />
                 </Box>
               }
             />
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            <Typography 
+              variant="body2" 
+              color="text.secondary" 
+              sx={{ 
+                mt: 1,
+                fontSize: { xs: '0.75rem', sm: '0.875rem' },
+              }}
+            >
               Show only products available for delivery within Hyderabad city limits
             </Typography>
           </Paper>
@@ -712,7 +793,14 @@ const FilterPanel = memo(({
   return (
     <Box>
       <Box sx={{ mb: 3 }}>
-        <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+        <Typography 
+          variant="h6" 
+          sx={{ 
+            fontWeight: 700, 
+            mb: 1,
+            fontSize: { xs: '1.1rem', sm: '1.25rem' },
+          }}
+        >
           Filters
         </Typography>
         <Divider sx={{ borderColor: terracottaColors.divider }} />
@@ -734,7 +822,8 @@ const FilterPanel = memo(({
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              padding: 2,
+              padding: { xs: 1.5, sm: 2 },
+              minHeight: 44, // iPhone touch target
               cursor: 'pointer',
               transition: 'background-color 0.2s ease',
               '&:hover': {
@@ -745,7 +834,11 @@ const FilterPanel = memo(({
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               {section.icon}
-              <Typography variant="subtitle1" fontWeight={600}>
+              <Typography 
+                variant="subtitle1" 
+                fontWeight={600}
+                sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+              >
                 {section.title}
               </Typography>
             </Box>
@@ -754,7 +847,9 @@ const FilterPanel = memo(({
               sx={{
                 transform: expanded[section.key] ? 'rotate(180deg)' : 'rotate(0deg)',
                 transition: 'transform 0.2s ease',
-                padding: 0.5,
+                padding: { xs: 1, sm: 0.5 },
+                minWidth: 44,
+                minHeight: 44,
               }}
             >
               <ExpandMore />
@@ -762,7 +857,7 @@ const FilterPanel = memo(({
           </Box>
           
           <Collapse in={expanded[section.key]} timeout="auto" unmountOnExit>
-            <Box sx={{ p: 2, pt: 0 }}>
+            <Box sx={{ p: { xs: 1.5, sm: 2 }, pt: 0 }}>
               {section.content}
             </Box>
           </Collapse>
@@ -776,9 +871,11 @@ const FilterPanel = memo(({
         onClick={onResetFilters}
         sx={{
           mt: 2,
-          py: 1.5,
+          py: { xs: 1.8, sm: 1.5 },
           borderRadius: 2,
           fontWeight: 600,
+          fontSize: { xs: '0.875rem', sm: '1rem' },
+          minHeight: 44,
           borderWidth: 2,
           borderColor: terracottaColors.primary,
           color: terracottaColors.primary,
@@ -795,7 +892,8 @@ const FilterPanel = memo(({
     </Box>
   );
 });
-// QuantityModal Component (unchanged)
+
+// QuantityModal Component - Enhanced for iPhone
 const QuantityModal = ({ 
   open, 
   onClose, 
@@ -841,29 +939,43 @@ const QuantityModal = ({
       PaperProps={{
         sx: {
           borderRadius: 3,
-          maxWidth: 500,
+          maxWidth: { xs: '95vw', sm: 500 },
+          m: { xs: 1, sm: 3 },
+          // Better iPhone positioning
+          position: { xs: 'fixed', sm: 'relative' },
+          bottom: { xs: 0, sm: 'auto' },
+          top: { xs: 'auto', sm: '50%' },
+          transform: { xs: 'none', sm: 'translateY(-50%)' },
         },
       }}
     >
       <DialogTitle>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h6" fontWeight={700}>
+          <Typography 
+            variant="h6" 
+            fontWeight={700}
+            sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}
+          >
             Add to Cart
           </Typography>
-          <IconButton onClick={onClose} size="small">
+          <IconButton 
+            onClick={onClose} 
+            size="small"
+            sx={{ minWidth: 44, minHeight: 44 }}
+          >
             <Close />
           </IconButton>
         </Box>
       </DialogTitle>
 
-      <DialogContent sx={{ px: 3 }}>
+      <DialogContent sx={{ px: { xs: 2, sm: 3 } }}>
         {/* Product Information */}
         <Box
           sx={{
             display: 'flex',
             alignItems: 'center',
-            gap: 2,
-            p: 2,
+            gap: { xs: 1.5, sm: 2 },
+            p: { xs: 1.5, sm: 2 },
             backgroundColor: `${terracottaColors.primary}08`,
             borderRadius: 2,
             mt: 1,
@@ -873,17 +985,39 @@ const QuantityModal = ({
             src={product.imgUrl}
             alt={product.name}
             variant="rounded"
-            sx={{ width: 80, height: 80 }}
+            sx={{ width: { xs: 70, sm: 80 }, height: { xs: 70, sm: 80 } }}
           />
           <Box sx={{ flexGrow: 1 }}>
-            <Typography variant="h6" fontWeight={600} sx={{ mb: 0.5 }}>
+            <Typography 
+              variant="h6" 
+              fontWeight={600} 
+              sx={{ 
+                mb: 0.5,
+                fontSize: { xs: '1rem', sm: '1.25rem' },
+                lineHeight: 1.3,
+              }}
+            >
               {product.name}
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            <Typography 
+              variant="body2" 
+              color="text.secondary" 
+              sx={{ 
+                mb: 1,
+                fontSize: { xs: '0.75rem', sm: '0.875rem' },
+              }}
+            >
               Code: {product.code}
             </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Typography variant="h6" fontWeight={700} sx={{ color: terracottaColors.primary }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+              <Typography 
+                variant="h6" 
+                fontWeight={700} 
+                sx={{ 
+                  color: terracottaColors.primary,
+                  fontSize: { xs: '1rem', sm: '1.25rem' },
+                }}
+              >
                 {formatPrice(product.price)}
               </Typography>
               {product.originalPrice > product.price && (
@@ -891,7 +1025,10 @@ const QuantityModal = ({
                   <Typography
                     variant="body2"
                     color="text.secondary"
-                    sx={{ textDecoration: 'line-through' }}
+                    sx={{ 
+                      textDecoration: 'line-through',
+                      fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                    }}
                   >
                     {formatPrice(product.originalPrice)}
                   </Typography>
@@ -899,8 +1036,8 @@ const QuantityModal = ({
                     label={`${product.discount}% OFF`}
                     size="small"
                     sx={{
-                      height: 20,
-                      fontSize: '0.7rem',
+                      height: { xs: 18, sm: 20 },
+                      fontSize: { xs: '0.6rem', sm: '0.7rem' },
                       backgroundColor: terracottaColors.error,
                       color: 'white',
                     }}
@@ -913,7 +1050,11 @@ const QuantityModal = ({
 
         {/* Stock Information */}
         <Box sx={{ mt: 2 }}>
-          <Typography variant="body2" color="text.secondary">
+          <Typography 
+            variant="body2" 
+            color="text.secondary"
+            sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}
+          >
             Availability: {' '}
             <Typography
               component="span"
@@ -938,7 +1079,11 @@ const QuantityModal = ({
               color: '#9C27B0'
             }}>
               <LocationOn fontSize="small" sx={{ mr: 0.5 }} />
-              <Typography variant="body2" fontWeight={600}>
+              <Typography 
+                variant="body2" 
+                fontWeight={600}
+                sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}
+              >
                 Available for delivery in Hyderabad only
               </Typography>
             </Box>
@@ -948,19 +1093,32 @@ const QuantityModal = ({
         <Divider sx={{ my: 2 }} />
 
         {/* Quantity Selection */}
-        <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2 }}>
+        <Typography 
+          variant="subtitle1" 
+          fontWeight={600} 
+          sx={{ 
+            mb: 2,
+            fontSize: { xs: '1rem', sm: '1.125rem' },
+          }}
+        >
           Select Quantity
         </Typography>
 
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: { xs: 1.5, sm: 2 }, 
+          mb: 2,
+          justifyContent: 'center',
+        }}>
           <IconButton
             onClick={() => handleQuantityChange(quantity - 1)}
             disabled={quantity <= 1}
             sx={{
               border: `2px solid ${terracottaColors.primary}`,
               borderRadius: 1.5,
-              width: 40,
-              height: 40,
+              width: { xs: 48, sm: 40 },
+              height: { xs: 48, sm: 40 },
               color: terracottaColors.primary,
               '&:hover': {
                 backgroundColor: terracottaColors.primaryLight,
@@ -984,13 +1142,18 @@ const QuantityModal = ({
             inputProps={{
               min: 1,
               max: product.stock,
-              style: { textAlign: 'center', fontWeight: 600 }
+              style: { 
+                textAlign: 'center', 
+                fontWeight: 600,
+                fontSize: 18,
+              }
             }}
             sx={{
-              width: 100,
+              width: { xs: 120, sm: 100 },
               '& .MuiOutlinedInput-root': {
                 borderRadius: 1.5,
                 fontWeight: 600,
+                height: { xs: 48, sm: 40 },
                 '& fieldset': {
                   borderColor: `${terracottaColors.primary}50`,
                 },
@@ -1010,8 +1173,8 @@ const QuantityModal = ({
             sx={{
               border: `2px solid ${terracottaColors.primary}`,
               borderRadius: 1.5,
-              width: 40,
-              height: 40,
+              width: { xs: 48, sm: 40 },
+              height: { xs: 48, sm: 40 },
               color: terracottaColors.primary,
               '&:hover': {
                 backgroundColor: terracottaColors.primaryLight,
@@ -1028,7 +1191,15 @@ const QuantityModal = ({
         </Box>
 
         {error && (
-          <Typography variant="body2" sx={{ mt: 1, color: terracottaColors.error }}>
+          <Typography 
+            variant="body2" 
+            sx={{ 
+              mt: 1, 
+              color: terracottaColors.error,
+              textAlign: 'center',
+              fontSize: { xs: '0.8rem', sm: '0.875rem' },
+            }}
+          >
             {error}
           </Typography>
         )}
@@ -1039,27 +1210,51 @@ const QuantityModal = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            p: 2,
+            p: { xs: 1.5, sm: 2 },
             backgroundColor: `${terracottaColors.primary}15`,
             borderRadius: 1.5,
             border: `1px solid ${terracottaColors.primary}30`,
             mt: 2,
+            flexDirection: { xs: 'column', sm: 'row' },
+            gap: { xs: 1, sm: 0 },
           }}
         >
-          <Box>
-            <Typography variant="body2" color="text.secondary">
+          <Box sx={{ textAlign: { xs: 'center', sm: 'left' } }}>
+            <Typography 
+              variant="body2" 
+              color="text.secondary"
+              sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}
+            >
               Total Amount
             </Typography>
-            <Typography variant="h5" fontWeight={700} sx={{ color: terracottaColors.primary }}>
+            <Typography 
+              variant="h5" 
+              fontWeight={700} 
+              sx={{ 
+                color: terracottaColors.primary,
+                fontSize: { xs: '1.5rem', sm: '1.75rem' },
+              }}
+            >
               {formatPrice(totalPrice)}
             </Typography>
           </Box>
-          <Box sx={{ textAlign: 'right' }}>
-            <Typography variant="body2" color="text.secondary">
+          <Box sx={{ textAlign: { xs: 'center', sm: 'right' } }}>
+            <Typography 
+              variant="body2" 
+              color="text.secondary"
+              sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}
+            >
               {quantity} × {formatPrice(product.price)}
             </Typography>
             {product.originalPrice > product.price && (
-              <Typography variant="body2" fontWeight={600} sx={{ color: terracottaColors.success }}>
+              <Typography 
+                variant="body2" 
+                fontWeight={600} 
+                sx={{ 
+                  color: terracottaColors.success,
+                  fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                }}
+              >
                 You save {formatPrice((product.originalPrice - product.price) * quantity)}
               </Typography>
             )}
@@ -1067,15 +1262,24 @@ const QuantityModal = ({
         </Box>
       </DialogContent>
 
-      <DialogActions sx={{ px: 3, pb: 3, pt: 1 }}>
+      <DialogActions sx={{ 
+        px: { xs: 2, sm: 3 }, 
+        pb: { xs: 2, sm: 3 }, 
+        pt: 1,
+        gap: { xs: 1, sm: 1.5 },
+        flexDirection: { xs: 'column', sm: 'row' },
+      }}>
         <Button
           onClick={onClose}
           variant="outlined"
+          fullWidth={true}
           sx={{ 
             borderRadius: 2,
             px: 3,
-            py: 1,
+            py: { xs: 1.5, sm: 1 },
             fontWeight: 600,
+            fontSize: { xs: '0.875rem', sm: '1rem' },
+            minHeight: 44,
             borderColor: terracottaColors.primary,
             color: terracottaColors.primary,
             '&:hover': {
@@ -1091,11 +1295,14 @@ const QuantityModal = ({
           variant="contained"
           startIcon={<ShoppingCart />}
           disabled={quantity > product.stock || product.stock === 0}
+          fullWidth={true}
           sx={{
             borderRadius: 2,
             px: 3,
-            py: 1,
+            py: { xs: 1.5, sm: 1 },
             fontWeight: 600,
+            fontSize: { xs: '0.875rem', sm: '1rem' },
+            minHeight: 44,
             backgroundColor: terracottaColors.primary,
             boxShadow: `0 4px 12px ${terracottaColors.primary}30`,
             '&:hover': {
@@ -1110,9 +1317,9 @@ const QuantityModal = ({
   );
 };
 
-// Loading skeleton component (unchanged)
+// Loading skeleton component - Enhanced for iPhone
 const ProductSkeleton = () => (
-  <Grid container spacing={3}>
+  <Grid container spacing={{ xs: 2, sm: 3 }}>
     {Array(8).fill(0).map((_, index) => (
       <Grid item xs={12} sm={6} md={4} lg={3} key={index}>
         <Paper sx={{ 
@@ -1126,7 +1333,7 @@ const ProductSkeleton = () => (
             height={220}
             sx={{ backgroundColor: `${terracottaColors.primaryLight}20` }}
           />
-          <Box sx={{ p: 2 }}>
+          <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
             <Skeleton variant="text" width="80%" height={24} />
             <Skeleton variant="text" width="60%" height={20} />
             <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
@@ -1134,8 +1341,8 @@ const ProductSkeleton = () => (
               <Skeleton variant="text" width="25%" height={20} />
             </Box>
             <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
-              <Skeleton variant="rectangular" height={36} sx={{ flexGrow: 1 }} />
-              <Skeleton variant="rectangular" width={40} height={36} />
+              <Skeleton variant="rectangular" height={44} sx={{ flexGrow: 1 }} />
+              <Skeleton variant="rectangular" width={44} height={44} />
             </Box>
           </Box>
         </Paper>
@@ -1144,16 +1351,15 @@ const ProductSkeleton = () => (
   </Grid>
 );
 
-// Main Products Component - Updated with Buy Now functionality
+// Main Products Component - Enhanced with hooks and iPhone fixes
 const Products = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isVerySmall = useMediaQuery(theme.breakpoints.down('sm'));
   
   // State
   const [user, setUser] = useState(null);
-  const [products, setProducts] = useState([]);
-  const [wishlist, setWishlist] = useState([]);
   const [priceRange, setPriceRange] = useState([1, 5000]);
   const [sortBy, setSortBy] = useState('relevance');
   const [searchQuery, setSearchQuery] = useState('');
@@ -1171,7 +1377,25 @@ const Products = () => {
     message: '',
     severity: 'success',
   });
-  const [productsLoading, setProductsLoading] = useState(true);
+
+  // Use optimization hooks
+  const { products, loading: productsLoading, error: productsError } = useProducts();
+  const { addToCart } = useCartOperations(user);
+  const { wishlist, toggleWishlistItem, isInWishlist } = useWishlistOperations(user);
+  const { metrics, startTimer } = usePerformanceMonitor();
+  
+  // Search and filter with Hyderabad priority
+  const { 
+    products: filteredProducts, 
+    totalCount, 
+    hyderabadCount,
+    isSearching 
+  } = useProductSearch(products, searchQuery, {
+    priceRange,
+    sortBy,
+    hyderabadOnly,
+    hideOutOfStock: false,
+  }, true); // Enable Hyderabad prioritization
 
   // Auth effect
   useEffect(() => {
@@ -1181,129 +1405,11 @@ const Products = () => {
     return unsubscribe;
   }, []);
 
-  // Fetch products
+  // Performance monitoring
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, 'products'));
-        const productsData = querySnapshot.docs.map(doc => {
-          const data = doc.data();
-          const price = Number(data.price);
-          
-          // Calculate discount
-          let discount = 0;
-          if (price >= 50 && price <= 300) discount = 10;
-          else if (price > 300 && price <= 1000) discount = 20;
-          else if (price > 1000) discount = 25;
-          
-          const originalPrice = Math.ceil(price / (1 - discount/100));
-          
-          // Determine stock status
-          let stockStatus = 'normal';
-          if (data.stock === 0) stockStatus = 'out_of_stock';
-          else if (data.stock < 10) stockStatus = 'critical';
-          else if (data.stock < 20) stockStatus = 'low';
-
-          return {
-            id: doc.id,
-            name: data.name || '',
-            description: data.description || '',
-            price: price,
-            originalPrice: originalPrice,
-            discount: discount,
-            code: data.code || '',
-            stock: Number(data.stock) || 0,
-            stockStatus: stockStatus,
-            images: Array.isArray(data.images) ? data.images : [],
-            imgUrl: Array.isArray(data.images) && data.images.length > 0 
-              ? data.images[0] 
-              : 'https://via.placeholder.com/300x220/D2691E/FFFFFF?text=Product',
-            rating: data.rating || 4.0,
-            reviews: data.reviews || 0,
-            isFeatured: data.isFeatured || false,
-            hidden: data.hidden || false,
-            hyderabadOnly: data.hyderabadOnly || false,
-          };
-        });
-
-        setProducts(productsData);
-      } catch (error) {
-        console.error('Error fetching products:', error);
-      } finally {
-        setProductsLoading(false);
-      }
-    };
-
-    fetchProducts();
-  }, []);
-
-  // Fetch wishlist
-  useEffect(() => {
-    if (!user) {
-      setWishlist([]);
-      return;
-    }
-
-    const fetchWishlist = async () => {
-      try {
-        const wishlistRef = collection(db, 'wishlist');
-        const q = query(wishlistRef, where("userId", "==", user.uid));
-        const querySnapshot = await getDocs(q);
-        
-        const items = querySnapshot.docs.map(doc => ({
-          ...doc.data(),
-          id: doc.data().productId,
-          wishlistDocId: doc.id,
-        }));
-        
-        setWishlist(items);
-      } catch (error) {
-        console.error("Error fetching wishlist:", error);
-      }
-    };
-
-    fetchWishlist();
-  }, [user]);
-
-  // Debounced search
-  const debouncedSearchQuery = useDebounce(searchQuery, 300);
-
-  // Memoized filtered and sorted products
-  const filteredProducts = useMemo(() => {
-    let filtered = products.filter(product => {
-      const matchesPrice = product.price >= priceRange[0] && product.price <= priceRange[1];
-      const matchesSearch = debouncedSearchQuery === '' || 
-        product.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-        product.code.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
-      
-      const matchesLocation = !hyderabadOnly || (hyderabadOnly && product.hyderabadOnly === true);
-      
-      return matchesPrice && matchesSearch && matchesLocation;
-    });
-
-    // Apply sorting
-    switch (sortBy) {
-      case 'priceLowToHigh':
-        filtered.sort((a, b) => a.price - b.price);
-        break;
-      case 'priceHighToLow':
-        filtered.sort((a, b) => b.price - a.price);
-        break;
-      case 'alphabetical':
-        filtered.sort((a, b) => a.name.localeCompare(b.name));
-        break;
-      case 'rating':
-        filtered.sort((a, b) => b.rating - a.rating);
-        break;
-      case 'newest':
-        filtered.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-        break;
-      default:
-        break;
-    }
-
-    return filtered;
-  }, [products, priceRange, debouncedSearchQuery, sortBy, hyderabadOnly]);
+    const timer = startTimer('renderTime');
+    return timer;
+  }, [filteredProducts, startTimer]);
 
   // Callbacks
   const showSnackbar = useCallback((message, severity = 'success') => {
@@ -1333,7 +1439,7 @@ const Products = () => {
     setModalOpen(true);
   }, [user, navigate, showSnackbar]);
 
-  // New Buy Now handler
+  // Enhanced Buy Now handler
   const handleBuyNow = useCallback(async (product) => {
     if (product.hidden || product.stock === 0) {
       showSnackbar(
@@ -1350,30 +1456,21 @@ const Products = () => {
     }
 
     try {
-      // Add 1 quantity to cart
-      await addDoc(collection(db, 'cart'), {
-        userId: user.uid,
-        productId: product.id,
-        name: product.name,
-        price: product.price,
-        code: product.code,
-        quantity: 1, // Always add 1 for Buy Now
-        imgUrl: product.imgUrl,
-        hyderabadOnly: product.hyderabadOnly,
-      });
-
-      showSnackbar(`${product.name} added to cart!`, 'success');
-      
-      // Navigate to cart page immediately
-      setTimeout(() => {
-        navigate('/cart');
-      }, 1000);
-      
+      const result = await addToCart(product, 1);
+      if (result.success) {
+        showSnackbar(result.message, 'success');
+        // Navigate to cart page immediately
+        setTimeout(() => {
+          navigate('/cart');
+        }, 1000);
+      } else {
+        showSnackbar(result.message, 'error');
+      }
     } catch (error) {
-      console.error('Error adding to cart:', error);
-      showSnackbar('Error adding to cart', 'error');
+      console.error('Error in Buy Now:', error);
+      showSnackbar('Error processing your request', 'error');
     }
-  }, [user, navigate, showSnackbar]);
+  }, [user, navigate, showSnackbar, addToCart]);
 
   const handleToggleWishlist = useCallback(async (product) => {
     if (!user) {
@@ -1382,42 +1479,18 @@ const Products = () => {
       return;
     }
 
-    const wishlistRef = collection(db, 'wishlist');
-    const isInWishlist = wishlist.some(item => item.id === product.id);
-
     try {
-      if (isInWishlist) {
-        const itemToRemove = wishlist.find(item => item.id === product.id);
-        if (itemToRemove?.wishlistDocId) {
-          await deleteDoc(doc(db, 'wishlist', itemToRemove.wishlistDocId));
-          setWishlist(prev => prev.filter(item => item.id !== product.id));
-          showSnackbar('Removed from wishlist');
-        }
+      const result = await toggleWishlistItem(product);
+      if (result.success) {
+        showSnackbar(result.message, 'success');
       } else {
-        const docRef = await addDoc(wishlistRef, {
-          userId: user.uid,
-          productId: product.id,
-          name: product.name,
-          imgUrl: product.imgUrl,
-          price: product.price,
-          originalPrice: product.originalPrice,
-          discount: product.discount,
-          rating: product.rating,
-          reviews: product.reviews,
-          code: product.code,
-          hidden: product.hidden,
-          stock: product.stock,
-          hyderabadOnly: product.hyderabadOnly,
-        });
-
-        setWishlist(prev => [...prev, { ...product, wishlistDocId: docRef.id }]);
-        showSnackbar('Added to wishlist');
+        showSnackbar(result.message, 'error');
       }
     } catch (error) {
       console.error("Error toggling wishlist:", error);
       showSnackbar('Error updating wishlist', 'error');
     }
-  }, [user, wishlist, navigate, showSnackbar]);
+  }, [user, navigate, showSnackbar, toggleWishlistItem]);
 
   const handleConfirmAddToCart = useCallback(async (quantity) => {
     if (!selectedProduct || !user) return;
@@ -1428,25 +1501,19 @@ const Products = () => {
     }
 
     try {
-      await addDoc(collection(db, 'cart'), {
-        userId: user.uid,
-        productId: selectedProduct.id,
-        name: selectedProduct.name,
-        price: selectedProduct.price,
-        code: selectedProduct.code,
-        quantity: quantity,
-        imgUrl: selectedProduct.imgUrl,
-        hyderabadOnly: selectedProduct.hyderabadOnly,
-      });
-
-      showSnackbar(`${selectedProduct.name} added to cart!`);
+      const result = await addToCart(selectedProduct, quantity);
+      if (result.success) {
+        showSnackbar(result.message, 'success');
+      } else {
+        showSnackbar(result.message, 'error');
+      }
       setModalOpen(false);
       setSelectedProduct(null);
     } catch (error) {
       console.error('Error adding to cart:', error);
       showSnackbar('Error adding to cart', 'error');
     }
-  }, [selectedProduct, user, showSnackbar]);
+  }, [selectedProduct, user, showSnackbar, addToCart]);
 
   const handleResetFilters = useCallback(() => {
     setPriceRange([1, 5000]);
@@ -1470,7 +1537,11 @@ const Products = () => {
     <Box sx={{ 
       bgcolor: terracottaColors.background, 
       minHeight: '100vh',
-      pt: 2
+      pt: { xs: 1, sm: 2 },
+      // iPhone-specific optimizations
+      WebkitTapHighlightColor: 'transparent',
+      WebkitTouchCallout: 'none',
+      overflow: 'hidden auto',
     }}>
       {/* Snackbar */}
       <Snackbar
@@ -1478,20 +1549,28 @@ const Products = () => {
         autoHideDuration={4000}
         onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        sx={{
+          '& .MuiSnackbar-root': {
+            top: { xs: 80, sm: 24 }, // Avoid iPhone notch
+          },
+        }}
       >
         <Alert 
           onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
           severity={snackbar.severity}
           variant="filled"
-          sx={{ borderRadius: 2 }}
+          sx={{ 
+            borderRadius: 2,
+            fontSize: { xs: '0.875rem', sm: '1rem' },
+          }}
         >
           {snackbar.message}
         </Alert>
       </Snackbar>
 
-      <Container maxWidth="xl">
+      <Container maxWidth="xl" sx={{ px: { xs: 1, sm: 2, md: 3 } }}>
         {/* Header Section */}
-        <Box sx={{ mb: 4 }}>
+        <Box sx={{ mb: { xs: 2, sm: 4 } }}>
           <Fade in timeout={800}>
             <Box>
               <Typography 
@@ -1503,13 +1582,54 @@ const Products = () => {
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                   mb: 1,
+                  fontSize: { xs: '1.75rem', sm: '2.125rem' },
+                  textAlign: { xs: 'center', sm: 'left' },
                 }}
               >
                 Discover Our Products
               </Typography>
-              <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+              <Typography 
+                variant="body1" 
+                color="text.secondary" 
+                sx={{ 
+                  mb: { xs: 2, sm: 3 },
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                  textAlign: { xs: 'center', sm: 'left' },
+                }}
+              >
                 Explore our curated collection of premium items
               </Typography>
+              
+              {/* Products Stats */}
+              <Box sx={{ 
+                display: 'flex', 
+                gap: 2, 
+                flexWrap: 'wrap',
+                justifyContent: { xs: 'center', sm: 'flex-start' },
+                mb: 2,
+              }}>
+                <Chip
+                  label={`${totalCount} Total Products`}
+                  sx={{
+                    backgroundColor: `${terracottaColors.primary}15`,
+                    color: terracottaColors.primaryDark,
+                    fontWeight: 600,
+                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                  }}
+                />
+                {hyderabadCount > 0 && (
+                  <Chip
+                    icon={<LocationOn fontSize="small" />}
+                    label={`${hyderabadCount} Hyderabad Available`}
+                    sx={{
+                      backgroundColor: '#9C27B015',
+                      color: '#9C27B0',
+                      fontWeight: 600,
+                      fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                    }}
+                  />
+                )}
+              </Box>
             </Box>
           </Fade>
 
@@ -1517,7 +1637,7 @@ const Products = () => {
           <Paper
             elevation={2}
             sx={{
-              p: 3,
+              p: { xs: 2, sm: 3 },
               borderRadius: 3,
               background: `linear-gradient(135deg, rgba(255,255,255,0.9) 0%, ${terracottaColors.backgroundLight}30 100%)`,
               backdropFilter: 'blur(10px)',
@@ -1527,11 +1647,11 @@ const Products = () => {
             <Box sx={{ 
               display: 'flex', 
               alignItems: 'center', 
-              gap: 2,
+              gap: { xs: 1.5, sm: 2 },
               flexWrap: 'wrap',
             }}>
               {/* Search */}
-              <Box sx={{ flexGrow: 1, minWidth: 250 }}>
+              <Box sx={{ flexGrow: 1, minWidth: { xs: '100%', sm: 250 } }}>
                 <TextField
                   fullWidth
                   placeholder="Search products..."
@@ -1549,6 +1669,7 @@ const Products = () => {
                           size="small" 
                           onClick={() => setSearchQuery('')}
                           edge="end"
+                          sx={{ minWidth: 32, minHeight: 32 }}
                         >
                           <Close fontSize="small" />
                         </IconButton>
@@ -1559,6 +1680,8 @@ const Products = () => {
                     '& .MuiOutlinedInput-root': {
                       backgroundColor: 'white',
                       borderRadius: 2,
+                      height: { xs: 48, sm: 56 }, // Better touch target for iPhone
+                      fontSize: { xs: '0.875rem', sm: '1rem' },
                       '& fieldset': {
                         borderColor: `${terracottaColors.primary}30`,
                       },
@@ -1581,9 +1704,11 @@ const Products = () => {
                   onClick={handleDrawerToggle}
                   sx={{ 
                     borderRadius: 2,
-                    px: 3,
-                    py: 1.5,
+                    px: { xs: 2, sm: 3 },
+                    py: { xs: 1.8, sm: 1.5 },
                     fontWeight: 600,
+                    fontSize: { xs: '0.875rem', sm: '1rem' },
+                    minHeight: 48,
                     backgroundColor: terracottaColors.primary,
                     '&:hover': {
                       backgroundColor: terracottaColors.primaryDark,
@@ -1602,11 +1727,13 @@ const Products = () => {
                   onClick={() => setHyderabadOnly(!hyderabadOnly)}
                   sx={{ 
                     borderRadius: 2,
-                    px: 2,
-                    py: 1.5,
+                    px: { xs: 1.5, sm: 2 },
+                    py: { xs: 1.8, sm: 1.5 },
                     fontWeight: 600,
-                    borderColor: terracottaColors.primary,
-                    color: hyderabadOnly ? 'white' : terracottaColors.primary,
+                    fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                    minHeight: 48,
+                    borderColor: '#9C27B0',
+                    color: hyderabadOnly ? 'white' : '#9C27B0',
                     backgroundColor: hyderabadOnly ? '#9C27B0' : 'transparent',
                     '&:hover': {
                       backgroundColor: hyderabadOnly ? '#7B1FA2' : 'rgba(156, 39, 176, 0.08)',
@@ -1614,7 +1741,7 @@ const Products = () => {
                     },
                   }}
                 >
-                  Hyderabad Only
+                  {isVerySmall ? 'HYD' : 'Hyderabad Only'}
                 </Button>
               )}
 
@@ -1623,13 +1750,24 @@ const Products = () => {
                 display: 'flex', 
                 alignItems: 'center',
                 backgroundColor: `${terracottaColors.primary}15`,
-                px: 2,
-                py: 1,
+                px: { xs: 1.5, sm: 2 },
+                py: { xs: 1, sm: 1 },
                 borderRadius: 2,
+                order: { xs: -1, sm: 0 },
+                width: { xs: '100%', sm: 'auto' },
+                justifyContent: { xs: 'center', sm: 'flex-start' },
               }}>
                 <ViewModule sx={{ mr: 1, color: terracottaColors.primary }} />
-                <Typography variant="body2" fontWeight={600} sx={{ color: terracottaColors.primaryDark }}>
+                <Typography 
+                  variant="body2" 
+                  fontWeight={600} 
+                  sx={{ 
+                    color: terracottaColors.primaryDark,
+                    fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                  }}
+                >
                   {filteredProducts.length} Products
+                  {isSearching && ' (searching...)'}
                 </Typography>
               </Box>
             </Box>
@@ -1637,7 +1775,7 @@ const Products = () => {
         </Box>
 
         {/* Main Content */}
-        <Box sx={{ display: 'flex', gap: 3 }}>
+        <Box sx={{ display: 'flex', gap: { xs: 0, md: 3 } }}>
           {/* Desktop Filter Panel */}
           {!isMobile && (
             <Box sx={{ width: 320, flexShrink: 0 }}>
@@ -1674,16 +1812,68 @@ const Products = () => {
           <Box sx={{ flexGrow: 1 }}>
             {productsLoading ? (
               <ProductSkeleton />
-            ) : filteredProducts.length === 0 ? (
+            ) : productsError ? (
               <Paper
                 sx={{
-                  p: 6,
+                  p: { xs: 4, sm: 6 },
                   textAlign: 'center',
                   borderRadius: 3,
                   background: `linear-gradient(135deg, rgba(255,255,255,0.9) 0%, ${terracottaColors.backgroundLight}30 100%)`,
                 }}
               >
-                <Typography variant="h6" color="text.secondary" sx={{ mb: 2 }}>
+                <Typography 
+                  variant="h6" 
+                  color="error" 
+                  sx={{ 
+                    mb: 2,
+                    fontSize: { xs: '1.1rem', sm: '1.25rem' },
+                  }}
+                >
+                  Error Loading Products
+                </Typography>
+                <Typography 
+                  variant="body2" 
+                  color="text.secondary" 
+                  sx={{ 
+                    mb: 3,
+                    fontSize: { xs: '0.875rem', sm: '1rem' },
+                  }}
+                >
+                  {productsError}
+                </Typography>
+                <Button
+                  variant="contained"
+                  onClick={() => window.location.reload()}
+                  sx={{ 
+                    borderRadius: 2, 
+                    px: 4,
+                    py: { xs: 1.5, sm: 1 },
+                    backgroundColor: terracottaColors.primary,
+                    '&:hover': {
+                      backgroundColor: terracottaColors.primaryDark,
+                    },
+                  }}
+                >
+                  Try Again
+                </Button>
+              </Paper>
+            ) : filteredProducts.length === 0 ? (
+              <Paper
+                sx={{
+                  p: { xs: 4, sm: 6 },
+                  textAlign: 'center',
+                  borderRadius: 3,
+                  background: `linear-gradient(135deg, rgba(255,255,255,0.9) 0%, ${terracottaColors.backgroundLight}30 100%)`,
+                }}
+              >
+                <Typography 
+                  variant="h6" 
+                  color="text.secondary" 
+                  sx={{ 
+                    mb: 2,
+                    fontSize: { xs: '1.1rem', sm: '1.25rem' },
+                  }}
+                >
                   No products found matching your criteria
                 </Typography>
                 <Button
@@ -1692,6 +1882,7 @@ const Products = () => {
                   sx={{ 
                     borderRadius: 2, 
                     px: 4,
+                    py: { xs: 1.5, sm: 1 },
                     backgroundColor: terracottaColors.primary,
                     '&:hover': {
                       backgroundColor: terracottaColors.primaryDark,
@@ -1702,7 +1893,7 @@ const Products = () => {
                 </Button>
               </Paper>
             ) : (
-              <Grid container spacing={3}>
+              <Grid container spacing={{ xs: 2, sm: 3 }}>
                 {filteredProducts.map((product, index) => (
                   <Grid item xs={12} sm={6} lg={4} xl={3} key={product.id}>
                     <Zoom in timeout={500 + index * 50}>
@@ -1710,10 +1901,10 @@ const Products = () => {
                         <ProductCard
                           product={product}
                           onAddToCart={handleAddToCart}
-                          onBuyNow={handleBuyNow} // Pass the Buy Now handler
+                          onBuyNow={handleBuyNow}
                           onToggleWishlist={handleToggleWishlist}
                           onProductClick={handleProductClick}
-                          isInWishlist={wishlist.some(item => item.id === product.id)}
+                          isInWishlist={isInWishlist(product.id)}
                         />
                       </Box>
                     </Zoom>
@@ -1733,18 +1924,36 @@ const Products = () => {
         onOpen={() => setDrawerOpen(true)}
         PaperProps={{
           sx: {
-            width: 300,
+            width: { xs: '90vw', sm: 300 },
+            maxWidth: 350,
             background: `linear-gradient(135deg, rgba(255,255,255,0.95) 0%, ${terracottaColors.backgroundLight}50 100%)`,
             backdropFilter: 'blur(10px)',
           }
         }}
+        // iPhone-specific optimizations
+        disableBackdropTransition={true}
+        disableDiscovery={true}
       >
-        <Box sx={{ p: 3 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h6" fontWeight={700}>
+        <Box sx={{ p: { xs: 2, sm: 3 } }}>
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            mb: 3,
+            minHeight: 44,
+          }}>
+            <Typography 
+              variant="h6" 
+              fontWeight={700}
+              sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}
+            >
               Filters
             </Typography>
-            <IconButton onClick={() => setDrawerOpen(false)} size="small">
+            <IconButton 
+              onClick={() => setDrawerOpen(false)} 
+              size="small"
+              sx={{ minWidth: 44, minHeight: 44 }}
+            >
               <Close />
             </IconButton>
           </Box>
@@ -1770,6 +1979,27 @@ const Products = () => {
           product={selectedProduct}
           onConfirm={handleConfirmAddToCart}
         />
+      )}
+
+      {/* Performance Debug (Development only) */}
+      {process.env.NODE_ENV === 'development' && (
+        <Box
+          sx={{
+            position: 'fixed',
+            bottom: 10,
+            right: 10,
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            color: 'white',
+            p: 1,
+            borderRadius: 1,
+            fontSize: '0.7rem',
+            fontFamily: 'monospace',
+            zIndex: 9999,
+            display: { xs: 'none', md: 'block' },
+          }}
+        >
+          Render: {metrics.renderTime.toFixed(2)}ms | Products: {filteredProducts.length}
+        </Box>
       )}
     </Box>
   );
