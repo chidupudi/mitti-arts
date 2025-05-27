@@ -353,11 +353,11 @@ const ProductCard = memo(({
       );
     }
 
-    return (
-      <Tag color="success">
-        In Stock
-      </Tag>
-    );
+   return (
+    <Tag icon={<EnvironmentOutlined />} color="green">
+      Pan India Delivery
+    </Tag>
+  );
   };
 
   return (
@@ -833,19 +833,31 @@ const QuantityModal = ({
           </Text>
         </Text>
         
-        {product.hyderabadOnly && (
-          <div style={{ 
-            marginTop: '8px', 
-            display: 'flex', 
-            alignItems: 'center',
-            color: '#9C27B0'
-          }}>
-            <EnvironmentOutlined style={{ marginRight: '4px' }} />
-            <Text style={{ fontWeight: 600, color: '#9C27B0' }}>
-              Available for delivery in Hyderabad only
-            </Text>
-          </div>
-        )}
+{product.hyderabadOnly ? (
+  <div style={{ 
+    marginTop: '8px', 
+    display: 'flex', 
+    alignItems: 'center',
+    color: '#9C27B0'
+  }}>
+    <EnvironmentOutlined style={{ marginRight: '4px' }} />
+    <Text style={{ fontWeight: 600, color: '#9C27B0' }}>
+      Available for delivery in Hyderabad only
+    </Text>
+  </div>
+) : (
+  <div style={{ 
+    marginTop: '8px', 
+    display: 'flex', 
+    alignItems: 'center',
+    color: '#4CAF50'
+  }}>
+    <EnvironmentOutlined style={{ marginRight: '4px' }} />
+    <Text style={{ fontWeight: 600, color: '#4CAF50' }}>
+      Available for Pan India delivery
+    </Text>
+  </div>
+)}
       </div>
 
       <Divider />
