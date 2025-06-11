@@ -1,4 +1,4 @@
-// Updated useAdminOrders.js with payment status synchronization for dashboard
+// Updated useAdminOrders.js with completely independent Check In system
 import { useState, useEffect } from 'react';
 import { db } from '../Firebase/Firebase';
 import { 
@@ -70,7 +70,8 @@ export const useAdminOrders = () => {
   
   // Data maps and notifications
   const [deliveryDetailsMap, setDeliveryDetailsMap] = useState({});
-  const [paymentStatuses, setPaymentStatuses] = useState({}); // This is the shared state for switches
+  // FIXED: Completely independent check-in statuses (not tied to payment status)
+  const [checkInStatuses, setCheckInStatuses] = useState({}); // This is now independent
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
@@ -87,7 +88,7 @@ export const useAdminOrders = () => {
         
         const ordersData = [];
         const deliveryDetails = {};
-        const initialPaymentStatuses = {};
+        const initialCheckInStatuses = {};
         
         querySnapshot.forEach((doc) => {
           const data = doc.data();
@@ -96,9 +97,8 @@ export const useAdminOrders = () => {
             deliveryDetails[doc.id] = data.deliveryDetails;
           }
 
-          // Initialize payment status based on current order status
-          const isCurrentlyPaid = data.paymentStatus === 'COMPLETED' || data.paymentStatus === 'SUCCESS';
-          initialPaymentStatuses[doc.id] = isCurrentlyPaid;
+          // FIXED: Initialize check-in status from adminCheckIn field (independent of payment status)
+          initialCheckInStatuses[doc.id] = data.adminCheckIn || false;
           
           ordersData.push({
             id: doc.id,
@@ -109,7 +109,7 @@ export const useAdminOrders = () => {
         setOrders(ordersData);
         setFilteredOrders(ordersData);
         setDeliveryDetailsMap(deliveryDetails);
-        setPaymentStatuses(initialPaymentStatuses); // Initialize payment statuses
+        setCheckInStatuses(initialCheckInStatuses); // Independent check-in statuses
         setLoading(false);
       } catch (err) {
         console.error('Error fetching orders:', err);
@@ -224,59 +224,66 @@ export const useAdminOrders = () => {
     setPage(0);
   }, [orders, sortBy, searchQuery, dateRange, deliveryFilter, paymentStatusFilter, orderStatusFilter]);
 
-  // Handle payment status toggle (synchronized across dashboard and admin orders)
-  const handlePaymentToggle = async (orderId, currentStatus) => {
+  // FIXED: Handle check-in toggle (completely independent of payment status)
+  const handleCheckInToggle = async (orderId) => {
     try {
-      const newStatus = currentStatus === 'COMPLETED' || currentStatus === 'SUCCESS' ? 'PENDING' : 'COMPLETED';
+      const currentCheckInStatus = checkInStatuses[orderId] || false;
+      const newCheckInStatus = !currentCheckInStatus;
+      
       const orderRef = doc(db, 'orders', orderId);
       
       // Get order data before update for notification
       const orderDoc = await getDoc(orderRef);
       const orderData = orderDoc.data();
       
+      // Update only the admin check-in field (independent of payment status)
       await updateDoc(orderRef, {
-        paymentStatus: newStatus,
-        adminConfirmed: newStatus === 'COMPLETED',
+        adminCheckIn: newCheckInStatus,
+        adminCheckInDate: newCheckInStatus ? serverTimestamp() : null,
         updatedAt: serverTimestamp()
       });
       
-      // Update local state for both dashboard and admin orders
+      // Update local state
       setOrders(prevOrders => 
         prevOrders.map(order => 
-          order.id === orderId ? { ...order, paymentStatus: newStatus, adminConfirmed: newStatus === 'COMPLETED' } : order
+          order.id === orderId ? { 
+            ...order, 
+            adminCheckIn: newCheckInStatus,
+            adminCheckInDate: newCheckInStatus ? Timestamp.now() : null
+          } : order
         )
       );
 
-      // Update the shared payment status state (this syncs between dashboard and admin orders)
-      setPaymentStatuses(prev => ({
+      // Update the check-in status state
+      setCheckInStatuses(prev => ({
         ...prev,
-        [orderId]: newStatus === 'COMPLETED'
+        [orderId]: newCheckInStatus
       }));
       
-      // Send email notification for status change
+      // Send email notification for check-in status change (optional)
       try {
         const orderWithId = { id: orderId, ...orderData };
         await sendOrderStatusUpdateNotification(
           orderWithId, 
-          currentStatus, 
-          newStatus
+          currentCheckInStatus ? 'CHECKED_IN' : 'NOT_CHECKED_IN', 
+          newCheckInStatus ? 'CHECKED_IN' : 'NOT_CHECKED_IN'
         );
-        console.log('✅ Payment status update email sent successfully');
+        console.log('✅ Check-in status update email sent successfully');
       } catch (emailError) {
-        console.error('❌ Failed to send payment status update email:', emailError);
+        console.error('❌ Failed to send check-in status update email:', emailError);
         // Don't fail the main operation if email fails
       }
       
       setSnackbar({
         open: true,
-        message: `Payment status updated to ${newStatus}`,
+        message: `Order ${newCheckInStatus ? 'checked in' : 'unchecked'} successfully`,
         severity: 'success'
       });
     } catch (error) {
-      console.error('Error updating payment status:', error);
+      console.error('Error updating check-in status:', error);
       setSnackbar({
         open: true,
-        message: 'Error updating payment status',
+        message: 'Error updating check-in status',
         severity: 'error'
       });
     }
@@ -420,6 +427,7 @@ export const useAdminOrders = () => {
         status: 'CANCELLED',
         paymentStatus: 'CANCELLED',
         deliveryStatus: 'CANCELLED',
+        adminCheckIn: false, // Reset check-in status when cancelled
         cancelledAt: serverTimestamp(),
         cancelledBy: 'admin',
         updatedAt: serverTimestamp()
@@ -432,13 +440,14 @@ export const useAdminOrders = () => {
             status: 'CANCELLED',
             paymentStatus: 'CANCELLED',
             deliveryStatus: 'CANCELLED',
+            adminCheckIn: false,
             cancelledAt: Timestamp.now()
           } : order
         )
       );
 
-      // Update payment status in shared state
-      setPaymentStatuses(prev => ({
+      // Update check-in status in shared state
+      setCheckInStatuses(prev => ({
         ...prev,
         [orderId]: false
       }));
@@ -572,6 +581,7 @@ export const useAdminOrders = () => {
         status: 'CANCELLED',
         paymentStatus: 'CANCELLED',
         deliveryStatus: 'CANCELLED',
+        adminCheckIn: false, // Reset check-in status
         cancelledAt: serverTimestamp(),
         cancelledBy: 'Admin',
         updatedAt: serverTimestamp()
@@ -585,13 +595,14 @@ export const useAdminOrders = () => {
             status: 'CANCELLED',
             paymentStatus: 'CANCELLED',
             deliveryStatus: 'CANCELLED',
+            adminCheckIn: false,
             cancelledAt: Timestamp.now()
           } : order
         )
       );
 
-      // Update payment status in shared state
-      setPaymentStatuses(prev => ({
+      // Update check-in status in shared state
+      setCheckInStatuses(prev => ({
         ...prev,
         [selectedOrderForCancel.id]: false
       }));
@@ -675,11 +686,11 @@ export const useAdminOrders = () => {
     
     // Data maps and shared states
     deliveryDetailsMap,
-    paymentStatuses, // This is the shared state that syncs between dashboard and admin orders
+    checkInStatuses, // FIXED: Now completely independent check-in statuses
     snackbar,
     
     // Action handlers
-    handlePaymentToggle,
+    handleCheckInToggle, // FIXED: Now independent check-in toggle
     handleSaveDeliveryDetails,
     handleMarkDelivered,
     handleCancelOrder,

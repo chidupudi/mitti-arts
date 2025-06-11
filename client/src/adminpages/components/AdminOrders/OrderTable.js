@@ -1,4 +1,4 @@
-// Complete OrdersTable.js with synchronized payment status using Antd Checkbox
+// Complete OrdersTable.js with independent check-in system using Antd Checkbox
 import React from 'react';
 import {
   Paper,
@@ -48,14 +48,14 @@ const getOrderDate = (order) => {
   }
 };
 
-// Get payment status - same logic as dashboard
-const getPaymentStatus = (order, paymentStatuses) => {
-  // Check if admin manually set the status via switch
-  if (paymentStatuses && paymentStatuses[order.id] !== undefined) {
-    return paymentStatuses[order.id];
+// FIXED: Get check-in status independently (not from payment status)
+const getCheckInStatus = (order, checkInStatuses) => {
+  // Check if admin manually set the check-in status
+  if (checkInStatuses && checkInStatuses[order.id] !== undefined) {
+    return checkInStatuses[order.id];
   }
-  // Otherwise check the order's payment status
-  return order.paymentStatus === 'COMPLETED' || order.paymentStatus === 'SUCCESS';
+  // Otherwise check the order's adminCheckIn field
+  return order.adminCheckIn || false;
 };
 
 // Enhanced status chip with proper colors and icons
@@ -317,8 +317,8 @@ const OrdersTable = ({
   page,
   rowsPerPage,
   deliveryDetailsMap,
-  paymentStatuses, // Synchronized payment statuses
-  handlePaymentToggle,
+  checkInStatuses, // FIXED: Now using independent check-in statuses
+  handleCheckInToggle, // FIXED: Now independent toggle function
   handleMarkDelivered,
   handleViewOrderDetails,
   setSelectedOrderForDelivery,
@@ -371,7 +371,7 @@ const OrdersTable = ({
               .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
               .map((order) => {
                 const isCancelled = order.status === 'CANCELLED' || order.paymentStatus === 'CANCELLED';
-                const isPaid = getPaymentStatus(order, paymentStatuses);
+                const isCheckedIn = getCheckInStatus(order, checkInStatuses); // FIXED: Independent check-in status
                 
                 return (
                   <TableRow 
@@ -521,23 +521,23 @@ const OrdersTable = ({
                       <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 1 }}>
                         {!isCancelled && (
                           <>
-                            {/* Antd Checkbox for Payment Status - Synchronized with Dashboard */}
+                            {/* FIXED: Independent Check In Checkbox */}
                             <Space>
                               <Checkbox
-                                checked={isPaid}
+                                checked={isCheckedIn}
                                 onChange={(e) => {
                                   e.stopPropagation();
-                                  handlePaymentToggle(order.id, order.paymentStatus);
+                                  handleCheckInToggle(order.id); // FIXED: Independent toggle
                                 }}
                                 style={{
-                                  color: isPaid ? '#2E7D32' : '#757575',
+                                  color: isCheckedIn ? '#2E7D32' : '#757575',
                                 }}
                               >
                                 <Typography 
                                   variant="caption" 
                                   sx={{ 
-                                    color: isPaid ? '#2E7D32' : '#757575',
-                                    fontWeight: isPaid ? 600 : 400,
+                                    color: isCheckedIn ? '#2E7D32' : '#757575',
+                                    fontWeight: isCheckedIn ? 600 : 400,
                                     ml: 0.5
                                   }}
                                 >

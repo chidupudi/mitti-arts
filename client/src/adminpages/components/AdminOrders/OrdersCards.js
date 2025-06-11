@@ -1,4 +1,4 @@
-// Updated OrdersCards.js with cancel order functionality
+// Updated OrdersCards.js with independent check-in functionality
 import React from 'react';
 import {
   Box,
@@ -31,6 +31,7 @@ import {
   Cancel,
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
+import { Checkbox } from 'antd'; // Using Antd Checkbox for consistent styling
 
 // Utility function to get order date
 const getOrderDate = (order) => {
@@ -47,6 +48,16 @@ const getOrderDate = (order) => {
     console.error("Error parsing date:", e);
     return new Date();
   }
+};
+
+// FIXED: Get check-in status independently (not from payment status)
+const getCheckInStatus = (order, checkInStatuses) => {
+  // Check if admin manually set the check-in status
+  if (checkInStatuses && checkInStatuses[order.id] !== undefined) {
+    return checkInStatuses[order.id];
+  }
+  // Otherwise check the order's adminCheckIn field
+  return order.adminCheckIn || false;
 };
 
 // Get status chip component
@@ -114,16 +125,18 @@ const OrderCard = ({
   onToggleExpand, 
   searchQuery,
   deliveryDetailsMap,
-  handlePaymentToggle,
+  checkInStatuses, // FIXED: Now using independent check-in statuses
+  handleCheckInToggle, // FIXED: Now independent toggle function
   handleMarkDelivered,
   handleViewOrderDetails,
-  handleCancelOrderClick, // New prop for cancel order
+  handleCancelOrderClick,
   setSelectedOrderForDelivery,
   setDeliveryDialogOpen,
 }) => {
   const theme = useTheme();
   const hasDeliveryDetails = !!order.deliveryDetails;
   const isCancelled = order.status === 'CANCELLED' || order.paymentStatus === 'CANCELLED';
+  const isCheckedIn = getCheckInStatus(order, checkInStatuses); // FIXED: Independent check-in status
 
   return (
     <CardStyled status={order.status} iscancelled={isCancelled.toString()}>
@@ -163,9 +176,9 @@ const OrderCard = ({
         
         {/* Status section */}
         <Box sx={{ display: 'flex', mt: 2, flexWrap: 'wrap', gap: 1 }}>
-          {/* Display status as paymentStatus (swapped as requested) */}
+          {/* Display payment status */}
           <Chip 
-            label={`Status: ${order.paymentStatus || 'PENDING'}`}
+            label={`Payment: ${order.paymentStatus || 'PENDING'}`}
             color={
               order.paymentStatus === 'SUCCESS' || order.paymentStatus === 'COMPLETED' 
                 ? 'success' 
@@ -177,9 +190,9 @@ const OrderCard = ({
             sx={{ fontWeight: 500 }}
           />
           
-          {/* Display paymentStatus as status (swapped as requested) */}
+          {/* Display order status */}
           <Chip 
-            label={`Payment: ${order.status || 'PENDING'}`}
+            label={`Status: ${order.status || 'PENDING'}`}
             color={
               order.status === 'DELIVERED' || order.status === 'CONFIRMED' 
                 ? 'success' 
@@ -227,17 +240,28 @@ const OrderCard = ({
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             {!isCancelled && (
               <>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={order.paymentStatus === 'COMPLETED' || order.paymentStatus === 'SUCCESS'}
-                      onChange={() => handlePaymentToggle(order.id, order.paymentStatus)}
-                      color="success"
-                      size="small"
-                    />
-                  }
-                  label="Paid"
-                />
+                {/* FIXED: Independent Check In Checkbox */}
+                <Checkbox
+                  checked={isCheckedIn}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    handleCheckInToggle(order.id); // FIXED: Independent toggle
+                  }}
+                  style={{
+                    color: isCheckedIn ? '#4caf50' : '#ff9800',
+                  }}
+                >
+                  <Typography 
+                    variant="body2" 
+                    fontWeight="600"
+                    sx={{ 
+                      color: isCheckedIn ? 'success.main' : 'warning.main',
+                      ml: 1
+                    }}
+                  >
+                    {isCheckedIn ? 'Checked In' : 'Check In'}
+                  </Typography>
+                </Checkbox>
                 
                 {/* Cancel Order Button */}
                 <Tooltip title="Cancel Order">
@@ -491,10 +515,11 @@ const OrdersCards = ({
   setExpandedOrderId,
   searchQuery,
   deliveryDetailsMap,
-  handlePaymentToggle,
+  checkInStatuses, // FIXED: Now using independent check-in statuses
+  handleCheckInToggle, // FIXED: Now independent toggle function
   handleMarkDelivered,
   handleViewOrderDetails,
-  handleCancelOrderClick, // New prop for cancel order
+  handleCancelOrderClick,
   setSelectedOrderForDelivery,
   setDeliveryDialogOpen,
   handleChangePage,
@@ -535,10 +560,11 @@ const OrdersCards = ({
             onToggleExpand={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}
             searchQuery={searchQuery}
             deliveryDetailsMap={deliveryDetailsMap}
-            handlePaymentToggle={handlePaymentToggle}
+            checkInStatuses={checkInStatuses} // FIXED: Pass independent check-in statuses
+            handleCheckInToggle={handleCheckInToggle} // FIXED: Pass independent toggle function
             handleMarkDelivered={handleMarkDelivered}
             handleViewOrderDetails={handleViewOrderDetails}
-            handleCancelOrderClick={handleCancelOrderClick} // Pass cancel handler
+            handleCancelOrderClick={handleCancelOrderClick}
             setSelectedOrderForDelivery={setSelectedOrderForDelivery}
             setDeliveryDialogOpen={setDeliveryDialogOpen}
           />

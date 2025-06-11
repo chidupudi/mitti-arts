@@ -20,8 +20,9 @@ const Dashboard = () => {
     deliveredOrders 
   } = useDashboardData();
 
+  // FIXED: Use independent check-in management system
   const {
-    paymentStatuses,
+    checkInStatuses, // FIXED: Now independent of payment status
     expandedOrder,
     setExpandedOrder,
     dateFilter,
@@ -32,7 +33,7 @@ const Dashboard = () => {
     setSelectedOrderForDelivery,
     processingOrder,
     snackbar,
-    handlePaymentToggle,
+    handleCheckInToggle, // FIXED: Now independent toggle function
     handleSaveDeliveryDetails,
     handleMarkDelivered,
     handleCloseSnackbar,
@@ -72,12 +73,12 @@ const Dashboard = () => {
           {/* Recent Orders - Updated component */}
           <RecentOrders
             filteredOrders={filteredOrders}
-            paymentStatuses={paymentStatuses}
+            checkInStatuses={checkInStatuses} // FIXED: Pass independent check-in statuses
             deliveredOrders={deliveredOrders}
             deliveryDetailsMap={deliveryDetailsMap}
             dateFilter={dateFilter}
             setDateFilter={setDateFilter}
-            handlePaymentToggle={handlePaymentToggle}
+            handleCheckInToggle={handleCheckInToggle} // FIXED: Pass independent toggle function
           />
         </Box>
       </Container>

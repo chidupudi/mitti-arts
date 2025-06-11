@@ -1,4 +1,4 @@
-// Updated AdminOrders.js component with payment status synchronization
+// Updated AdminOrders.js component with independent check-in system
 import React from 'react';
 import { Box, Container } from '@mui/material';
 import { ThemeProvider } from '@mui/material/styles';
@@ -71,11 +71,11 @@ const AdminOrders = () => {
     
     // Data maps
     deliveryDetailsMap,
-    paymentStatuses, // This is the shared state for payment switches
+    checkInStatuses, // FIXED: Now using independent check-in statuses
     snackbar,
     
     // Action handlers
-    handlePaymentToggle,
+    handleCheckInToggle, // FIXED: Now independent check-in toggle
     handleSaveDeliveryDetails,
     handleMarkDelivered,
     handleCancelOrder,
@@ -133,8 +133,8 @@ const AdminOrders = () => {
               setExpandedOrderId={setExpandedOrderId}
               searchQuery={searchQuery}
               deliveryDetailsMap={deliveryDetailsMap}
-              paymentStatuses={paymentStatuses} // Pass payment statuses to cards
-              handlePaymentToggle={handlePaymentToggle}
+              checkInStatuses={checkInStatuses} // FIXED: Pass independent check-in statuses
+              handleCheckInToggle={handleCheckInToggle} // FIXED: Pass independent toggle function
               handleMarkDelivered={handleMarkDelivered}
               handleViewOrderDetails={handleViewOrderDetails}
               handleCancelOrderClick={handleCancelOrderClick}
@@ -150,8 +150,8 @@ const AdminOrders = () => {
               page={page}
               rowsPerPage={rowsPerPage}
               deliveryDetailsMap={deliveryDetailsMap}
-              paymentStatuses={paymentStatuses} // Pass payment statuses to table
-              handlePaymentToggle={handlePaymentToggle}
+              checkInStatuses={checkInStatuses} // FIXED: Pass independent check-in statuses
+              handleCheckInToggle={handleCheckInToggle} // FIXED: Pass independent toggle function
               handleMarkDelivered={handleMarkDelivered}
               handleViewOrderDetails={handleViewOrderDetails}
               handleCancelOrderClick={handleCancelOrderClick}

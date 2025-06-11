@@ -66,14 +66,14 @@ const formatCurrency = (amount) => {
   }).format(amount);
 };
 
-// Get payment status from order
-const getPaymentStatus = (order, paymentStatuses) => {
-  // Check if admin manually set the status via switch
-  if (paymentStatuses[order.id] !== undefined) {
-    return paymentStatuses[order.id];
+// FIXED: Get check-in status independently (not from payment status)
+const getCheckInStatus = (order, checkInStatuses) => {
+  // Check if admin manually set the check-in status
+  if (checkInStatuses && checkInStatuses[order.id] !== undefined) {
+    return checkInStatuses[order.id];
   }
-  // Otherwise check the order's payment status
-  return order.paymentStatus === 'COMPLETED' || order.paymentStatus === 'SUCCESS';
+  // Otherwise check the order's adminCheckIn field
+  return order.adminCheckIn || false;
 };
 
 // Enhanced status chip with proper colors and icons
@@ -182,15 +182,15 @@ const getEnhancedStatusChip = (status, type = 'payment') => {
 
 const OrderCard = ({ 
   order, 
-  paymentStatuses,
+  checkInStatuses, // FIXED: Now using independent check-in statuses
   deliveredOrders,
   deliveryDetailsMap,
-  handlePaymentToggle,
+  handleCheckInToggle, // FIXED: Now independent toggle function
   onCardClick
 }) => {
   const theme = useTheme();
   const isDelivered = deliveredOrders[order.id];
-  const isPaid = getPaymentStatus(order, paymentStatuses);
+  const isCheckedIn = getCheckInStatus(order, checkInStatuses); // FIXED: Independent check-in status
   const hasDeliveryDetails = deliveryDetailsMap[order.id];
   const isFailed = order.paymentStatus === 'FAILED' || order.paymentStatus === 'CANCELLED';
 
@@ -201,7 +201,7 @@ const OrderCard = ({
   if (isDelivered) {
     cardBorderColor = theme.palette.success.light;
     cardBackground = 'linear-gradient(145deg, #E8F5E9 0%, #F1F8E9 100%)';
-  } else if (isPaid) {
+  } else if (isCheckedIn) {
     cardBorderColor = theme.palette.primary.light;
     cardBackground = 'linear-gradient(145deg, #E3F2FD 0%, #E8F5E9 100%)';
   } else if (isFailed) {
@@ -235,7 +235,7 @@ const OrderCard = ({
               color={
                 isDelivered 
                   ? 'success.main'
-                  : isPaid 
+                  : isCheckedIn 
                     ? 'primary.main' 
                     : isFailed
                       ? 'error.main'
@@ -315,28 +315,28 @@ const OrderCard = ({
             </Box>
           )}
 
-          {/* Payment Status Switch - Only show if not delivered and not failed */}
+          {/* Check In Status - Only show if not delivered and not failed */}
           {!isDelivered && !isFailed && (
             <Box display="flex" justifyContent="center">
               <Checkbox
-                checked={isPaid}
+                checked={isCheckedIn}
                 onChange={(e) => {
                   e.stopPropagation();
-                  handlePaymentToggle(order.id, order.paymentStatus);
+                  handleCheckInToggle(order.id); // FIXED: Independent toggle
                 }}
                 style={{
-                  color: isPaid ? '#4caf50' : '#ff9800',
+                  color: isCheckedIn ? '#4caf50' : '#ff9800',
                 }}
               >
                 <Typography 
                   variant="body2" 
                   fontWeight="600"
                   sx={{ 
-                    color: isPaid ? 'success.main' : 'warning.main',
+                    color: isCheckedIn ? 'success.main' : 'warning.main',
                     ml: 1
                   }}
                 >
-                  {isPaid ? 'Checked In' : 'Check In'}
+                  {isCheckedIn ? 'Checked In' : 'Check In'}
                 </Typography>
               </Checkbox>
             </Box>
@@ -382,12 +382,12 @@ const OrderCard = ({
 
 const RecentOrders = ({
   filteredOrders,
-  paymentStatuses,
+  checkInStatuses, // FIXED: Now using independent check-in statuses
   deliveredOrders,
   deliveryDetailsMap,
   dateFilter,
   setDateFilter,
-  handlePaymentToggle,
+  handleCheckInToggle, // FIXED: Now independent toggle function
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -478,10 +478,10 @@ const RecentOrders = ({
               >
                 <OrderCard 
                   order={order}
-                  paymentStatuses={paymentStatuses}
+                  checkInStatuses={checkInStatuses} // FIXED: Pass independent check-in statuses
                   deliveredOrders={deliveredOrders}
                   deliveryDetailsMap={deliveryDetailsMap}
-                  handlePaymentToggle={handlePaymentToggle}
+                  handleCheckInToggle={handleCheckInToggle} // FIXED: Pass independent toggle function
                   onCardClick={handleCardClick}
                 />
               </Grid>

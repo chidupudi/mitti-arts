@@ -1,10 +1,11 @@
-// Updated useOrderManagement.js with proper order flow
+// Updated useOrderManagement.js with independent check-in system for dashboard
 import { useState } from 'react';
 import { db } from '../Firebase/Firebase';
-import { doc, updateDoc, getDoc, increment, writeBatch, Timestamp } from 'firebase/firestore';
+import { doc, updateDoc, getDoc, increment, writeBatch, Timestamp, serverTimestamp } from 'firebase/firestore';
 
 export const useOrderManagement = () => {
-  const [paymentStatuses, setPaymentStatuses] = useState({});
+  // FIXED: Independent check-in statuses (not tied to payment status)
+  const [checkInStatuses, setCheckInStatuses] = useState({});
   const [expandedOrder, setExpandedOrder] = useState(null);
   const [dateFilter, setDateFilter] = useState(null);
   const [deliveryDialogOpen, setDeliveryDialogOpen] = useState(false);
@@ -16,47 +17,41 @@ export const useOrderManagement = () => {
     severity: 'success'
   });
 
-  // Handle payment status toggle (for admin convenience only)
-  const handlePaymentToggle = async (orderId, currentPaymentStatus) => {
+  // FIXED: Handle check-in toggle (completely independent of payment status)
+  const handleCheckInToggle = async (orderId) => {
     try {
-      const orderRef = doc(db, 'orders', orderId);
-      const orderSnap = await getDoc(orderRef);
+      const currentCheckInStatus = checkInStatuses[orderId] || false;
+      const newCheckInStatus = !currentCheckInStatus;
       
-      if (!orderSnap.exists()) {
-        throw new Error('Order not found');
-      }
-
-      const orderData = orderSnap.data();
-      const isCurrentlyPaid = currentPaymentStatus === 'COMPLETED' || currentPaymentStatus === 'SUCCESS';
-      const newStatus = isCurrentlyPaid ? 'PENDING' : 'COMPLETED';
-
-      // If changing from paid to unpaid, we need to restore stock
-      if (isCurrentlyPaid && !isCurrentlyPaid) {
-        await restoreStockForOrder(orderData);
-      }
-      // If changing from unpaid to paid, we need to deduct stock
-      else if (!isCurrentlyPaid && newStatus === 'COMPLETED') {
-        await deductStockForOrder(orderData);
-      }
-
+      const orderRef = doc(db, 'orders', orderId);
+      
+      // Get order data before update
+      const orderDoc = await getDoc(orderRef);
+      const orderData = orderDoc.data();
+      
+      // Update only the admin check-in field (independent of payment status)
       await updateDoc(orderRef, {
-        paymentStatus: newStatus,
-        adminConfirmed: newStatus === 'COMPLETED',
-        updatedAt: Timestamp.now()
+        adminCheckIn: newCheckInStatus,
+        adminCheckInDate: newCheckInStatus ? serverTimestamp() : null,
+        updatedAt: serverTimestamp()
       });
-
-      setPaymentStatuses(prev => ({ ...prev, [orderId]: newStatus === 'COMPLETED' }));
+      
+      // Update local state
+      setCheckInStatuses(prev => ({
+        ...prev,
+        [orderId]: newCheckInStatus
+      }));
       
       setSnackbar({
         open: true,
-        message: `Payment status updated to ${newStatus}`,
+        message: `Order ${newCheckInStatus ? 'checked in' : 'unchecked'} successfully`,
         severity: 'success'
       });
     } catch (error) {
-      console.error('Error updating payment status:', error);
+      console.error('Error updating check-in status:', error);
       setSnackbar({
         open: true,
-        message: `Error: ${error.message}`,
+        message: 'Error updating check-in status',
         severity: 'error'
       });
     }
@@ -182,10 +177,17 @@ export const useOrderManagement = () => {
       await updateDoc(orderRef, {
         status: 'CANCELLED',
         paymentStatus: 'CANCELLED',
+        adminCheckIn: false, // Reset check-in status when cancelled
         cancelledAt: Timestamp.now(),
         cancelledBy: 'admin',
         updatedAt: Timestamp.now()
       });
+
+      // Update local check-in status
+      setCheckInStatuses(prev => ({
+        ...prev,
+        [orderId]: false
+      }));
       
       setSnackbar({
         open: true,
@@ -275,8 +277,8 @@ export const useOrderManagement = () => {
   };
 
   return {
-    paymentStatuses,
-    setPaymentStatuses,
+    checkInStatuses, // FIXED: Now independent check-in statuses
+    setCheckInStatuses,
     expandedOrder,
     setExpandedOrder,
     dateFilter,
@@ -287,10 +289,10 @@ export const useOrderManagement = () => {
     setSelectedOrderForDelivery,
     processingOrder,
     snackbar,
-    handlePaymentToggle,
+    handleCheckInToggle, // FIXED: Now independent check-in toggle
     handleSaveDeliveryDetails,
     handleMarkDelivered,
-    handleCancelOrder, // New cancel function
+    handleCancelOrder,
     handleCloseSnackbar,
   };
 };
