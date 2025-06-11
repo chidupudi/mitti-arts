@@ -1,825 +1,856 @@
-import React, { useEffect, useState, useCallback, memo, useMemo } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
-  Box,
-  Typography,
-  Grid,
   Card,
-  CardMedia,
-  CardContent,
-  CardActions,
   Button,
+  Tag,
+  Timeline,
+  Avatar,
+  Empty,
+  Spin,
+  Row,
+  Col,
+  Typography,
+  Space,
   Divider,
-  IconButton,
-  Container,
-  Paper,
-  CircularProgress,
   Badge,
-  useMediaQuery,
-  Chip,
-  Fade,
-  Grow,
-  Slide,
-  Zoom,
-  Stack,
-  Skeleton,
-  ThemeProvider,
-  createTheme
-} from '@mui/material';
-import { useTheme } from '@mui/material/styles';
-import { 
-  ShoppingCart,
-  Add, 
-  Remove, 
-  DeleteOutline, 
-  ArrowForward,
-  LocalShippingOutlined,
-  PaymentOutlined,
-  ShoppingBagOutlined,
-  VerifiedOutlined,
-  Build
-} from '@mui/icons-material';
+  Steps,
+  Collapse,
+  Modal,
+  Image,
+  Tooltip,
+  Progress,
+  Statistic,
+  List,
+  Rate,
+  notification
+} from 'antd';
+import {
+  ShoppingCartOutlined,
+  TruckOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  DollarOutlined,
+  CreditCardOutlined,
+  EyeOutlined,
+  ReloadOutlined,
+  StarOutlined,
+  GiftOutlined,
+  PhoneOutlined,
+  EnvironmentOutlined,
+  CalendarOutlined,
+  ShopOutlined,
+  HeartOutlined,
+  ShareAltOutlined
+} from '@ant-design/icons';
 import { auth, db } from '../Firebase/Firebase';
-import { 
-  collection, 
-  getDocs, 
-  query, 
-  where, 
-  deleteDoc, 
-  doc, 
-  updateDoc,
-  writeBatch
-} from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 
-// Custom theme with terracotta/coconut color palette
-const terracottaTheme = createTheme({
-  palette: {
-    primary: {
-      main: '#E07A5F', // Terracotta
-      light: '#F2CC8F', // Light terracotta/sand
-      dark: '#BE5A38', // Dark terracotta
-      contrastText: '#fff',
-    },
-    secondary: {
-      main: '#81B29A', // Sage green accent
-      light: '#A5C9B7',
-      dark: '#5E8D7A',
-    },
-    background: {
-      default: '#FFF9F5', // Very light coconut
-      paper: '#FFFFFF',
-    },
-    text: {
-      primary: '#3D405B', // Dark blue-grey
-      secondary: '#797B8E', // Medium blue-grey
-    },
-    error: {
-      main: '#E07A5F', // Using terracotta as error too
-    },
-    success: {
-      main: '#81B29A', // Sage green for success
-    },
-  },
-  typography: {
-    fontFamily: '"Poppins", "Roboto", "Helvetica", "Arial", sans-serif',
-    h4: {
-      fontWeight: 600,
-    },
-    h6: {
-      fontWeight: 600,
-    },
-    button: {
-      fontWeight: 600,
-      textTransform: 'none',
-    },
-  },
-  shape: {
-    borderRadius: 8,
-  },
-  shadows: [
-    'none',
-    '0px 2px 8px rgba(0, 0, 0, 0.04)',
-    '0px 4px 16px rgba(0, 0, 0, 0.06)',
-    '0px 6px 20px rgba(0, 0, 0, 0.08)',
-    '0px 8px 24px rgba(0, 0, 0, 0.1)',
-    '0px 10px 28px rgba(0, 0, 0, 0.12)',
-    ...Array(20).fill('none').map((_, i) => 
-      `0px ${i + 6}px ${(i + 3) * 4}px rgba(0, 0, 0, ${0.05 + i * 0.01})`
-    ),
-  ],
-  components: {
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          borderRadius: 8,
-          padding: '8px 16px',
-          transition: 'all 0.25s ease',
-        },
-        contained: {
-          boxShadow: '0px 4px 12px rgba(224, 122, 95, 0.25)',
-          '&:hover': {
-            boxShadow: '0px 6px 16px rgba(224, 122, 95, 0.35)',
-            transform: 'translateY(-2px)',
-          },
-        },
-      },
-    },
-    MuiPaper: {
-      styleOverrides: {
-        root: {
-          borderRadius: 12,
-        },
-      },
-    },
-    MuiCard: {
-      styleOverrides: {
-        root: {
-          borderRadius: 12,
-          overflow: 'hidden',
-        },
-      },
-    },
-    MuiCardMedia: {
-      styleOverrides: {
-        root: {
-          transition: 'transform 0.4s ease',
-        },
-      },
-    },
-  },
-});
+const { Title, Text, Paragraph } = Typography;
+const { Panel } = Collapse;
+const { Step } = Steps;
 
-// Simple deduplication function
-const deduplicateCartItems = (items) => {
-  console.log('🔄 DEDUPLICATING', items.length, 'items');
-  
-  const productMap = new Map();
-  
-  items.forEach((item, index) => {
-    const key = String(item.productId);
-    console.log(`   Item ${index + 1}: Product ${key}, Qty ${item.quantity}`);
-    
-    if (productMap.has(key)) {
-      const existing = productMap.get(key);
-      existing.quantity += item.quantity;
-      existing.allItemIds = existing.allItemIds || [existing.id];
-      existing.allItemIds.push(item.id);
-      console.log(`   ⚠️  DUPLICATE FOUND! Consolidated qty: ${existing.quantity}`);
-    } else {
-      productMap.set(key, { 
-        ...item,
-        allItemIds: [item.id]
-      });
-      console.log(`   ✅ New unique product: ${key}`);
-    }
-  });
-  
-  const result = Array.from(productMap.values());
-  console.log('🔄 RESULT: Reduced', items.length, 'items to', result.length, 'unique products');
-  return result;
+// Terracotta Theme Colors
+const terracottaTheme = {
+  primary: '#D2691E',      // Terracotta
+  secondary: '#CD853F',    // Peru
+  accent: '#F4A460',       // Sandy Brown
+  dark: '#A0522D',         // Sienna
+  light: '#FFEEE6',        // Very light terracotta
+  success: '#6B7821',      // Olive green
+  warning: '#FF8F00',      // Amber
+  error: '#C62828',        // Red
+  text: {
+    primary: '#3D405B',    // Dark blue-grey
+    secondary: '#797B8E'   // Medium blue-grey
+  }
 };
 
-// CartItem component with permanent deletion confirmation
-const CartItem = memo(({ 
-  item, 
-  product, 
-  index, 
-  onRemove, 
-  onUpdateQuantity,
-  removing,
-  updating 
-}) => {
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+// Inline CSS Styles with Terracotta Theme
+const styles = {
+  // Main container styles
+  pageContainer: {
+    minHeight: '100vh',
+    background: `linear-gradient(135deg, ${terracottaTheme.primary} 0%, ${terracottaTheme.secondary} 50%, ${terracottaTheme.accent} 100%)`,
+    padding: '20px 0'
+  },
+  
+  contentWrapper: {
+    maxWidth: '1200px',
+    margin: '0 auto',
+    padding: '0 20px'
+  },
 
-  const handleRemoveClick = () => {
-    // Show confirmation dialog for permanent deletion
-    const confirmDelete = window.confirm(
-      `⚠️ PERMANENT DELETION\n\nAre you sure you want to permanently remove "${product?.name || 'this item'}" from your cart?\n\nThis action cannot be undone and the item will be completely deleted from the database.`
-    );
-    
-    if (confirmDelete) {
-      console.log('🗑️ User confirmed permanent deletion of item:', item.id);
-      onRemove(item.id);
+  // Card styles
+  headerCard: {
+    borderRadius: '20px',
+    marginBottom: '24px',
+    background: 'rgba(255,255,255,0.95)',
+    backdropFilter: 'blur(10px)',
+    border: 'none',
+    boxShadow: `0 8px 32px rgba(210, 105, 30, 0.15)`
+  },
+
+  orderCard: {
+    borderRadius: '16px',
+    marginBottom: '24px',
+    border: `2px solid ${terracottaTheme.light}`,
+    boxShadow: `0 4px 12px rgba(210, 105, 30, 0.1)`,
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    background: 'rgba(255, 255, 255, 0.95)',
+    backdropFilter: 'blur(10px)',
+    cursor: 'pointer'
+  },
+
+  orderCardHover: {
+    transform: 'translateY(-8px)',
+    boxShadow: `0 12px 48px rgba(210, 105, 30, 0.25)`,
+    borderColor: terracottaTheme.primary
+  },
+
+  productItemCard: {
+    marginBottom: '12px',
+    borderRadius: '12px',
+    border: `1px solid ${terracottaTheme.light}`,
+    boxShadow: `0 2px 8px rgba(210, 105, 30, 0.08)`,
+    transition: 'all 0.2s ease',
+    background: 'rgba(255, 255, 255, 0.9)'
+  },
+
+  glassCard: {
+    background: 'rgba(255, 255, 255, 0.25)',
+    backdropFilter: 'blur(20px)',
+    border: `1px solid rgba(210, 105, 30, 0.18)`,
+    boxShadow: `0 8px 32px rgba(210, 105, 30, 0.2)`,
+    borderRadius: '12px'
+  },
+
+  // Button styles
+  primaryButton: {
+    background: `linear-gradient(135deg, ${terracottaTheme.primary} 0%, ${terracottaTheme.accent} 100%)`,
+    border: 'none',
+    boxShadow: `0 4px 12px rgba(210, 105, 30, 0.3)`,
+    borderRadius: '12px',
+    transition: 'all 0.3s ease',
+    color: 'white'
+  },
+
+  primaryButtonHover: {
+    background: `linear-gradient(135deg, ${terracottaTheme.dark} 0%, ${terracottaTheme.primary} 100%)`,
+    boxShadow: `0 6px 20px rgba(210, 105, 30, 0.4)`,
+    transform: 'translateY(-2px)'
+  },
+
+  secondaryButton: {
+    borderColor: terracottaTheme.primary,
+    color: terracottaTheme.primary,
+    borderRadius: '8px',
+    transition: 'all 0.3s ease'
+  },
+
+  // Text styles
+  gradientText: {
+    background: `linear-gradient(135deg, ${terracottaTheme.primary} 0%, ${terracottaTheme.secondary} 100%)`,
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    backgroundClip: 'text',
+    fontWeight: 600
+  },
+
+  // Loading styles
+  loadingContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '80vh',
+    background: `linear-gradient(135deg, ${terracottaTheme.primary} 0%, ${terracottaTheme.secondary} 100%)`
+  },
+
+  loadingCard: {
+    textAlign: 'center',
+    borderRadius: '16px',
+    padding: '40px',
+    background: 'rgba(255, 255, 255, 0.95)',
+    backdropFilter: 'blur(10px)',
+    border: 'none',
+    boxShadow: `0 8px 32px rgba(210, 105, 30, 0.15)`
+  },
+
+  // Empty state styles
+  emptyStateCard: {
+    borderRadius: '20px',
+    textAlign: 'center',
+    padding: '60px 40px',
+    background: 'rgba(255,255,255,0.95)',
+    backdropFilter: 'blur(10px)',
+    border: 'none'
+  },
+
+  // Modal styles
+  modalHeader: {
+    background: `linear-gradient(135deg, ${terracottaTheme.primary} 0%, ${terracottaTheme.secondary} 100%)`,
+    borderRadius: '8px 8px 0 0'
+  },
+
+  // Item preview styles
+  itemPreviewCard: {
+    marginBottom: '16px',
+    borderRadius: '12px',
+    backgroundColor: terracottaTheme.light,
+    border: `1px solid ${terracottaTheme.accent}`
+  },
+
+  // Quick actions styles
+  quickActionButton: {
+    borderRadius: '8px',
+    fontSize: '12px',
+    height: '32px',
+    borderColor: terracottaTheme.primary,
+    color: terracottaTheme.primary
+  },
+
+  // Status badge styles
+  statusBadge: {
+    borderRadius: '16px',
+    fontWeight: 500,
+    padding: '4px 12px',
+    border: 'none',
+    boxShadow: `0 2px 4px rgba(210, 105, 30, 0.15)`
+  },
+
+  // Terracotta themed status colors
+  statusColors: {
+    delivered: terracottaTheme.success,
+    shipped: terracottaTheme.primary,
+    processing: terracottaTheme.warning,
+    ordered: terracottaTheme.secondary
+  }
+};
+
+// Enhanced Order Status Component with Terracotta Theme
+const OrderStatusBadge = ({ status, paymentStatus }) => {
+  const getStatusConfig = () => {
+    if (status === 'Delivered') {
+      return { 
+        color: styles.statusColors.delivered, 
+        text: 'Delivered', 
+        icon: <CheckCircleOutlined />,
+        bgColor: 'rgba(107, 120, 33, 0.1)'
+      };
+    } else if (status === 'Shipped') {
+      return { 
+        color: styles.statusColors.shipped, 
+        text: 'In Transit', 
+        icon: <TruckOutlined />,
+        bgColor: 'rgba(210, 105, 30, 0.1)'
+      };
+    } else if (status === 'Processing') {
+      return { 
+        color: styles.statusColors.processing, 
+        text: 'Processing', 
+        icon: <ClockCircleOutlined />,
+        bgColor: 'rgba(255, 143, 0, 0.1)'
+      };
     } else {
-      console.log('❌ User cancelled deletion of item:', item.id);
+      return { 
+        color: styles.statusColors.ordered, 
+        text: 'Confirmed', 
+        icon: <ShoppingCartOutlined />,
+        bgColor: 'rgba(205, 133, 63, 0.1)'
+      };
     }
   };
 
-  if (!product) {
-    console.log('❌ CartItem: No product found for', item.productId);
-    return (
-      <Paper 
-        elevation={1}
-        sx={{ 
-          p: 3, 
-          mb: 2, 
-          border: '3px solid red',
-          backgroundColor: '#ffebee'
-        }}
-      >
-        <Typography color="error" variant="h6" gutterBottom>
-          ❌ Missing Product - Will be Permanently Deleted
-        </Typography>
-        <Typography variant="body2" sx={{ fontFamily: 'monospace', mb: 1 }}>
-          Cart Item ID: {item.id}
-        </Typography>
-        <Typography variant="body2" sx={{ fontFamily: 'monospace', mb: 1 }}>
-          Product ID: {item.productId}
-        </Typography>
-        <Typography variant="body2" sx={{ fontFamily: 'monospace', mb: 2 }}>
-          Quantity: {item.quantity}
-        </Typography>
-        <Typography variant="body2" color="error" sx={{ mb: 2, fontWeight: 'bold' }}>
-          ⚠️ This item will be permanently deleted from database
-        </Typography>
-        <Button 
-          variant="contained" 
-          color="error" 
-          size="small"
-          onClick={() => {
-            const confirmDelete = window.confirm(
-              '⚠️ PERMANENT DELETION\n\nThis will permanently delete the invalid cart item from the database.\n\nProceed?'
-            );
-            if (confirmDelete) {
-              onRemove(item.id);
-            }
-          }}
-          disabled={removing === item.id}
-        >
-          {removing === item.id ? 'Permanently Deleting...' : '🔥 Permanently Delete Invalid Item'}
-        </Button>
-      </Paper>
-    );
-  }
-  
-  console.log('✅ CartItem: Rendering product', product.name, 'qty', item.quantity);
+  const config = getStatusConfig();
   
   return (
-    <Grow
-      in={true}
-      timeout={400 + index * 75}
-      style={{ transformOrigin: '0 0 0' }}
-    >
-      <Paper 
-        elevation={1}
-        sx={{ 
-          p: { xs: 2, sm: 3 }, 
-          mb: 2, 
-          display: 'flex',
-          flexDirection: { xs: 'column', sm: 'row' },
-          position: 'relative',
-          overflow: 'hidden',
-          transition: 'all 0.3s ease',
-          '&:hover': {
-            boxShadow: 3,
-            transform: 'translateY(-2px)',
+    <Space>
+      <Tag 
+        color={config.color}
+        icon={config.icon}
+        style={{
+          ...styles.statusBadge,
+          backgroundColor: config.bgColor,
+          color: config.color,
+          border: `1px solid ${config.color}`
+        }}
+      >
+        {config.text}
+      </Tag>
+      {paymentStatus === 'COMPLETED' && (
+        <Tag 
+          color={terracottaTheme.success}
+          icon={<DollarOutlined />}
+          style={{
+            ...styles.statusBadge,
+            backgroundColor: 'rgba(107, 120, 33, 0.1)',
+            color: terracottaTheme.success,
+            border: `1px solid ${terracottaTheme.success}`
+          }}
+        >
+          Paid
+        </Tag>
+      )}
+    </Space>
+  );
+};
+
+// Order Progress Tracker with Terracotta Theme
+const OrderProgress = ({ status, orderDate, deliveryDate }) => {
+  const getActiveStep = () => {
+    switch (status) {
+      case 'Delivered': return 3;
+      case 'Shipped': return 2;
+      case 'Processing': return 1;
+      default: return 0;
+    }
+  };
+
+  const steps = [
+    {
+      title: 'Order Placed',
+      description: new Date(orderDate).toLocaleDateString(),
+      icon: <ShoppingCartOutlined />
+    },
+    {
+      title: 'Processing',
+      description: 'Preparing your order',
+      icon: <ClockCircleOutlined />
+    },
+    {
+      title: 'Shipped',
+      description: 'On the way to you',
+      icon: <TruckOutlined />
+    },
+    {
+      title: 'Delivered',
+      description: status === 'Delivered' ? 'Successfully delivered' : `Expected ${new Date(deliveryDate).toLocaleDateString()}`,
+      icon: <CheckCircleOutlined />
+    }
+  ];
+
+  return (
+    <div style={{ margin: '20px 0' }}>
+      <Steps
+        current={getActiveStep()}
+        size="small"
+        items={steps}
+        style={{
+          '& .ant-steps-item-finish .ant-steps-item-icon': {
+            backgroundColor: terracottaTheme.success,
+            borderColor: terracottaTheme.success
+          },
+          '& .ant-steps-item-process .ant-steps-item-icon': {
+            backgroundColor: terracottaTheme.primary,
+            borderColor: terracottaTheme.primary
+          },
+          '& .ant-steps-item-wait .ant-steps-item-icon': {
+            backgroundColor: '#f5f5f5',
+            borderColor: '#d9d9d9'
           }
         }}
-      >
-        {product.isNew && (
-          <Chip 
-            label="New"
-            color="primary"
-            size="small"
-            sx={{ 
-              position: 'absolute',
-              top: 12,
-              left: 12,
-              zIndex: 2,
-              fontWeight: 500,
-            }}
-          />
-        )}
-        
-        <Box sx={{ 
-          width: { xs: '100%', sm: 140 },
-          height: { xs: 180, sm: 140 },
-          position: 'relative',
-          borderRadius: 2,
-          overflow: 'hidden',
-          mb: { xs: 2, sm: 0 },
-          backgroundColor: 'rgba(0,0,0,0.04)'
-        }}>
-          <CardMedia
-            component="img"
-            image={product.images?.[0] || 'https://via.placeholder.com/180'}
-            alt={product.name}
-            sx={{ 
-              height: '100%',
-              width: '100%',
-              objectFit: 'cover',
-              '&:hover': {
-                transform: 'scale(1.08)',
-              }
-            }}
-          />
-        </Box>
-        
-        <Box sx={{ 
-          flex: 1, 
-          ml: { xs: 0, sm: 3 },
-          display: 'flex',
-          flexDirection: 'column',
-        }}>
-          <Box sx={{ 
-            display: 'flex', 
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            flexDirection: { xs: 'column', sm: 'row' },
-            mb: 1,
-          }}>
-            <Typography variant="h6">
-              {product.name}
-            </Typography>
-            <Typography 
-              variant="subtitle1" 
-              color="primary"
-              fontWeight="bold"
-              sx={{ mt: { xs: 1, sm: 0 } }}
-            >
-              ₹{(product.price * item.quantity).toLocaleString('en-IN')}
-            </Typography>
-          </Box>
-          
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            {product.description?.substring(0, 100)}
-            {product.description?.length > 100 ? '...' : ''}
-          </Typography>
-          
-          {/* Debug info for cart item */}
-          <Typography variant="caption" color="text.disabled" sx={{ mb: 1, fontFamily: 'monospace' }}>
-            Debug: Cart ID: {item.id} | Product ID: {item.productId} | Qty: {item.quantity}
-            {item.allItemIds && item.allItemIds.length > 1 && (
-              <> | Consolidated from: [{item.allItemIds.join(', ')}]</>
-            )}
-          </Typography>
-          
-          <Box sx={{ 
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            mt: 'auto',
-            flexWrap: { xs: 'wrap', sm: 'nowrap' },
-            gap: { xs: 2, sm: 1 }
-          }}>
-            <Box sx={{ 
-              display: 'flex',
-              alignItems: 'center',
-            }}>
-              <Typography variant="body2" color="text.secondary" sx={{ mr: 1.5 }}>
-                Qty:
-              </Typography>
-              <Box sx={{ 
-                display: 'flex',
-                alignItems: 'center',
-                border: (theme) => `1px solid ${theme.palette.grey[200]}`,
-                borderRadius: 1.5,
-                overflow: 'hidden'
-              }}>
-                <IconButton 
-                  size="small"
-                  color="primary"
-                  onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
-                  disabled={updating === item.id || item.quantity <= 1}
-                  sx={{ 
-                    borderRadius: 0,
-                    p: 0.75
-                  }}
-                >
-                  <Remove fontSize="small" />
-                </IconButton>
-                
-                <Box sx={{ 
-                  px: 2,
-                  minWidth: 36,
-                  textAlign: 'center',
-                }}>
-                  {updating === item.id ? (
-                    <CircularProgress size={16} thickness={5} />
-                  ) : (
-                    <Typography fontWeight="medium">
-                      {item.quantity}
-                    </Typography>
-                  )}
-                </Box>
-                
-                <IconButton 
-                  size="small"
-                  color="primary"
-                  onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
-                  disabled={updating === item.id || (product.stock && item.quantity >= product.stock)}
-                  sx={{ 
-                    borderRadius: 0,
-                    p: 0.75
-                  }}
-                >
-                  <Add fontSize="small" />
-                </IconButton>
-              </Box>
-            </Box>
-            
-            <Button
-              variant="outlined"
-              color="error"
-              size="small"
-              startIcon={removing === item.id ? null : <DeleteOutline />}
-              onClick={handleRemoveClick}
-              disabled={removing === item.id}
-              sx={{ 
-                minWidth: 120,
-                borderColor: 'rgba(224, 122, 95, 0.5)',
-                '&:hover': {
-                  borderColor: 'error.main',
-                  backgroundColor: 'rgba(224, 122, 95, 0.04)',
-                }
-              }}
-            >
-              {removing === item.id ? (
-                <CircularProgress size={16} thickness={5} />
-              ) : (
-                '🔥 Delete Forever'
-              )}
-            </Button>
-          </Box>
-        </Box>
-      </Paper>
-    </Grow>
+      />
+    </div>
   );
-});
+};
 
-// OrderSummary component (memoized) - Fixed with proper transaction data
-const OrderSummary = memo(({ cartItems, products, navigate, totalPrice, subtotal, shippingCost, discount, totalItemCount, uniqueItemCount }) => {
-  
-  // Create transaction-ready cart data (what user actually sees)
-  const prepareTransactionData = () => {
-    return cartItems.map(item => {
-      const product = products.find(p => String(p.id) === String(item.productId));
-      return {
-        id: item.id, // Use the main item ID
-        productId: item.productId,
-        quantity: item.quantity, // This is the consolidated quantity
-        price: product?.price || 0,
-        name: product?.name || '',
-        image: product?.images?.[0] || '',
-        // Don't include duplicate tracking data in transaction
-      };
-    });
-  };
+// Enhanced Product Item Card with Terracotta Theme
+const ProductItemCard = ({ item, index }) => {
+  const [isHovered, setIsHovered] = useState(false);
 
   return (
-    <Fade in={true} timeout={600}>
-      <Paper elevation={2} sx={{ 
-        p: 3, 
-        position: 'sticky',
-        top: 20,
-        height: 'fit-content'
-      }}>
-        <Typography variant="h6" gutterBottom>
-          Order Summary
-        </Typography>
-        
-        <Divider sx={{ my: 2 }} />
-        
-        <Stack spacing={1.5}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-            <Typography variant="body2" color="text.secondary">
-              Subtotal ({totalItemCount} {totalItemCount === 1 ? 'item' : 'items'})
-            </Typography>
-            <Typography variant="body2">
-              ₹{subtotal.toLocaleString('en-IN')}
-            </Typography>
-          </Box>
-          
-          {/* Show exactly what user sees */}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-              {uniqueItemCount} unique {uniqueItemCount === 1 ? 'product' : 'products'}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-              Total qty: {totalItemCount}
-            </Typography>
-          </Box>
-          
-          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-            <Typography variant="body2" color="text.secondary">
-              Shipping
-            </Typography>
-            <Typography variant="body2">
-              {shippingCost === 0 ? 'Enjoy Free Delivery' : `₹${shippingCost.toLocaleString('en-IN')}`}
-            </Typography>
-          </Box>
-          
-          {discount > 0 && (
-            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Typography variant="body2" color="success.main" sx={{ display: 'flex', alignItems: 'center' }}>
-                <VerifiedOutlined fontSize="small" sx={{ mr: 0.5 }} />
-                Discount
-              </Typography>
-              <Typography variant="body2" color="success.main" fontWeight="medium">
-                -₹{discount.toLocaleString('en-IN')}
-              </Typography>
-            </Box>
-          )}
-        </Stack>
-        
-        <Divider sx={{ my: 2 }} />
-        
-        <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between' }}>
-          <Typography variant="h6">
-            Total
-          </Typography>
-          <Typography variant="h6" color="primary" fontWeight="bold">
-            ₹{totalPrice.toLocaleString('en-IN')}
-          </Typography>
-        </Box>
-        
-        <Button
-          variant="contained"
-          color="primary"
-          size="large"
-          fullWidth
-          endIcon={<ArrowForward />}
-          onClick={() => {
-            // Pass the EXACT data user sees - deduplicated items
-            const transactionItems = prepareTransactionData();
-            
-            console.log('🛒 PROCEEDING TO CHECKOUT');
-            console.log('   Transaction items:', transactionItems.length);
-            console.log('   Total amount:', totalPrice);
-            
-            navigate('/order-summary', { 
-              state: { 
-                totalAmount: totalPrice,
-                items: transactionItems, // Use deduplicated items
-                orderDetails: {
-                  subtotal,
-                  shippingCost,
-                  discount,
-                  totalItemCount,
-                  uniqueItemCount
-                }
-              } 
-            });
-          }}
-          sx={{ 
-            py: 1.5,
-            fontWeight: 'bold',
-            position: 'relative',
-            overflow: 'hidden',
-            '&::after': {
-              content: '""',
-              position: 'absolute',
-              top: 0,
-              left: '-100%',
-              width: '50%',
-              height: '100%',
-              background: 'linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0) 100%)',
-              transform: 'skewX(-25deg)',
-              animation: 'shine 3s infinite ease-in-out',
-            },
-            '@keyframes shine': {
-              '0%': {
-                left: '-100%'
-              },
-              '100%': {
-                left: '150%'
-              }
-            }
+    <Card 
+      size="small" 
+      style={{
+        ...styles.productItemCard,
+        ...(isHovered ? { 
+          background: 'rgba(255, 255, 255, 1)',
+          transform: 'translateX(4px)',
+          boxShadow: `0 4px 16px rgba(210, 105, 30, 0.15)`,
+          borderColor: terracottaTheme.primary
+        } : {})
+      }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <Row align="middle" gutter={16}>
+        <Col>
+          <Avatar
+            src={item.image}
+            size={64}
+            shape="square"
+            style={{ 
+              borderRadius: '8px',
+              border: `2px solid ${terracottaTheme.light}`
+            }}
+            icon={<GiftOutlined />}
+          />
+        </Col>
+        <Col flex="auto">
+          <Space direction="vertical" size={2}>
+            <Text strong style={{ fontSize: '15px', color: terracottaTheme.text.primary }}>
+              {item.name}
+            </Text>
+            <Space>
+              <Tag 
+                color={terracottaTheme.primary}
+                style={{
+                  ...styles.statusBadge,
+                  backgroundColor: 'rgba(210, 105, 30, 0.1)',
+                  color: terracottaTheme.primary
+                }}
+              >
+                Qty: {item.quantity}
+              </Tag>
+              <Text type="secondary">₹{item.price?.toFixed(2)}</Text>
+            </Space>
+            <Rate 
+              disabled 
+              defaultValue={4.5} 
+              size="small"
+              style={{ color: terracottaTheme.warning }}
+            />
+          </Space>
+        </Col>
+        <Col>
+          <Statistic
+            value={item.price * item.quantity}
+            precision={2}
+            prefix="₹"
+            valueStyle={{ 
+              color: terracottaTheme.success, 
+              fontWeight: 'bold',
+              letterSpacing: '-0.5px'
+            }}
+          />
+        </Col>
+      </Row>
+    </Card>
+  );
+};
+
+// Order Summary Card with Terracotta Theme
+const OrderSummaryCard = ({ order }) => (
+  <Card 
+    title={
+      <Space>
+        <DollarOutlined style={{ color: terracottaTheme.success }} />
+        <span style={{ color: terracottaTheme.text.primary }}>Order Summary</span>
+      </Space>
+    }
+    size="small"
+    style={{ 
+      borderRadius: '12px',
+      border: `1px solid ${terracottaTheme.light}`
+    }}
+  >
+    <Space direction="vertical" style={{ width: '100%' }}>
+      <Row justify="space-between">
+        <Text>Subtotal</Text>
+        <Text>₹{order.orderDetails?.subtotal?.toFixed(2) || '0.00'}</Text>
+      </Row>
+      <Row justify="space-between">
+        <Text>Shipping</Text>
+        <Text>₹{order.orderDetails?.shippingCost?.toFixed(2) || '0.00'}</Text>
+      </Row>
+      {order.orderDetails?.discount > 0 && (
+        <Row justify="space-between">
+          <Text style={{ color: terracottaTheme.success }}>Discount</Text>
+          <Text style={{ color: terracottaTheme.success }}>
+            -₹{order.orderDetails?.discount?.toFixed(2)}
+          </Text>
+        </Row>
+      )}
+      <Divider style={{ margin: '8px 0' }} />
+      <Row justify="space-between">
+        <Text strong style={{ fontSize: '16px' }}>Total</Text>
+        <Text strong style={{ fontSize: '16px', color: terracottaTheme.success }}>
+          ₹{order.orderDetails?.totalAmount?.toFixed(2) || '0.00'}
+        </Text>
+      </Row>
+    </Space>
+  </Card>
+);
+
+// Delivery Tracking Card with Terracotta Theme
+const DeliveryTrackingCard = ({ order, onTrack }) => (
+  <Card
+    title={
+      <Space>
+        <TruckOutlined style={{ color: terracottaTheme.primary }} />
+        <span style={{ color: terracottaTheme.text.primary }}>Delivery Tracking</span>
+      </Space>
+    }
+    size="small"
+    extra={
+      order.deliveryDetails?.consignmentNumber && (
+        <Button 
+          type="primary" 
+          size="small" 
+          onClick={() => onTrack(order.deliveryDetails)}
+          style={styles.primaryButton}
+        >
+          Track Package
+        </Button>
+      )
+    }
+    style={{ 
+      borderRadius: '12px',
+      border: `1px solid ${terracottaTheme.light}`
+    }}
+  >
+    <Space direction="vertical" style={{ width: '100%' }}>
+      <Row justify="space-between">
+        <Text type="secondary">Courier</Text>
+        <Text strong>{order.deliveryDetails?.company || 'Not assigned'}</Text>
+      </Row>
+      <Row justify="space-between">
+        <Text type="secondary">Tracking Number</Text>
+        <Text 
+          code
+          style={{ 
+            backgroundColor: terracottaTheme.light,
+            color: terracottaTheme.primary 
           }}
         >
-          Proceed to Checkout
-        </Button>
-        
-        <Stack spacing={1.5} sx={{ mt: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <LocalShippingOutlined fontSize="small" color="action" sx={{ mr: 1 }} />
-            <Typography variant="body2" color="text.secondary">
-              Free delivery for orders above ₹1500
-            </Typography>
-          </Box>
-          
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <PaymentOutlined fontSize="small" color="action" sx={{ mr: 1 }} />
-            <Typography variant="body2" color="text.secondary">
-              Secure payments & COD available
-            </Typography>
-          </Box>
-        </Stack>
-      </Paper>
-    </Fade>
-  );
-});
+          {order.deliveryDetails?.consignmentNumber || 'Not generated'}
+        </Text>
+      </Row>
+      <Row justify="space-between">
+        <Text type="secondary">Expected Delivery</Text>
+        <Text>{new Date(order.deliveryDate).toLocaleDateString()}</Text>
+      </Row>
+      {order.deliveryDetails?.remarks && (
+        <>
+          <Divider style={{ margin: '8px 0' }} />
+          <Text type="secondary" italic>{order.deliveryDetails.remarks}</Text>
+        </>
+      )}
+    </Space>
+  </Card>
+);
 
-// Empty Cart component
-const EmptyCart = memo(({ navigate }) => (
-  <Fade in={true} timeout={500}>
-    <Box sx={{ 
-      py: 8, 
-      textAlign: 'center',
-      backgroundColor: (theme) => theme.palette.grey[50],
-      borderRadius: 2
-    }}>
-      <ShoppingCart sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
-      <Typography variant="h6" color="textSecondary" gutterBottom>
-        Your cart is empty
-      </Typography>
-      <Typography variant="body2" color="textSecondary" sx={{ mb: 3, maxWidth: 400, mx: 'auto' }}>
-        Looks like you haven't added anything to your cart yet. Explore our products and find something you'll love!
-      </Typography>
-      <Button 
-        variant="contained" 
-        color="primary"
-        size="large"
-        startIcon={<ShoppingBagOutlined />}
-        onClick={() => navigate('/products')}
-      >
-        Start Shopping
-      </Button>
-    </Box>
-  </Fade>
-));
+// Main Order Card Component with Terracotta Theme
+const OrderCard = ({ order, onViewDetails, onTrack }) => {
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
-// Recommended Products component (memoized)
-const RecommendedProducts = memo(({ products, isMobile, isTablet }) => {
+  const showOrderDetails = () => {
+    setIsModalVisible(true);
+  };
+
+  const handleModalClose = () => {
+    setIsModalVisible(false);
+  };
+
+  const orderItems = order.orderDetails?.items || [];
+  const displayItems = orderItems.slice(0, 2);
+  const remainingItems = orderItems.length - 2;
+
   return (
-    <Slide direction="up" in={true} timeout={500} mountOnEnter unmountOnExit>
-      <Paper elevation={2} sx={{ p: 3, textAlign: 'center' }}>
-        <Typography variant="h6" gutterBottom>
-          Recommended for You
-        </Typography>
-        <Grid container spacing={2} sx={{ mt: 1 }}>
-          {products.slice(0, isMobile ? 2 : isTablet ? 3 : 4).map((product, index) => (
-            <Grid item xs={6} sm={4} md={3} key={product.id}>
-              <Zoom in={true} timeout={400 + index * 75}>
-                <Card sx={{ 
-                  height: '100%', 
-                  display: 'flex', 
-                  flexDirection: 'column',
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    boxShadow: 3,
-                    transform: 'translateY(-4px)',
-                  }
-                }}>
-                  <Box sx={{ position: 'relative', pt: '75%', backgroundColor: 'rgba(0,0,0,0.04)' }}>
-                    <CardMedia
-                      component="img"
-                      image={product.images?.[0] || 'https://via.placeholder.com/140'}
-                      alt={product.name}
-                      sx={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                        '&:hover': {
-                          transform: 'scale(1.08)',
-                        }
-                      }}
-                    />
-                  </Box>
-                  <CardContent sx={{ flexGrow: 1, py: 1.5 }}>
-                    <Typography variant="subtitle2" noWrap fontWeight="medium">
-                      {product.name}
-                    </Typography>
-                    <Typography variant="subtitle1" color="primary" fontWeight="bold" sx={{ mt: 0.5 }}>
-                      ₹{product.price.toLocaleString('en-IN')}
-                    </Typography>
-                  </CardContent>
-                  <CardActions sx={{ px: 2, pb: 2 }}>
-                    <Button 
-                      size="small" 
-                      fullWidth
-                      variant="outlined"
-                      color="primary"
-                    >
-                      Add to Cart
-                    </Button>
-                  </CardActions>
-                </Card>
-              </Zoom>
-            </Grid>
+    <>
+      <Card
+        style={{
+          ...styles.orderCard,
+          ...(isHovered ? styles.orderCardHover : {})
+        }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        {/* Order Header */}
+        <Row justify="space-between" align="top" style={{ marginBottom: '16px' }}>
+          <Col>
+            <Space direction="vertical" size={4}>
+              <Space align="center">
+                <Title level={4} style={{ margin: 0, ...styles.gradientText }}>
+                  #{order.id.slice(-6).toUpperCase()}
+                </Title>
+                <OrderStatusBadge status={order.status} paymentStatus={order.paymentStatus} />
+              </Space>
+              <Space>
+                <CalendarOutlined style={{ color: terracottaTheme.secondary }} />
+                <Text type="secondary">
+                  Placed on {new Date(order.orderDate).toLocaleDateString('en-IN', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric'
+                  })}
+                </Text>
+              </Space>
+            </Space>
+          </Col>
+          
+          <Col>
+            <Space direction="vertical" align="end">
+              <Statistic
+                value={order.orderDetails?.totalAmount || 0}
+                precision={2}
+                prefix="₹"
+                valueStyle={{ 
+                  color: terracottaTheme.success, 
+                  fontWeight: 'bold', 
+                  fontSize: '18px',
+                  letterSpacing: '-0.5px'
+                }}
+              />
+              <Space>
+                <Button 
+                  type="primary" 
+                  icon={<EyeOutlined />} 
+                  onClick={showOrderDetails}
+                  style={styles.primaryButton}
+                >
+                  View Details
+                </Button>
+                <Tooltip title="Reorder items">
+                  <Button 
+                    icon={<ReloadOutlined />} 
+                    style={styles.secondaryButton}
+                  />
+                </Tooltip>
+              </Space>
+            </Space>
+          </Col>
+        </Row>
+
+        {/* Quick Order Items Preview */}
+        <Card 
+          size="small" 
+          title={
+            <span style={{ color: terracottaTheme.text.primary }}>Order Items</span>
+          }
+          style={styles.itemPreviewCard}
+        >
+          {displayItems.map((item, index) => (
+            <Row key={index} align="middle" style={{ marginBottom: '8px' }}>
+              <Col span={2}>
+                <Avatar 
+                  src={item.image} 
+                  size="small" 
+                  icon={<GiftOutlined />}
+                  style={{ border: `1px solid ${terracottaTheme.light}` }}
+                />
+              </Col>
+              <Col span={16}>
+                <Text style={{ fontSize: '14px', color: terracottaTheme.text.primary }}>
+                  {item.quantity}× {item.name}
+                </Text>
+              </Col>
+              <Col span={6} style={{ textAlign: 'right' }}>
+                <Text strong style={{ color: terracottaTheme.success }}>
+                  ₹{(item.price * item.quantity).toFixed(2)}
+                </Text>
+              </Col>
+            </Row>
           ))}
-        </Grid>
-      </Paper>
-    </Slide>
+          {remainingItems > 0 && (
+            <Text type="secondary" style={{ fontStyle: 'italic' }}>
+              +{remainingItems} more items
+            </Text>
+          )}
+        </Card>
+
+        {/* Order Progress */}
+        <OrderProgress 
+          status={order.status} 
+          orderDate={order.orderDate}
+          deliveryDate={order.deliveryDate}
+        />
+
+        {/* Quick Actions - Removed Invoice and Review */}
+        <Row gutter={8} style={{ marginTop: '16px' }}>
+          <Col span={12}>
+            <Button 
+              block 
+              size="small" 
+              icon={<PhoneOutlined />}
+              style={styles.quickActionButton}
+            >
+              Support
+            </Button>
+          </Col>
+          <Col span={12}>
+            <Button 
+              block 
+              size="small" 
+              icon={<TruckOutlined />}
+              disabled={!order.deliveryDetails?.consignmentNumber}
+              onClick={() => onTrack(order.deliveryDetails)}
+              style={{
+                ...styles.quickActionButton,
+                ...(order.deliveryDetails?.consignmentNumber ? {
+                  backgroundColor: 'rgba(210, 105, 30, 0.1)',
+                  borderColor: terracottaTheme.primary,
+                  color: terracottaTheme.primary
+                } : {})
+              }}
+            >
+              Track
+            </Button>
+          </Col>
+        </Row>
+      </Card>
+
+      {/* Detailed Order Modal */}
+      <Modal
+        title={
+          <div style={{ color: 'white' }}>
+            <Space>
+              <ShoppingCartOutlined style={{ color: 'white' }} />
+              <span>Order Details - #{order.id.slice(-6).toUpperCase()}</span>
+            </Space>
+          </div>
+        }
+        open={isModalVisible}
+        onCancel={handleModalClose}
+        footer={[
+          <Button key="close" onClick={handleModalClose}>
+            Close
+          </Button>,
+          <Button 
+            key="reorder" 
+            type="primary" 
+            icon={<ReloadOutlined />}
+            style={styles.primaryButton}
+          >
+            Reorder Items
+          </Button>
+        ]}
+        width={800}
+        style={{ top: 20 }}
+        styles={{
+          header: styles.modalHeader
+        }}
+      >
+        <Row gutter={16}>
+          <Col span={14}>
+            <Space direction="vertical" style={{ width: '100%' }} size="middle">
+              {/* All Order Items */}
+              <Card 
+                title={<span style={{ color: terracottaTheme.text.primary }}>Order Items</span>}
+                size="small" 
+                style={{ 
+                  borderRadius: '12px',
+                  border: `1px solid ${terracottaTheme.light}`
+                }}
+              >
+                {orderItems.map((item, index) => (
+                  <ProductItemCard key={index} item={item} index={index} />
+                ))}
+              </Card>
+
+              {/* Delivery Address */}
+              <Card 
+                title={
+                  <Space>
+                    <EnvironmentOutlined style={{ color: terracottaTheme.primary }} />
+                    <span style={{ color: terracottaTheme.text.primary }}>Delivery Address</span>
+                  </Space>
+                }
+                size="small"
+                style={{ 
+                  borderRadius: '12px',
+                  border: `1px solid ${terracottaTheme.light}`
+                }}
+              >
+                <Paragraph>
+                  <Text strong style={{ color: terracottaTheme.text.primary }}>
+                    {order.orderDetails?.personalInfo?.fullName}
+                  </Text><br />
+                  {order.orderDetails?.deliveryAddress?.addressLine1}<br />
+                  {order.orderDetails?.deliveryAddress?.addressLine2 && (
+                    <>{order.orderDetails.deliveryAddress.addressLine2}<br /></>
+                  )}
+                  {order.orderDetails?.deliveryAddress?.city}, {order.orderDetails?.deliveryAddress?.state}<br />
+                  PIN: {order.orderDetails?.deliveryAddress?.pincode}<br />
+                  <PhoneOutlined style={{ color: terracottaTheme.primary }} /> {order.orderDetails?.personalInfo?.phone}
+                </Paragraph>
+              </Card>
+            </Space>
+          </Col>
+
+          <Col span={10}>
+            <Space direction="vertical" style={{ width: '100%' }} size="middle">
+              {/* Order Summary */}
+              <OrderSummaryCard order={order} />
+
+              {/* Delivery Tracking */}
+              <DeliveryTrackingCard order={order} onTrack={onTrack} />
+
+              {/* Payment Info */}
+              <Card
+                title={
+                  <Space>
+                    <CreditCardOutlined style={{ color: terracottaTheme.success }} />
+                    <span style={{ color: terracottaTheme.text.primary }}>Payment Info</span>
+                  </Space>
+                }
+                size="small"
+                style={{ 
+                  borderRadius: '12px',
+                  border: `1px solid ${terracottaTheme.light}`
+                }}
+              >
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  <Row justify="space-between">
+                    <Text type="secondary">Status</Text>
+                    <Tag 
+                      color={order.paymentStatus === 'COMPLETED' ? terracottaTheme.success : terracottaTheme.warning}
+                      style={{
+                        ...styles.statusBadge,
+                        backgroundColor: order.paymentStatus === 'COMPLETED' 
+                          ? 'rgba(107, 120, 33, 0.1)' 
+                          : 'rgba(255, 143, 0, 0.1)',
+                        color: order.paymentStatus === 'COMPLETED' ? terracottaTheme.success : terracottaTheme.warning
+                      }}
+                    >
+                      {order.paymentStatus}
+                    </Tag>
+                  </Row>
+                  <Row justify="space-between">
+                    <Text type="secondary">Method</Text>
+                    <Text>{order.paymentMethod || 'Online Payment'}</Text>
+                  </Row>
+                  <Row justify="space-between">
+                    <Text type="secondary">Transaction ID</Text>
+                    <Text 
+                      code
+                      style={{ 
+                        backgroundColor: terracottaTheme.light,
+                        color: terracottaTheme.primary 
+                      }}
+                    >
+                      {order.transactionId || 'N/A'}
+                    </Text>
+                  </Row>
+                </Space>
+              </Card>
+            </Space>
+          </Col>
+        </Row>
+      </Modal>
+    </>
   );
-});
+};
 
-// Loading Skeleton for cart
-const CartSkeleton = memo(() => (
-  <Box>
-    <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-      <Skeleton variant="circular" width={32} height={32} sx={{ mr: 1 }} />
-      <Skeleton variant="text" width={120} height={40} />
-    </Box>
-    <Divider sx={{ mb: 3 }} />
-    <Grid container spacing={3}>
-      <Grid item xs={12} md={8}>
-        {[1, 2, 3].map((item) => (
-          <Paper key={item} sx={{ p: 2, mb: 2 }}>
-            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' } }}>
-              <Skeleton variant="rectangular" width={120} height={120} sx={{ mr: { xs: 0, sm: 2 }, mb: { xs: 2, sm: 0 } }} />
-              <Box sx={{ width: '100%' }}>
-                <Skeleton variant="text" width="60%" height={32} sx={{ mb: 1 }} />
-                <Skeleton variant="text" width="90%" height={20} />
-                <Skeleton variant="text" width="80%" height={20} sx={{ mb: 2 }} />
-                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Skeleton variant="rectangular" width={100} height={36} />
-                  <Skeleton variant="rectangular" width={80} height={36} />
-                </Box>
-              </Box>
-            </Box>
-          </Paper>
-        ))}
-      </Grid>
-      <Grid item xs={12} md={4}>
-        <Paper sx={{ p: 3 }}>
-          <Skeleton variant="text" width="60%" height={32} sx={{ mb: 2 }} />
-          <Divider sx={{ my: 2 }} />
-          <Skeleton variant="text" width="100%" height={24} sx={{ mb: 1 }} />
-          <Skeleton variant="text" width="100%" height={24} sx={{ mb: 1 }} />
-          <Skeleton variant="text" width="100%" height={24} sx={{ mb: 1 }} />
-          <Divider sx={{ my: 2 }} />
-          <Skeleton variant="text" width="100%" height={32} sx={{ mb: 2 }} />
-          <Skeleton variant="rectangular" width="100%" height={48} sx={{ mb: 2 }} />
-          <Skeleton variant="text" width="100%" height={24} sx={{ mb: 1 }} />
-          <Skeleton variant="text" width="100%" height={24} />
-        </Paper>
-      </Grid>
-    </Grid>
-  </Box>
-));
-
-// Main Cart component with simple debug logging
-const Cart = () => {
-  const [rawCartItems, setRawCartItems] = useState([]);
-  const [user, setUser] = useState(null);
+// Main Orders Component with Terracotta Theme
+const Orders = () => {
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [removing, setRemoving] = useState(null);
-  const [updating, setUpdating] = useState(null);
-  const [products, setProducts] = useState([]);
-  const [loadingProducts, setLoadingProducts] = useState(true);
+  const [user, setUser] = useState(null);
   const navigate = useNavigate();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
 
-  // Simple fetchCartItems with basic logging
-  const fetchCartItems = useCallback(async (uid) => {
-    console.log('🔍 FETCHING CART for user:', uid);
-    try {
-      const q = query(collection(db, 'cart'), where('userId', '==', uid));
-      const querySnapshot = await getDocs(q);
-      const items = [];
-      querySnapshot.forEach((doc) => {
-        items.push({ id: doc.id, ...doc.data() });
-      });
-      
-      console.log('📦 RAW CART DATA:');
-      items.forEach((item, i) => {
-        console.log(`   ${i+1}. Cart ID: ${item.id}, Product ID: ${item.productId}, Qty: ${item.quantity}`);
-      });
-      
-      setRawCartItems(items);
-      
-    } catch (error) {
-      console.error('❌ Error fetching cart items:', error);
-    }
-  }, []);
+  // Courier tracking URLs
+  const courierTrackingUrls = {
+    'Delhivery': 'https://www.delhivery.com/track/package/',
+    'DTDC': 'https://www.dtdc.in/tracking.asp',
+    'FedEx': 'https://www.fedex.com/fedextrack/?trknbr=',
+    'BlueDart': 'https://www.bluedart.com/tracking',
+    'Amazon': 'https://www.amazon.in/trackpkg/',
+  };
 
-  // Deduplicated cart items (memoized)
-  const cartItems = useMemo(() => {
-    const deduplicated = deduplicateCartItems(rawCartItems);
-    return deduplicated;
-  }, [rawCartItems]);
-
-  // Simple debug logging
-  useEffect(() => {
-    console.log('🔍 SIMPLE DEBUG - Cart Items:', cartItems.length);
-    console.log('🔍 SIMPLE DEBUG - Products:', products.length);
-    
-    console.log('📋 CART ITEMS:');
-    cartItems.forEach((item, i) => {
-      console.log(`   ${i+1}. Product: ${item.productId}, Qty: ${item.quantity}`);
-    });
-    
-    console.log('🏪 PRODUCTS:');
-    products.forEach((prod, i) => {
-      console.log(`   ${i+1}. ID: ${prod.id}, Name: ${prod.name}`);
-    });
-    
-    console.log('🔗 MATCHING CHECK:');
-    cartItems.forEach((item, i) => {
-      const found = products.find(p => String(p.id) === String(item.productId));
-      console.log(`   ${i+1}. ${item.productId} → ${found ? '✅ FOUND: ' + found.name : '❌ MISSING'}`);
-    });
-    
-  }, [cartItems, products]);
-
-  // Auth state monitoring
+  // Auth state management
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (!currentUser) {
@@ -827,428 +858,420 @@ const Cart = () => {
         return;
       }
       
-      console.log('👤 USER LOGGED IN:', currentUser.uid);
       setUser(currentUser);
-      await fetchCartItems(currentUser.uid);
+      await fetchOrders(currentUser.uid);
       setLoading(false);
     });
     
     return unsubscribe;
-  }, [navigate, fetchCartItems]);
+  }, [navigate]);
 
-  // Fetch products
-  useEffect(() => {
-    const fetchProducts = async () => {
-      console.log('🔍 FETCHING PRODUCTS...');
-      setLoadingProducts(true);
-      try {
-        const querySnapshot = await getDocs(collection(db, 'products'));
-        const productsArr = [];
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          productsArr.push({
-            id: doc.id,
-            ...data,
-            price: Number(data.price),
-            images: data.images || [],
-            stock: Number(data.stock) || 0
-          });
-        });
+  // Fetch orders
+  const fetchOrders = useCallback(async (uid) => {
+    try {
+      const q = query(collection(db, 'orders'), where('userId', '==', uid));
+      const querySnapshot = await getDocs(q);
+      const ordersData = [];
+      
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        const orderDate = data.createdAt?.toDate 
+          ? data.createdAt.toDate() 
+          : new Date(data.createdAt || Date.now());
         
-        console.log('📦 PRODUCTS LOADED:', productsArr.length);
-        productsArr.forEach((product, i) => {
-          console.log(`   ${i+1}. ID: ${product.id}, Name: ${product.name}, Price: ₹${product.price}`);
-        });
+        const deliveryDate = new Date(orderDate);
+        deliveryDate.setDate(deliveryDate.getDate() + Math.floor(Math.random() * 2) + 3);
         
-        setProducts(productsArr);
-      } catch (error) {
-        console.error('❌ Error fetching products:', error);
-      } finally {
-        setLoadingProducts(false);
-      }
-    };
-    
-    fetchProducts();
+        const today = new Date();
+        let status = 'Ordered';
+        if (today > deliveryDate) {
+          status = 'Delivered';
+        } else if (today > orderDate && (today - orderDate) / (1000 * 60 * 60 * 24) > 1) {
+          status = 'Shipped';
+        } else if (today > orderDate) {
+          status = 'Processing';
+        }
+        
+        ordersData.push({
+          id: doc.id,
+          ...data,
+          orderDate,
+          deliveryDate,
+          status,
+          paymentStatus: data.paymentStatus || 'INITIATED',
+          deliveryDetails: data.deliveryDetails || {
+            company: 'Not assigned yet',
+            consignmentNumber: 'Not generated yet',
+            tentativeDate: deliveryDate,
+            remarks: 'Order is being processed'
+          }
+        });
+      });
+
+      ordersData.sort((a, b) => b.orderDate - a.orderDate);
+      setOrders(ordersData);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      notification.error({
+        message: 'Error',
+        description: 'Failed to load orders. Please try again.',
+        style: { 
+          borderRadius: '12px',
+          border: `1px solid ${terracottaTheme.error}`
+        }
+      });
+    }
   }, []);
 
-  // Get product details function (memoized)
-  const getProductDetails = useCallback((productId) => {
-    const product = products.find((p) => String(p.id) === String(productId));
-    if (!product) {
-      console.warn(`❌ PRODUCT NOT FOUND: ${productId}`);
-    }
-    return product;
-  }, [products]);
-
-  // Remove item handler
-  const handleRemoveItem = useCallback(async (itemId) => {
-    console.log('🗑️ REMOVING ITEM:', itemId);
-    try {
-      setRemoving(itemId);
-      
-      // Find the deduplicated item to get all related IDs
-      const deduplicatedItem = cartItems.find(item => item.id === itemId);
-      
-      if (!deduplicatedItem) {
-        console.error('Item not found in deduplicated cart');
-        return;
-      }
-
-      // Get all IDs that need to be deleted (including duplicates)
-      const idsToDelete = deduplicatedItem.allItemIds || [itemId];
-      
-      console.log('   Deleting IDs:', idsToDelete);
-      
-      // Delete all related items from database
-      if (idsToDelete.length === 1) {
-        await deleteDoc(doc(db, 'cart', idsToDelete[0]));
-      } else {
-        const batch = writeBatch(db);
-        idsToDelete.forEach(id => {
-          const itemRef = doc(db, 'cart', id);
-          batch.delete(itemRef);
-        });
-        await batch.commit();
-      }
-      
-      // Update local state
-      setRawCartItems(prev => prev.filter(rawItem => !idsToDelete.includes(rawItem.id)));
-      
-    } catch (error) {
-      console.error('❌ Error removing item:', error);
-    } finally {
-      setRemoving(null);
-    }
-  }, [cartItems]);
-
-  // Update quantity handler
-  const updateQuantity = useCallback(async (itemId, newQuantity) => {
-    if (newQuantity < 1) return;
-    
-    console.log('🔄 UPDATING QUANTITY:', itemId, 'to', newQuantity);
-    
-    try {
-      setUpdating(itemId);
-      
-      // Find the deduplicated item
-      const deduplicatedItem = cartItems.find(item => item.id === itemId);
-      
-      if (!deduplicatedItem) return;
-      
-      const allItemIds = deduplicatedItem.allItemIds || [itemId];
-      
-      if (allItemIds.length === 1) {
-        // Simple case - just update quantity
-        await updateDoc(doc(db, 'cart', itemId), {
-          quantity: newQuantity
-        });
-      } else {
-        // Complex case - consolidate duplicates
-        const batch = writeBatch(db);
-        
-        // Update the main item with new quantity
-        const mainItemRef = doc(db, 'cart', allItemIds[0]);
-        batch.update(mainItemRef, { quantity: newQuantity });
-        
-        // Delete all duplicate items
-        for (let i = 1; i < allItemIds.length; i++) {
-          const duplicateRef = doc(db, 'cart', allItemIds[i]);
-          batch.delete(duplicateRef);
+  // Track package handler
+  const handleTrackPackage = useCallback((deliveryDetails) => {
+    if (!deliveryDetails?.company || !deliveryDetails?.consignmentNumber) {
+      notification.warning({
+        message: 'Tracking Unavailable',
+        description: 'Tracking information is not available yet. Please check back later.',
+        style: { 
+          borderRadius: '12px',
+          border: `1px solid ${terracottaTheme.warning}`
         }
-        
-        await batch.commit();
-        
-        // Refresh cart items to reflect changes
-        await fetchCartItems(user.uid);
-        return;
-      }
-      
-      // Update local state for simple case
-      setRawCartItems(prev => prev.map(item => 
-        item.id === itemId ? {...item, quantity: newQuantity} : item
-      ));
-      
-    } catch (error) {
-      console.error('❌ Error updating quantity:', error);
-    } finally {
-      setUpdating(null);
-    }
-  }, [cartItems, fetchCartItems, user]);
-
-  // Calculate cart totals - FIXED to only count valid products
-  const { subtotal, shippingCost, discount, totalPrice, totalItemCount, uniqueItemCount } = useMemo(() => {
-    console.log('💰 CALCULATING TOTALS...');
-    
-    let sub = 0;
-    let totalItems = 0;
-    let validItemsCount = 0; // Only count items with valid products
-    
-    cartItems.forEach((item, index) => {
-      const product = getProductDetails(item.productId);
-      if (product) { // Only count if product exists
-        const itemTotal = product.price * item.quantity;
-        sub += itemTotal;
-        totalItems += item.quantity;
-        validItemsCount++; // Increment only for valid products
-        console.log(`   ✅ Item ${index + 1}: ${product.name} - Qty: ${item.quantity}, Price: ₹${product.price}, Total: ₹${itemTotal}`);
-      } else {
-        console.log(`   ❌ Item ${index + 1}: Missing product ${item.productId} - Qty: ${item.quantity} (EXCLUDED from totals)`);
-      }
-    });
-    
-    // Free shipping above ₹1500
-    const shipping = sub > 1500 ? 0 : 0;
-    
-    // 10% discount above ₹1000, max ₹100
-    const disc = sub > 1000 ? Math.min(Math.round(sub * 0.1), 100) : 0;
-    
-    const finalTotal = sub + shipping - disc;
-    
-    console.log('💰 TOTALS:');
-    console.log(`   Subtotal: ₹${sub}`);
-    console.log(`   Shipping: ₹${shipping}`);
-    console.log(`   Discount: ₹${disc}`);
-    console.log(`   Final Total: ₹${finalTotal}`);
-    console.log(`   Total Items: ${totalItems}`);
-    console.log(`   Valid Items: ${validItemsCount}/${cartItems.length}`);
-    
-    return {
-      subtotal: sub,
-      shippingCost: shipping,
-      discount: disc,
-      totalPrice: finalTotal,
-      totalItemCount: totalItems,
-      uniqueItemCount: validItemsCount // Return count of valid products only
-    };
-  }, [cartItems, getProductDetails]);
-
-  // Filter out invalid products from rendering
-  const validCartItems = useMemo(() => {
-    const filtered = cartItems.filter(item => {
-      const product = getProductDetails(item.productId);
-      return product !== undefined;
-    });
-    
-    console.log(`🔍 FILTERING: ${cartItems.length} total items → ${filtered.length} valid items`);
-    return filtered;
-  }, [cartItems, getProductDetails]);
-
-  // Force cleanup function
-  const forceCleanupCart = useCallback(async () => {
-    if (!user) {
-      console.log('No user logged in');
+      });
       return;
     }
-    
-    console.log('🔧 FORCE CLEANUP INITIATED');
-    
-    try {
-      // Fetch fresh data
-      const q = query(collection(db, 'cart'), where('userId', '==', user.uid));
-      const querySnapshot = await getDocs(q);
-      const allItems = [];
-      querySnapshot.forEach((doc) => {
-        allItems.push({ id: doc.id, ...doc.data() });
-      });
-      
-      console.log('Found', allItems.length, 'total cart items');
-      
-      // Check for orphaned items (items without valid products)
-      const orphanedItems = [];
-      allItems.forEach(item => {
-        const product = products.find(p => String(p.id) === String(item.productId));
-        if (!product) {
-          orphanedItems.push(item);
-        }
-      });
-      
-      if (orphanedItems.length > 0) {
-        console.log('🗑️ Found', orphanedItems.length, 'orphaned items to remove');
-        const batch = writeBatch(db);
-        orphanedItems.forEach(item => {
-          console.log('   Removing orphaned item:', item.id, 'for missing product:', item.productId);
-          const itemRef = doc(db, 'cart', item.id);
-          batch.delete(itemRef);
-        });
-        await batch.commit();
-        
-        // Refresh cart
-        await fetchCartItems(user.uid);
-      } else {
-        console.log('✅ No orphaned items found');
-      }
-      
-    } catch (error) {
-      console.error('❌ Force cleanup failed:', error);
-    }
-  }, [user, products, fetchCartItems]);
 
-  // Display loading skeletons
-  if (loading || loadingProducts) {
+    const courierName = deliveryDetails.company.toLowerCase();
+    let trackingUrl = '';
+
+    for (const [key, url] of Object.entries(courierTrackingUrls)) {
+      if (courierName.includes(key.toLowerCase())) {
+        trackingUrl = url + deliveryDetails.consignmentNumber;
+        break;
+      }
+    }
+
+    if (!trackingUrl) {
+      trackingUrl = `https://www.google.com/search?q=track+${deliveryDetails.consignmentNumber}+${deliveryDetails.company}`;
+    }
+
+    window.open(trackingUrl, '_blank');
+  }, [courierTrackingUrls]);
+
+  // Loading state
+  if (loading) {
     return (
-      <ThemeProvider theme={terracottaTheme}>
-        <Container maxWidth="lg" sx={{ py: { xs: 2, md: 4 } }}>
-          <Paper elevation={0} sx={{ p: { xs: 2, sm: 3 }, mb: 4 }}>
-            <CartSkeleton />
-          </Paper>
-        </Container>
-      </ThemeProvider>
+      <div style={styles.loadingContainer}>
+        <Card style={styles.loadingCard}>
+          <Spin 
+            size="large" 
+            style={{ 
+              color: terracottaTheme.primary,
+              '& .ant-spin-dot-item': {
+                backgroundColor: terracottaTheme.primary
+              }
+            }}
+          />
+          <Title level={4} style={{ marginTop: '20px', ...styles.gradientText }}>
+            Loading your orders...
+          </Title>
+        </Card>
+      </div>
     );
   }
 
   return (
-    <ThemeProvider theme={terracottaTheme}>
-      <Fade in={true} timeout={400}>
-        <Container maxWidth="lg" sx={{ py: { xs: 2, md: 4 } }}>
-          <Paper elevation={0} sx={{ 
-            p: { xs: 2, sm: 3 },
-            mb: 4,
-            backgroundImage: 'linear-gradient(to right bottom, rgba(255,255,255,0.95), rgba(255,255,255,0.98))',
-            backdropFilter: 'blur(10px)',
-          }}>
-            <Box sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              mb: 3,
-              flexDirection: { xs: 'column', sm: 'row' },
-              justifyContent: { xs: 'center', sm: 'space-between' }
-            }}>
-              <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'center',
-                mb: { xs: 2, sm: 0 }
-              }}>
-                <ShoppingCart sx={{ 
-                  mr: 1.5, 
-                  color: 'primary.main',
-                  fontSize: 28
-                }} />
-                <Typography variant="h4" component="h1">
-                  My Cart
-                </Typography>
-                <Badge 
-                  badgeContent={uniqueItemCount} 
-                  color="primary"
-                  sx={{ ml: 2 }}
+    <div style={styles.pageContainer}>
+      <div style={styles.contentWrapper}>
+        {/* Header */}
+        <Card style={styles.headerCard}>
+          <Row justify="space-between" align="middle">
+            <Col>
+              <Space>
+                <Avatar 
+                  size={48} 
+                  icon={<ShoppingCartOutlined />} 
+                  style={{ 
+                    background: `linear-gradient(135deg, ${terracottaTheme.primary} 0%, ${terracottaTheme.secondary} 100%)`,
+                    border: `2px solid ${terracottaTheme.light}`
+                  }}
                 />
-              </Box>
-
-              <Stack direction="row" spacing={1}>
-                <Button 
-                  variant="outlined" 
-                  color="secondary"
-                  size="small"
-                  startIcon={<Build />}
-                  onClick={forceCleanupCart}
-                  sx={{ fontWeight: 500 }}
+                <div>
+                  <Title level={2} style={{ margin: 0, ...styles.gradientText }}>
+                    My Orders
+                  </Title>
+                  <Text type="secondary" style={{ fontSize: '16px' }}>
+                    Track and manage all your orders in one place
+                  </Text>
+                </div>
+              </Space>
+            </Col>
+            <Col>
+              <Space>
+                <Badge 
+                  count={orders.length} 
+                  style={{ 
+                    backgroundColor: terracottaTheme.success,
+                    color: 'white',
+                    fontWeight: 'bold'
+                  }}
                 >
-                  🔧 Clean Orphans
-                </Button>
-                
-                <Button 
-                  variant="text" 
-                  color="primary"
-                  startIcon={<ShoppingBagOutlined />}
-                  onClick={() => navigate('/products')}
-                  sx={{ fontWeight: 500 }}
-                >
-                  Continue Shopping
-                </Button>
-              </Stack>
-            </Box>
+                  <Button 
+                    type="primary" 
+                    size="large"
+                    icon={<ShopOutlined />}
+                    onClick={() => navigate('/products')}
+                    style={styles.primaryButton}
+                  >
+                    Continue Shopping
+                  </Button>
+                </Badge>
+              </Space>
+            </Col>
+          </Row>
+        </Card>
 
-            <Divider sx={{ mb: 3 }} />
+        {/* Orders List */}
+        {orders.length === 0 ? (
+          <Card style={styles.emptyStateCard}>
+            <Empty
+              image={
+                <ShoppingCartOutlined 
+                  style={{ 
+                    fontSize: '120px', 
+                    color: terracottaTheme.secondary,
+                    opacity: 0.3
+                  }} 
+                />
+              }
+              imageStyle={{ height: 120 }}
+              description={
+                <div>
+                  <Title level={3} style={{ color: terracottaTheme.secondary }}>
+                    No orders yet
+                  </Title>
+                  <Paragraph style={{ 
+                    fontSize: '16px', 
+                    color: terracottaTheme.text.secondary, 
+                    maxWidth: '400px', 
+                    margin: '0 auto 24px' 
+                  }}>
+                    Start exploring our amazing terracotta products and place your first order to see it here!
+                  </Paragraph>
+                </div>
+              }
+            >
+              <Button 
+                type="primary" 
+                size="large"
+                icon={<ShopOutlined />}
+                onClick={() => navigate('/products')}
+                style={{
+                  ...styles.primaryButton,
+                  padding: '12px 32px', 
+                  height: 'auto',
+                  fontSize: '16px'
+                }}
+              >
+                Start Shopping
+              </Button>
+            </Empty>
+          </Card>
+        ) : (
+          <div>
+            {orders.map((order) => (
+              <OrderCard
+                key={order.id}
+                order={order}
+                onTrack={handleTrackPackage}
+              />
+            ))}
+          </div>
+        )}
 
-            {/* Enhanced Debug Info Panel */}
-            <Paper elevation={1} sx={{ p: 2, mb: 3, backgroundColor: '#f5f5f5' }}>
-              <Typography variant="subtitle2" gutterBottom color="text.secondary">
-                🐛 Debug Info (Check console for detailed logs)
-              </Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6} md={2}>
-                  <Typography variant="body2">
-                    Raw DB Items: <strong>{rawCartItems.length}</strong>
-                  </Typography>
-                </Grid>
-                <Grid item xs={12} sm={6} md={2}>
-                  <Typography variant="body2">
-                    Deduplicated: <strong>{cartItems.length}</strong>
-                  </Typography>
-                </Grid>
-                <Grid item xs={12} sm={6} md={2}>
-                  <Typography variant="body2">
-                    Valid Products: <strong>{uniqueItemCount}</strong>
-                  </Typography>
-                </Grid>
-                <Grid item xs={12} sm={6} md={2}>
-                  <Typography variant="body2">
-                    Total Quantity: <strong>{totalItemCount}</strong>
-                  </Typography>
-                </Grid>
-                <Grid item xs={12} sm={6} md={2}>
-                  <Typography variant="body2">
-                    Badge Count: <strong>{uniqueItemCount}</strong>
-                  </Typography>
-                </Grid>
-                <Grid item xs={12} sm={6} md={2}>
-                  <Typography variant="body2">
-                    Products Loaded: <strong>{products.length}</strong>
-                  </Typography>
-                </Grid>
-              </Grid>
-            </Paper>
+        {/* Footer Actions */}
+        {orders.length > 0 && (
+          <Card 
+            style={{ 
+              borderRadius: '20px',
+              marginTop: '24px',
+              textAlign: 'center',
+              background: 'rgba(255,255,255,0.95)',
+              backdropFilter: 'blur(10px)',
+              border: `1px solid ${terracottaTheme.light}`,
+              boxShadow: `0 8px 32px rgba(210, 105, 30, 0.1)`
+            }}
+          >
+            <Space size="large">
+              <Button 
+                type="primary" 
+                size="large"
+                icon={<ShopOutlined />}
+                onClick={() => navigate('/products')}
+                style={styles.primaryButton}
+              >
+                Shop More
+              </Button>
+              <Button 
+                size="large"
+                icon={<HeartOutlined />}
+                onClick={() => navigate('/wishlist')}
+                style={{
+                  ...styles.secondaryButton,
+                  height: '40px',
+                  padding: '0 24px'
+                }}
+              >
+                View Wishlist
+              </Button>
+              <Button 
+                size="large"
+                icon={<PhoneOutlined />}
+                style={{
+                  ...styles.secondaryButton,
+                  height: '40px',
+                  padding: '0 24px'
+                }}
+              >
+                Contact Support
+              </Button>
+            </Space>
+          </Card>
+        )}
+      </div>
 
-            {cartItems.length === 0 ? (
-              <EmptyCart navigate={navigate} />
-            ) : (
-              <Grid container spacing={3}>
-                <Grid item xs={12} md={8}>
-                  {cartItems.map((item, index) => {
-                    const product = getProductDetails(item.productId);
-                    
-                    return (
-                      <CartItem 
-                        key={item.id}
-                        item={item}
-                        product={product}
-                        index={index}
-                        onRemove={handleRemoveItem}
-                        onUpdateQuantity={updateQuantity}
-                        removing={removing}
-                        updating={updating}
-                      />
-                    );
-                  })}
-                </Grid>
-                
-                <Grid item xs={12} md={4}>
-                  <OrderSummary 
-                    cartItems={cartItems}
-                    products={products}
-                    navigate={navigate}
-                    totalPrice={totalPrice}
-                    subtotal={subtotal}
-                    shippingCost={shippingCost}
-                    discount={discount}
-                    totalItemCount={totalItemCount}
-                    uniqueItemCount={uniqueItemCount}
-                  />
-                </Grid>
-              </Grid>
-            )}
-          </Paper>
+      {/* Custom CSS for Ant Design components */}
+      <style jsx>{`
+        .ant-steps-item-finish .ant-steps-item-icon {
+          background-color: ${terracottaTheme.success} !important;
+          border-color: ${terracottaTheme.success} !important;
+        }
+        
+        .ant-steps-item-process .ant-steps-item-icon {
+          background-color: ${terracottaTheme.primary} !important;
+          border-color: ${terracottaTheme.primary} !important;
+        }
+        
+        .ant-steps-item-wait .ant-steps-item-icon {
+          background-color: #f5f5f5 !important;
+          border-color: #d9d9d9 !important;
+        }
+        
+        .ant-steps-item-title {
+          font-weight: 600 !important;
+          color: ${terracottaTheme.text.primary} !important;
+        }
+        
+        .ant-steps-item-description {
+          color: ${terracottaTheme.text.secondary} !important;
+        }
+        
+        .ant-card-head-title {
+          font-weight: 600;
+          color: ${terracottaTheme.text.primary} !important;
+        }
+        
+        .ant-modal-header {
+          background: linear-gradient(135deg, ${terracottaTheme.primary} 0%, ${terracottaTheme.secondary} 100%) !important;
+          border-radius: 8px 8px 0 0;
+        }
+        
+        .ant-modal-title {
+          color: white !important;
+          font-weight: 600;
+        }
+        
+        .ant-modal-close-x {
+          color: white !important;
+        }
+        
+        .ant-spin-dot-item {
+          background-color: ${terracottaTheme.primary} !important;
+        }
+        
+        .ant-badge-count {
+          font-weight: 600;
+          font-size: 12px;
+          box-shadow: 0 2px 8px rgba(210, 105, 30, 0.3);
+        }
+        
+        .ant-card-hoverable:hover {
+          box-shadow: 0 8px 32px rgba(210, 105, 30, 0.2) !important;
+        }
+        
+        .ant-notification {
+          border-radius: 12px;
+          box-shadow: 0 8px 32px rgba(210, 105, 30, 0.15);
+        }
+        
+        .ant-notification-notice {
+          border-radius: 12px;
+          backdrop-filter: blur(10px);
+        }
+        
+        .ant-rate-star {
+          color: ${terracottaTheme.warning} !important;
+        }
+        
+        .ant-statistic-content-value {
+          font-weight: 700 !important;
+          letter-spacing: -0.5px;
+        }
+        
+        .ant-empty-description {
+          color: ${terracottaTheme.text.secondary} !important;
+          font-size: 16px;
+        }
+        
+        .ant-btn:focus,
+        .ant-input:focus,
+        .ant-select-selector:focus {
+          outline: 2px solid ${terracottaTheme.primary};
+          outline-offset: 2px;
+        }
+        
+        /* Mobile responsive styles */
+        @media (max-width: 768px) {
+          .ant-card-body {
+            padding: 16px !important;
+          }
           
-          {cartItems.length > 0 && (
-            <RecommendedProducts 
-              products={products} 
-              isMobile={isMobile} 
-              isTablet={isTablet} 
-            />
-          )}
-        </Container>
-      </Fade>
-    </ThemeProvider>
+          .ant-modal {
+            margin: 0 !important;
+            padding: 16px !important;
+          }
+          
+          .ant-modal-content {
+            border-radius: 12px !important;
+          }
+          
+          .ant-steps {
+            margin: 16px 0 !important;
+          }
+          
+          .ant-steps-item-title {
+            font-size: 12px !important;
+          }
+          
+          .ant-steps-item-description {
+            font-size: 11px !important;
+          }
+        }
+        
+        @media (max-width: 576px) {
+          .ant-space-item {
+            margin-bottom: 8px !important;
+          }
+          
+          .ant-btn {
+            font-size: 12px !important;
+            height: 28px !important;
+            padding: 0 8px !important;
+          }
+          
+          .ant-statistic-content-value {
+            font-size: 18px !important;
+          }
+        }
+      `}</style>
+    </div>
   );
 };
 
-export default Cart;
+export default Orders;
