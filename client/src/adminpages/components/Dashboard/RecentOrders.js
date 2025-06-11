@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Grid,
   Paper,
@@ -7,19 +7,13 @@ import {
   Card,
   CardContent,
   Chip,
-  IconButton,
   FormControlLabel,
   Switch,
   Button,
   Divider,
-  List,
-  ListItem,
-  ListItemAvatar,
-  ListItemText,
-  Avatar,
-  Collapse,
   useTheme,
   useMediaQuery,
+  Dialog,
 } from '@mui/material';
 import {
   ShoppingCart,
@@ -27,15 +21,19 @@ import {
   CheckCircle,
   LocalShipping,
   InventoryRounded,
-  ExpandMore,
   Phone,
   Email,
   LocationOn,
+  Person,
+  Payment,
+  Schedule,
+  Cancel,
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { DatePicker, Space, Checkbox } from 'antd'; // Using Antd components
 import { CalendarOutlined } from '@ant-design/icons';
 import moment from 'moment';
+import OrderDetailsDialog from '../../components/AdminOrders/OrderDetailsDialog'; // Import the existing component
 
 const ModernPaper = styled(Paper)(({ theme }) => ({
   borderRadius: 20,
@@ -78,415 +76,437 @@ const getPaymentStatus = (order, paymentStatuses) => {
   return order.paymentStatus === 'COMPLETED' || order.paymentStatus === 'SUCCESS';
 };
 
+// Enhanced status chip with proper colors and icons
+const getEnhancedStatusChip = (status, type = 'payment') => {
+  const getStatusConfig = () => {
+    const statusUpper = status?.toUpperCase() || '';
+    
+    if (type === 'payment') {
+      switch (statusUpper) {
+        case 'COMPLETED':
+        case 'SUCCESS':
+        case 'PAID':
+          return {
+            label: 'Paid',
+            color: '#2E7D32',
+            backgroundColor: '#E8F5E8',
+            borderColor: '#4CAF50',
+            icon: <CheckCircle sx={{ fontSize: 16 }} />,
+            chipColor: 'success'
+          };
+        case 'PENDING':
+        case 'INITIATED':
+          return {
+            label: 'Pending',
+            color: '#ED6C02',
+            backgroundColor: '#FFF3E0',
+            borderColor: '#FF9800',
+            icon: <Schedule sx={{ fontSize: 16 }} />,
+            chipColor: 'warning'
+          };
+        case 'FAILED':
+        case 'CANCELLED':
+        case 'REFUNDED':
+          return {
+            label: statusUpper === 'REFUNDED' ? 'Refunded' : statusUpper === 'CANCELLED' ? 'Cancelled' : 'Failed',
+            color: '#D32F2F',
+            backgroundColor: '#FFEBEE',
+            borderColor: '#F44336',
+            icon: <Cancel sx={{ fontSize: 16 }} />,
+            chipColor: 'error'
+          };
+        default:
+          return {
+            label: status || 'Unknown',
+            color: '#757575',
+            backgroundColor: '#F5F5F5',
+            borderColor: '#BDBDBD',
+            icon: <Payment sx={{ fontSize: 16 }} />,
+            chipColor: 'default'
+          };
+      }
+    } else if (type === 'delivery') {
+      switch (statusUpper) {
+        case 'DELIVERED':
+          return {
+            label: 'Delivered',
+            color: '#2E7D32',
+            backgroundColor: '#E8F5E8',
+            borderColor: '#4CAF50',
+            icon: <CheckCircle sx={{ fontSize: 16 }} />,
+            chipColor: 'success'
+          };
+        case 'DISPATCHED':
+        case 'SHIPPED':
+        case 'IN_TRANSIT':
+          return {
+            label: 'In Transit',
+            color: '#1976D2',
+            backgroundColor: '#E3F2FD',
+            borderColor: '#2196F3',
+            icon: <LocalShipping sx={{ fontSize: 16 }} />,
+            chipColor: 'info'
+          };
+        default:
+          return {
+            label: 'Pending',
+            color: '#9C27B0',
+            backgroundColor: '#F3E5F5',
+            borderColor: '#BA68C8',
+            icon: <Schedule sx={{ fontSize: 16 }} />,
+            chipColor: 'secondary'
+          };
+      }
+    }
+  };
+
+  const config = getStatusConfig();
+
+  return (
+    <Chip
+      icon={config.icon}
+      label={config.label}
+      size="small"
+      sx={{
+        color: config.color,
+        backgroundColor: config.backgroundColor,
+        border: `1px solid ${config.borderColor}`,
+        fontWeight: 500,
+        '& .MuiChip-icon': {
+          color: config.color
+        }
+      }}
+    />
+  );
+};
+
+const OrderCard = ({ 
+  order, 
+  paymentStatuses,
+  deliveredOrders,
+  deliveryDetailsMap,
+  handlePaymentToggle,
+  onCardClick
+}) => {
+  const theme = useTheme();
+  const isDelivered = deliveredOrders[order.id];
+  const isPaid = getPaymentStatus(order, paymentStatuses);
+  const hasDeliveryDetails = deliveryDetailsMap[order.id];
+  const isFailed = order.paymentStatus === 'FAILED' || order.paymentStatus === 'CANCELLED';
+
+  // Determine card color based on payment status
+  let cardBorderColor = theme.palette.warning.light;
+  let cardBackground = 'linear-gradient(145deg, #FFF3E0 0%, #FFF8E1 100%)';
+  
+  if (isDelivered) {
+    cardBorderColor = theme.palette.success.light;
+    cardBackground = 'linear-gradient(145deg, #E8F5E9 0%, #F1F8E9 100%)';
+  } else if (isPaid) {
+    cardBorderColor = theme.palette.primary.light;
+    cardBackground = 'linear-gradient(145deg, #E3F2FD 0%, #E8F5E9 100%)';
+  } else if (isFailed) {
+    cardBorderColor = theme.palette.error.light;
+    cardBackground = 'linear-gradient(145deg, #FFEBEE 0%, #FCE4EC 100%)';
+  }
+
+  return (
+    <Card
+      sx={{
+        height: '100%',
+        borderRadius: 3,
+        border: `2px solid ${cardBorderColor}`,
+        background: cardBackground,
+        cursor: 'pointer',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        '&:hover': {
+          transform: 'translateY(-4px)',
+          boxShadow: theme.shadows[8],
+        },
+      }}
+      onClick={() => onCardClick(order)}
+    >
+      <CardContent sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column' }}>
+        {/* Order Header */}
+        <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
+          <Box>
+            <Typography 
+              variant="h6" 
+              fontWeight="bold"
+              color={
+                isDelivered 
+                  ? 'success.main'
+                  : isPaid 
+                    ? 'primary.main' 
+                    : isFailed
+                      ? 'error.main'
+                      : 'warning.main'
+              }
+            >
+              #{order.orderNumber || order.id.slice(-8).toUpperCase()}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {getOrderDate(order).toLocaleDateString('en-IN', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
+            </Typography>
+          </Box>
+          
+          {/* Status Chips */}
+          <Box display="flex" flexDirection="column" alignItems="flex-end" gap={0.5}>
+            {getEnhancedStatusChip(order.paymentStatus || 'PENDING', 'payment')}
+            {order.deliveryStatus && (
+              getEnhancedStatusChip(order.deliveryStatus, 'delivery')
+            )}
+          </Box>
+        </Box>
+
+        {/* Customer Info */}
+        <Box mb={2} sx={{ flexGrow: 1 }}>
+          <Box display="flex" alignItems="center" mb={1}>
+            <Person sx={{ fontSize: 16, mr: 1, color: 'text.secondary' }} />
+            <Typography variant="body1" fontWeight="600">
+              {order.orderDetails?.personalInfo?.fullName || order.customerName || 'N/A'}
+            </Typography>
+          </Box>
+          
+          <Box display="flex" alignItems="center" mb={1}>
+            <Phone sx={{ fontSize: 16, mr: 1, color: 'text.secondary' }} />
+            <Typography variant="body2" color="text.secondary">
+              {order.orderDetails?.personalInfo?.phone || order.customerPhone || 'N/A'}
+            </Typography>
+          </Box>
+          
+          <Typography variant="h6" color="primary.main" fontWeight="bold">
+            {formatCurrency(order.orderDetails?.totalAmount || 0)}
+            {order.orderDetails?.items && (
+              <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 1 }}>
+                • {order.orderDetails.items.length} item{order.orderDetails.items.length !== 1 ? 's' : ''}
+              </Typography>
+            )}
+          </Typography>
+        </Box>
+
+        {/* Bottom Section */}
+        <Box>
+          {/* Delivery Information */}
+          {hasDeliveryDetails && (
+            <Box sx={{ 
+              p: 1.5, 
+              background: 'rgba(255,255,255,0.7)', 
+              borderRadius: 2,
+              border: `1px solid ${theme.palette.divider}`,
+              mb: 2
+            }}>
+              <Box display="flex" alignItems="center" mb={0.5}>
+                <LocalShipping sx={{ color: 'primary.main', mr: 1, fontSize: 16 }} />
+                <Typography variant="caption" fontWeight="bold">
+                  {hasDeliveryDetails.company} - {hasDeliveryDetails.consignmentNumber}
+                </Typography>
+              </Box>
+              {order.deliveryStatus === 'DELIVERED' && (
+                <Typography variant="caption" color="success.main" fontWeight="bold">
+                  ✅ Delivered
+                </Typography>
+              )}
+            </Box>
+          )}
+
+          {/* Payment Status Switch - Only show if not delivered and not failed */}
+          {!isDelivered && !isFailed && (
+            <Box display="flex" justifyContent="center">
+              <Checkbox
+                checked={isPaid}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  handlePaymentToggle(order.id, order.paymentStatus);
+                }}
+                style={{
+                  color: isPaid ? '#4caf50' : '#ff9800',
+                }}
+              >
+                <Typography 
+                  variant="body2" 
+                  fontWeight="600"
+                  sx={{ 
+                    color: isPaid ? 'success.main' : 'warning.main',
+                    ml: 1
+                  }}
+                >
+                  {isPaid ? 'Checked In' : 'Check In'}
+                </Typography>
+              </Checkbox>
+            </Box>
+          )}
+
+          {/* Delivered Status */}
+          {isDelivered && (
+            <Box sx={{ 
+              p: 1.5, 
+              background: 'rgba(46, 125, 50, 0.1)', 
+              borderRadius: 2,
+              border: `1px solid ${theme.palette.success.light}`,
+              textAlign: 'center'
+            }}>
+              <Box display="flex" alignItems="center" justifyContent="center">
+                <InventoryRounded sx={{ color: 'success.main', mr: 1 }} />
+                <Typography variant="body2" fontWeight="bold" color="success.main">
+                  Delivered & Complete
+                </Typography>
+              </Box>
+            </Box>
+          )}
+
+          {/* Failed Payment Status */}
+          {isFailed && (
+            <Box sx={{ 
+              p: 1.5, 
+              background: 'rgba(244, 67, 54, 0.1)', 
+              borderRadius: 2,
+              border: `1px solid ${theme.palette.error.light}`,
+              textAlign: 'center'
+            }}>
+              <Typography variant="body2" fontWeight="bold" color="error.main">
+                ❌ Payment Failed/Cancelled
+              </Typography>
+            </Box>
+          )}
+        </Box>
+      </CardContent>
+    </Card>
+  );
+};
+
 const RecentOrders = ({
   filteredOrders,
   paymentStatuses,
   deliveredOrders,
   deliveryDetailsMap,
-  expandedOrder,
-  setExpandedOrder,
   dateFilter,
   setDateFilter,
-  setSelectedOrderForDelivery,
-  setDeliveryDialogOpen,
   handlePaymentToggle,
-  handleMarkDelivered,
-  processingOrder,
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  
+  // State for order details dialog
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [selectedOrderForDetails, setSelectedOrderForDetails] = useState(null);
+
+  // Handle card click to open order details
+  const handleCardClick = (order) => {
+    setSelectedOrderForDetails(order);
+    setDetailsDialogOpen(true);
+  };
+
+  // Determine number of cards to show based on screen size
+  const getCardsToShow = () => {
+    if (isMobile) return 6; // 2 per row × 3 rows = 6 cards on mobile
+    return 12; // 4 per row × 3 rows = 12 cards on desktop
+  };
+
+  const cardsToShow = getCardsToShow();
+  const displayOrders = filteredOrders.slice(0, cardsToShow);
 
   return (
-    <ModernPaper sx={{ p: 3 }}>
-      <Box sx={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        flexWrap: 'wrap',
-        gap: 2,
-        mb: 3 
-      }}>
-        <ShoppingCart sx={{ color: 'success.main', fontSize: 28 }} />
-        <Box sx={{ flexGrow: 1 }}>
-          <Typography variant="h5" fontWeight="bold">
-            Recent Orders
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Manage and track customer orders
-          </Typography>
+    <>
+      <ModernPaper sx={{ p: 3 }}>
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          flexWrap: 'wrap',
+          gap: 2,
+          mb: 3 
+        }}>
+          <ShoppingCart sx={{ color: 'success.main', fontSize: 28 }} />
+          <Box sx={{ flexGrow: 1 }}>
+            <Typography variant="h5" fontWeight="bold">
+              Recent Orders
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Manage and track customer orders • Click any card for details • Showing latest {cardsToShow} orders
+            </Typography>
+          </Box>
+          
+          {/* Date Filter */}
+          <Space>
+            <DatePicker
+              value={dateFilter ? moment(dateFilter) : null}
+              onChange={(date) => setDateFilter(date ? date.toDate() : null)}
+              suffixIcon={<CalendarOutlined style={{ color: theme.palette.primary.main }} />}
+              style={{ 
+                width: isMobile ? '100%' : 200,
+                borderRadius: 8
+              }}
+              allowClear
+              format="DD/MM/YYYY"
+              placeholder="Filter by date"
+            />
+          </Space>
         </Box>
-        
-        {/* Antd DatePicker */}
-        <Space>
-          <DatePicker
-            value={dateFilter ? moment(dateFilter) : null}
-            onChange={(date) => setDateFilter(date ? date.toDate() : null)}
-            suffixIcon={<CalendarOutlined style={{ color: theme.palette.primary.main }} />}
-            style={{ 
-              width: isMobile ? '100%' : 200,
-              borderRadius: 8
+
+        {displayOrders.length === 0 ? (
+          <Box 
+            sx={{ 
+              textAlign: 'center', 
+              py: 8,
+              color: 'text.secondary'
             }}
-            allowClear
-            format="DD/MM/YYYY"
-            placeholder="Filter by date"
-          />
-        </Space>
-      </Box>
-
-      {filteredOrders.length === 0 ? (
-        <Box 
-          sx={{ 
-            textAlign: 'center', 
-            py: 8,
-            color: 'text.secondary'
-          }}
-        >
-          <AssignmentTurnedIn sx={{ fontSize: 64, mb: 2, opacity: 0.3 }} />
-          <Typography variant="h6">
-            {dateFilter ? 'No orders found for selected date' : 'No recent orders'}
-          </Typography>
-          <Typography variant="body2">
-            Orders will appear here once customers start placing them
-          </Typography>
-        </Box>
-      ) : (
-        <Grid container spacing={2}>
-          {filteredOrders.map(order => {
-            const isDelivered = deliveredOrders[order.id];
-            const isPaid = getPaymentStatus(order, paymentStatuses);
-            const hasDeliveryDetails = deliveryDetailsMap[order.id];
-            const isExpanded = expandedOrder === order.id;
-            const isFailed = order.paymentStatus === 'FAILED' || order.paymentStatus === 'CANCELLED';
-
-            // Determine card color based on payment status
-            let cardBorderColor = theme.palette.warning.light;
-            let cardBackground = 'linear-gradient(145deg, #FFF3E0 0%, #FFF8E1 100%)';
-            
-            if (isDelivered) {
-              cardBorderColor = theme.palette.success.light;
-              cardBackground = 'linear-gradient(145deg, #E8F5E9 0%, #F1F8E9 100%)';
-            } else if (isPaid) {
-              cardBorderColor = theme.palette.primary.light;
-              cardBackground = 'linear-gradient(145deg, #E3F2FD 0%, #E8F5E9 100%)';
-            } else if (isFailed) {
-              cardBorderColor = theme.palette.error.light;
-              cardBackground = 'linear-gradient(145deg, #FFEBEE 0%, #FCE4EC 100%)';
-            }
-
-            return (
-              <Grid item xs={12} lg={6} xl={4} key={order.id}>
-                <Card
-                  sx={{
-                    borderRadius: 3,
-                    border: `2px solid ${cardBorderColor}`,
-                    background: cardBackground,
-                    cursor: 'pointer',
-                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                    '&:hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: theme.shadows[8],
-                    },
-                  }}
-                  onClick={() => setExpandedOrder(isExpanded ? null : order.id)}
-                >
-                  <CardContent sx={{ p: 3 }}>
-                    {/* Order Header */}
-                    <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
-                      <Box>
-                        <Typography 
-                          variant="h6" 
-                          fontWeight="bold"
-                          color={
-                            isDelivered 
-                              ? 'success.main'
-                              : isPaid 
-                                ? 'primary.main' 
-                                : isFailed
-                                  ? 'error.main'
-                                  : 'warning.main'
-                          }
-                        >
-                          #{order.id.slice(-8).toUpperCase()}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {getOrderDate(order).toLocaleDateString('en-IN', {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </Typography>
-                      </Box>
-                      <Box display="flex" alignItems="center" gap={1}>
-                        {isDelivered ? (
-                          <Chip
-                            label="Delivered"
-                            color="success"
-                            icon={<CheckCircle />}
-                            size="small"
-                            sx={{ fontWeight: 'bold' }}
-                          />
-                        ) : isFailed ? (
-                          <Chip
-                            label="Failed"
-                            color="error"
-                            size="small"
-                            sx={{ fontWeight: 'bold' }}
-                          />
-                        ) : (
-                          <Chip
-                            label={isPaid ? 'Paid' : 'Pending'}
-                            color={isPaid ? 'primary' : 'warning'}
-                            size="small"
-                            sx={{ fontWeight: 'bold' }}
-                          />
-                        )}
-                        <IconButton
-                          size="small"
-                          sx={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }}
-                        >
-                          <ExpandMore />
-                        </IconButton>
-                      </Box>
-                    </Box>
-
-                    {/* Customer Info */}
-                    <Box mb={2}>
-                      <Typography variant="body1" fontWeight="600">
-                        {order.orderDetails?.personalInfo?.fullName || 'N/A'}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {formatCurrency(order.orderDetails?.totalAmount || 0)}
-                        {order.orderDetails?.items && (
-                          <> • {order.orderDetails.items.length} item{order.orderDetails.items.length !== 1 ? 's' : ''}</>
-                        )}
-                      </Typography>
-                    </Box>
-
-                    {/* Payment Toggle - Using Antd Checkbox with custom styling */}
-                    {!isDelivered && !isFailed && (
-                      <Box mb={2}>
-                        <Space>
-                          <Checkbox
-                            checked={isPaid}
-                            onChange={(e) => {
-                              e.stopPropagation();
-                              handlePaymentToggle(order.id, order.paymentStatus);
-                            }}
-                            style={{
-                              color: isPaid ? '#4caf50' : '#ff9800',
-                            }}
-                          >
-                            <Typography 
-                              variant="body2" 
-                              fontWeight="600"
-                              sx={{ 
-                                color: isPaid ? 'success.main' : 'warning.main',
-                                ml: 1
-                              }}
-                            >
-                               {isPaid ? 'Checked In' : 'Not Checked In'}
-                            </Typography>
-                          </Checkbox>
-                        </Space>
-                      </Box>
-                    )}
-
-                    {/* Delivery Section */}
-                    {isPaid && !isDelivered && !isFailed && (
-                      <Box mb={2}>
-                        {hasDeliveryDetails ? (
-                          <Box sx={{ 
-                            p: 2, 
-                            background: 'rgba(255,255,255,0.7)', 
-                            borderRadius: 2,
-                            border: `1px solid ${theme.palette.divider}`
-                          }}>
-                            <Box display="flex" alignItems="center" mb={1}>
-                              <LocalShipping sx={{ color: 'primary.main', mr: 1, fontSize: 20 }} />
-                              <Typography variant="subtitle2" fontWeight="bold">
-                                Delivery Details
-                              </Typography>
-                            </Box>
-                            <Typography variant="body2" sx={{ mb: 1 }}>
-                              <strong>{hasDeliveryDetails.company}</strong><br />
-                              Tracking: {hasDeliveryDetails.consignmentNumber}
-                            </Typography>
-                            
-                            <Box display="flex" gap={1}>
-                              <Button 
-                                size="small" 
-                                variant="outlined"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedOrderForDelivery(order.id);
-                                  setDeliveryDialogOpen(true);
-                                }}
-                              >
-                                Update
-                              </Button>
-                              <Button
-                                size="small" 
-                                variant="contained"
-                                color="success"
-                                startIcon={<CheckCircle />}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleMarkDelivered(order.id);
-                                }}
-                                disabled={processingOrder === order.id}
-                              >
-                                {processingOrder === order.id ? 'Processing...' : 'Mark Delivered'}
-                              </Button>
-                            </Box>
-                          </Box>
-                        ) : (
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            startIcon={<LocalShipping />}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedOrderForDelivery(order.id);
-                              setDeliveryDialogOpen(true);
-                            }}
-                            fullWidth
-                          >
-                            Add Delivery Details
-                          </Button>
-                        )}
-                      </Box>
-                    )}
-
-                    {/* Delivered Status */}
-                    {isDelivered && (
-                      <Box sx={{ 
-                        p: 2, 
-                        background: 'rgba(46, 125, 50, 0.1)', 
-                        borderRadius: 2,
-                        border: `1px solid ${theme.palette.success.light}`
-                      }}>
-                        <Box display="flex" alignItems="center">
-                          <InventoryRounded sx={{ color: 'success.main', mr: 1 }} />
-                          <Typography variant="body2" fontWeight="bold" color="success.main">
-                            Delivered & Stock Updated
-                          </Typography>
-                        </Box>
-                        <Typography variant="caption" color="text.secondary">
-                          {order.deliveredAt 
-                            ? new Date(order.deliveredAt.seconds * 1000).toLocaleString('en-IN')
-                            : 'Recently delivered'
-                          }
-                        </Typography>
-                      </Box>
-                    )}
-
-                    {/* Failed Payment Status */}
-                    {isFailed && (
-                      <Box sx={{ 
-                        p: 2, 
-                        background: 'rgba(244, 67, 54, 0.1)', 
-                        borderRadius: 2,
-                        border: `1px solid ${theme.palette.error.light}`
-                      }}>
-                        <Box display="flex" alignItems="center">
-                          <Typography variant="body2" fontWeight="bold" color="error.main">
-                            ❌ Payment Failed/Cancelled
-                          </Typography>
-                        </Box>
-                        <Typography variant="caption" color="text.secondary">
-                          Order could not be processed
-                        </Typography>
-                      </Box>
-                    )}
-
-                    {/* Expanded Details */}
-                    <Collapse in={isExpanded} timeout={300}>
-                      <Box mt={3}>
-                        <Divider sx={{ mb: 2 }} />
-                        
-                        {/* Contact Information */}
-                        <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                          Contact Information
-                        </Typography>
-                        <Grid container spacing={2} sx={{ mb: 2 }}>
-                          <Grid item xs={12} sm={6}>
-                            <Box display="flex" alignItems="center">
-                              <Phone sx={{ fontSize: 16, mr: 1, color: 'text.secondary' }} />
-                              <Typography variant="body2">
-                                {order.orderDetails?.personalInfo?.phone || 'N/A'}
-                              </Typography>
-                            </Box>
-                          </Grid>
-                          <Grid item xs={12} sm={6}>
-                            <Box display="flex" alignItems="center">
-                              <Email sx={{ fontSize: 16, mr: 1, color: 'text.secondary' }} />
-                              <Typography variant="body2">
-                                {order.orderDetails?.personalInfo?.email || 'N/A'}
-                              </Typography>
-                            </Box>
-                          </Grid>
-                        </Grid>
-
-                        {/* Delivery Address */}
-                        <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                          Delivery Address
-                        </Typography>
-                        <Box display="flex" alignItems="flex-start" mb={2}>
-                          <LocationOn sx={{ fontSize: 16, mr: 1, color: 'text.secondary', mt: 0.5 }} />
-                          <Typography variant="body2">
-                            {order.orderDetails?.deliveryAddress?.addressLine1 || 'N/A'}<br />
-                            {order.orderDetails?.deliveryAddress?.addressLine2 && (
-                              <>{order.orderDetails.deliveryAddress.addressLine2}<br /></>
-                            )}
-                            {order.orderDetails?.deliveryAddress?.landmark && (
-                              <>Landmark: {order.orderDetails.deliveryAddress.landmark}<br /></>
-                            )}
-                            {order.orderDetails?.deliveryAddress?.city}, {order.orderDetails?.deliveryAddress?.state}<br />
-                            Pincode: {order.orderDetails?.deliveryAddress?.pincode}
-                          </Typography>
-                        </Box>
-
-                        {/* Order Items */}
-                        <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                          Order Items
-                        </Typography>
-                        <List dense>
-                          {order.orderDetails?.items?.map((item, index) => (
-                            <ListItem key={index} sx={{ px: 0 }}>
-                              <ListItemAvatar>
-                                <Avatar 
-                                  src={item.image || ''} 
-                                  sx={{ width: 40, height: 40 }}
-                                >
-                                  {item.name?.[0]}
-                                </Avatar>
-                              </ListItemAvatar>
-                              <ListItemText
-                                primary={
-                                  <Typography variant="body2" fontWeight="600">
-                                    {item.name}
-                                  </Typography>
-                                }
-                                secondary={
-                                  <Typography variant="body2" color="text.secondary">
-                                    {formatCurrency(item.price)} × {item.quantity} = {formatCurrency(item.price * item.quantity)}
-                                  </Typography>
-                                }
-                              />
-                            </ListItem>
-                          ))}
-                        </List>
-                      </Box>
-                    </Collapse>
-                  </CardContent>
-                </Card>
+          >
+            <AssignmentTurnedIn sx={{ fontSize: 64, mb: 2, opacity: 0.3 }} />
+            <Typography variant="h6">
+              {dateFilter ? 'No orders found for selected date' : 'No recent orders'}
+            </Typography>
+            <Typography variant="body2">
+              Orders will appear here once customers start placing them
+            </Typography>
+          </Box>
+        ) : (
+          <Grid container spacing={3}>
+            {displayOrders.map(order => (
+              <Grid 
+                item 
+                xs={6}  // 2 cards per row on mobile
+                sm={6}  // 2 cards per row on small tablets
+                md={4}  // 3 cards per row on medium tablets
+                lg={3}  // 4 cards per row on large screens
+                xl={3}  // 4 cards per row on extra large screens
+                key={order.id}
+              >
+                <OrderCard 
+                  order={order}
+                  paymentStatuses={paymentStatuses}
+                  deliveredOrders={deliveredOrders}
+                  deliveryDetailsMap={deliveryDetailsMap}
+                  handlePaymentToggle={handlePaymentToggle}
+                  onCardClick={handleCardClick}
+                />
               </Grid>
-            );
-          })}
-        </Grid>
-      )}
-    </ModernPaper>
+            ))}
+          </Grid>
+        )}
+
+        {/* Show more orders link if there are more than displayed */}
+        {filteredOrders.length > cardsToShow && (
+          <Box sx={{ textAlign: 'center', mt: 3 }}>
+            <Typography variant="body2" color="text.secondary">
+              Showing {cardsToShow} of {filteredOrders.length} orders
+            </Typography>
+          </Box>
+        )}
+      </ModernPaper>
+
+      {/* Order Details Dialog */}
+      <OrderDetailsDialog
+        open={detailsDialogOpen}
+        onClose={() => setDetailsDialogOpen(false)}
+        order={selectedOrderForDetails}
+        searchQuery="" // No search query needed for dashboard
+      />
+    </>
   );
 };
 

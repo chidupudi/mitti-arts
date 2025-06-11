@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Container } from '@mui/material';
-import StatsCards from './components/Dashboard/StatsCards'; // Only import once
+import StatsCards from './components/Dashboard/StatsCards';
 import ChartsSection from './components/Dashboard/ChartsSection';
 import RecentOrders from './components/Dashboard/RecentOrders';
 import DeliveryDetailsDialog from './components/Dashboard/DelivieryDetailsDialog';
@@ -57,7 +57,7 @@ const Dashboard = () => {
     <>
       <Container maxWidth="xl" sx={{ px: { xs: 1, sm: 2, md: 3 } }}>
         <Box sx={{ py: 3 }}>
-          {/* Statistics Cards - Only show once */}
+          {/* Statistics Cards */}
           <StatsCards 
             stats={stats} 
             deliveredOrders={deliveredOrders}
@@ -69,21 +69,15 @@ const Dashboard = () => {
             deliveredOrders={deliveredOrders}
           />
 
-          {/* Recent Orders */}
+          {/* Recent Orders - Updated component */}
           <RecentOrders
             filteredOrders={filteredOrders}
             paymentStatuses={paymentStatuses}
             deliveredOrders={deliveredOrders}
             deliveryDetailsMap={deliveryDetailsMap}
-            expandedOrder={expandedOrder}
-            setExpandedOrder={setExpandedOrder}
             dateFilter={dateFilter}
             setDateFilter={setDateFilter}
-            setSelectedOrderForDelivery={setSelectedOrderForDelivery}
-            setDeliveryDialogOpen={setDeliveryDialogOpen}
             handlePaymentToggle={handlePaymentToggle}
-            handleMarkDelivered={handleMarkDelivered}
-            processingOrder={processingOrder}
           />
         </Box>
       </Container>
