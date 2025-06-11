@@ -1,4 +1,4 @@
-// Updated useAdminOrders.js with cancel order functionality and email notifications
+// Updated useAdminOrders.js with payment status synchronization for dashboard
 import { useState, useEffect } from 'react';
 import { db } from '../Firebase/Firebase';
 import { 
@@ -70,6 +70,7 @@ export const useAdminOrders = () => {
   
   // Data maps and notifications
   const [deliveryDetailsMap, setDeliveryDetailsMap] = useState({});
+  const [paymentStatuses, setPaymentStatuses] = useState({}); // This is the shared state for switches
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
@@ -86,6 +87,7 @@ export const useAdminOrders = () => {
         
         const ordersData = [];
         const deliveryDetails = {};
+        const initialPaymentStatuses = {};
         
         querySnapshot.forEach((doc) => {
           const data = doc.data();
@@ -93,6 +95,10 @@ export const useAdminOrders = () => {
           if (data.deliveryDetails) {
             deliveryDetails[doc.id] = data.deliveryDetails;
           }
+
+          // Initialize payment status based on current order status
+          const isCurrentlyPaid = data.paymentStatus === 'COMPLETED' || data.paymentStatus === 'SUCCESS';
+          initialPaymentStatuses[doc.id] = isCurrentlyPaid;
           
           ordersData.push({
             id: doc.id,
@@ -103,6 +109,7 @@ export const useAdminOrders = () => {
         setOrders(ordersData);
         setFilteredOrders(ordersData);
         setDeliveryDetailsMap(deliveryDetails);
+        setPaymentStatuses(initialPaymentStatuses); // Initialize payment statuses
         setLoading(false);
       } catch (err) {
         console.error('Error fetching orders:', err);
@@ -217,7 +224,7 @@ export const useAdminOrders = () => {
     setPage(0);
   }, [orders, sortBy, searchQuery, dateRange, deliveryFilter, paymentStatusFilter, orderStatusFilter]);
 
-  // Handle payment status toggle (for admin convenience) - WITH EMAIL NOTIFICATION
+  // Handle payment status toggle (synchronized across dashboard and admin orders)
   const handlePaymentToggle = async (orderId, currentStatus) => {
     try {
       const newStatus = currentStatus === 'COMPLETED' || currentStatus === 'SUCCESS' ? 'PENDING' : 'COMPLETED';
@@ -233,12 +240,18 @@ export const useAdminOrders = () => {
         updatedAt: serverTimestamp()
       });
       
-      // Update local state
+      // Update local state for both dashboard and admin orders
       setOrders(prevOrders => 
         prevOrders.map(order => 
           order.id === orderId ? { ...order, paymentStatus: newStatus, adminConfirmed: newStatus === 'COMPLETED' } : order
         )
       );
+
+      // Update the shared payment status state (this syncs between dashboard and admin orders)
+      setPaymentStatuses(prev => ({
+        ...prev,
+        [orderId]: newStatus === 'COMPLETED'
+      }));
       
       // Send email notification for status change
       try {
@@ -423,6 +436,12 @@ export const useAdminOrders = () => {
           } : order
         )
       );
+
+      // Update payment status in shared state
+      setPaymentStatuses(prev => ({
+        ...prev,
+        [orderId]: false
+      }));
       
       // Send email notification for order cancellation
       try {
@@ -571,6 +590,12 @@ export const useAdminOrders = () => {
         )
       );
 
+      // Update payment status in shared state
+      setPaymentStatuses(prev => ({
+        ...prev,
+        [selectedOrderForCancel.id]: false
+      }));
+
       // Send cancellation notification email
       try {
         await sendOrderStatusUpdateNotification(
@@ -648,8 +673,9 @@ export const useAdminOrders = () => {
     selectedOrderForCancel,
     setSelectedOrderForCancel,
     
-    // Data maps
+    // Data maps and shared states
     deliveryDetailsMap,
+    paymentStatuses, // This is the shared state that syncs between dashboard and admin orders
     snackbar,
     
     // Action handlers

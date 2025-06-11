@@ -1,4 +1,4 @@
-// Updated OrdersTable.js with cancel order functionality
+// Complete OrdersTable.js with synchronized payment status using Antd Checkbox
 import React from 'react';
 import {
   Paper,
@@ -13,8 +13,6 @@ import {
   Chip,
   IconButton,
   Button,
-  FormControlLabel,
-  Switch,
   Box,
   Tooltip,
   Alert,
@@ -31,6 +29,7 @@ import {
   Info,
   CancelOutlined,
 } from '@mui/icons-material';
+import { Checkbox, Space } from 'antd'; // Using Antd Checkbox
 
 // Utility function to get order date
 const getOrderDate = (order) => {
@@ -47,6 +46,16 @@ const getOrderDate = (order) => {
     console.error("Error parsing date:", e);
     return new Date();
   }
+};
+
+// Get payment status - same logic as dashboard
+const getPaymentStatus = (order, paymentStatuses) => {
+  // Check if admin manually set the status via switch
+  if (paymentStatuses && paymentStatuses[order.id] !== undefined) {
+    return paymentStatuses[order.id];
+  }
+  // Otherwise check the order's payment status
+  return order.paymentStatus === 'COMPLETED' || order.paymentStatus === 'SUCCESS';
 };
 
 // Enhanced status chip with proper colors and icons
@@ -308,6 +317,7 @@ const OrdersTable = ({
   page,
   rowsPerPage,
   deliveryDetailsMap,
+  paymentStatuses, // Synchronized payment statuses
   handlePaymentToggle,
   handleMarkDelivered,
   handleViewOrderDetails,
@@ -315,7 +325,7 @@ const OrdersTable = ({
   setDeliveryDialogOpen,
   handleChangePage,
   handleChangeRowsPerPage,
-  handleCancelOrderClick, // New prop for cancel order
+  handleCancelOrderClick,
   error,
 }) => {
   if (error) {
@@ -361,6 +371,7 @@ const OrdersTable = ({
               .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
               .map((order) => {
                 const isCancelled = order.status === 'CANCELLED' || order.paymentStatus === 'CANCELLED';
+                const isPaid = getPaymentStatus(order, paymentStatuses);
                 
                 return (
                   <TableRow 
@@ -510,45 +521,30 @@ const OrdersTable = ({
                       <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 1 }}>
                         {!isCancelled && (
                           <>
-                            <FormControlLabel
-                              control={
-                                <Switch
-                                  checked={order.paymentStatus === 'COMPLETED' || order.paymentStatus === 'SUCCESS'}
-                                  onChange={(e) => {
-                                    e.stopPropagation();
-                                    handlePaymentToggle(order.id, order.paymentStatus);
-                                  }}
-                                  sx={{
-                                    '& .MuiSwitch-switchBase.Mui-checked': {
-                                      color: '#2E7D32',
-                                      '&:hover': {
-                                        backgroundColor: 'rgba(46, 125, 50, 0.08)',
-                                      },
-                                    },
-                                    '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                                      backgroundColor: '#2E7D32',
-                                    },
-                                  }}
-                                  size="small"
-                                />
-                              }
-                              label={
+                            {/* Antd Checkbox for Payment Status - Synchronized with Dashboard */}
+                            <Space>
+                              <Checkbox
+                                checked={isPaid}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  handlePaymentToggle(order.id, order.paymentStatus);
+                                }}
+                                style={{
+                                  color: isPaid ? '#2E7D32' : '#757575',
+                                }}
+                              >
                                 <Typography 
                                   variant="caption" 
                                   sx={{ 
-                                    color: order.paymentStatus === 'COMPLETED' || order.paymentStatus === 'SUCCESS' 
-                                      ? '#2E7D32' 
-                                      : '#757575',
-                                    fontWeight: order.paymentStatus === 'COMPLETED' || order.paymentStatus === 'SUCCESS' 
-                                      ? 600 
-                                      : 400
+                                    color: isPaid ? '#2E7D32' : '#757575',
+                                    fontWeight: isPaid ? 600 : 400,
+                                    ml: 0.5
                                   }}
                                 >
-                                  Paid
+                                  Check In
                                 </Typography>
-                              }
-                              onClick={(e) => e.stopPropagation()}
-                            />
+                              </Checkbox>
+                            </Space>
                             
                             {/* Cancel Order Button */}
                             <Tooltip title="Cancel Order">

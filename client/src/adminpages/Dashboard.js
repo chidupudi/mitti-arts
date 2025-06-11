@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Container } from '@mui/material';
-import StatsCards from './components/Dashboard/ChartsSection';
+import StatsCards from './components/Dashboard/StatsCards'; // Only import once
 import ChartsSection from './components/Dashboard/ChartsSection';
 import RecentOrders from './components/Dashboard/RecentOrders';
 import DeliveryDetailsDialog from './components/Dashboard/DelivieryDetailsDialog';
@@ -57,7 +57,7 @@ const Dashboard = () => {
     <>
       <Container maxWidth="xl" sx={{ px: { xs: 1, sm: 2, md: 3 } }}>
         <Box sx={{ py: 3 }}>
-          {/* Statistics Cards */}
+          {/* Statistics Cards - Only show once */}
           <StatsCards 
             stats={stats} 
             deliveredOrders={deliveredOrders}

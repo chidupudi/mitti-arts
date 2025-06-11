@@ -1,35 +1,35 @@
 import React from 'react';
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Typography,
+  Modal,
+  Form,
+  Input,
+  InputNumber,
+  Row,
+  Col,
   Button,
-  TextField,
-  Grid,
-  Box,
-  Paper,
-  IconButton,
-  InputAdornment,
-  CircularProgress,
-  FormControlLabel,
+  Typography,
+  Upload,
   Checkbox,
   Tooltip,
   Divider,
-} from '@mui/material';
+  Card,
+  Space,
+  message,
+} from 'antd';
 import {
-  Add,
-  Save,
-  Cancel,
-  PhotoCamera,
-  CloudUpload,
-  Cancel as CancelIcon,
-  LocationOn,
-  ColorLens,
-  Straighten,
-  Scale,
-} from '@mui/icons-material';
+  PlusOutlined,
+  SaveOutlined,
+  CameraOutlined,
+  CloudUploadOutlined,
+  DeleteOutlined,
+  EnvironmentOutlined,
+  BgColorsOutlined,
+  ColumnWidthOutlined,
+  ExperimentOutlined,
+} from '@ant-design/icons';
+
+const { Title, Text } = Typography;
+const { TextArea } = Input;
 
 const AddProductDialog = ({
   open,
@@ -39,326 +39,301 @@ const AddProductDialog = ({
   onSave,
   onImageUpload,
 }) => {
+  const [form] = Form.useForm();
+
   // Function to handle form field changes
   const handleChange = (field, value) => {
     setProduct({ ...product, [field]: value });
+    form.setFieldsValue({ [field]: value });
   };
 
+  // Handle image upload
+  const handleImageChange = (info, index) => {
+    if (info.file.status === 'uploading') {
+      const newImages = [...(product.images || [])];
+      newImages[index] = 'loading';
+      handleChange('images', newImages);
+      return;
+    }
+    
+    if (info.file.status === 'done') {
+      // Call the provided onImageUpload function
+      onImageUpload(info, index, false);
+    }
+  };
+
+  // Remove image
+  const removeImage = (index) => {
+    const newImages = [...(product.images || [])];
+    newImages[index] = '';
+    handleChange('images', newImages);
+  };
+
+  const uploadButton = (index) => (
+    <div style={{ textAlign: 'center' }}>
+      <CloudUploadOutlined style={{ fontSize: '32px', color: '#d9d9d9' }} />
+      <div style={{ marginTop: 8, color: '#8c8c8c' }}>Upload Image</div>
+    </div>
+  );
+
   return (
-    <Dialog 
+    <Modal
+      title={
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <PlusOutlined />
+          <span>Add New Product</span>
+        </div>
+      }
       open={open}
-      onClose={onClose}
-      maxWidth="md" 
-      fullWidth
-      PaperProps={{ sx: { borderRadius: 3 } }}
+      onCancel={onClose}
+      width={800}
+      footer={[
+        <Button key="cancel" onClick={onClose}>
+          Cancel
+        </Button>,
+        <Button 
+          key="save" 
+          type="primary" 
+          icon={<SaveOutlined />}
+          onClick={onSave}
+          style={{
+            background: 'linear-gradient(135deg, #D2691E 0%, #F4A460 100%)',
+            border: 'none',
+          }}
+        >
+          Add Product
+        </Button>,
+      ]}
     >
-      <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white', p: 3 }}>
-        <Typography variant="h5" component="div" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Add />
-          Add New Product
-        </Typography>
-      </DialogTitle>
-      <DialogContent sx={{ p: 3 }}>
-        <Grid container spacing={3}>
-          {/* Basic Information */}
-          <Grid item xs={12}>
-            <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
-              Basic Information
-            </Typography>
-          </Grid>
-          
-          <Grid item xs={12} md={6}>
-            <TextField
+      <Form form={form} layout="vertical" style={{ marginTop: '16px' }}>
+        {/* Basic Information */}
+        <Title level={5}>Basic Information</Title>
+        
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item
               label="Product Name"
-              fullWidth
-              margin="normal"
-              required
-              value={product.name}
-              onChange={e => handleChange('name', e.target.value)}
-              error={!product.name}
-              helperText={!product.name ? "Product name is required" : ""}
-            />
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <TextField
-              label="Product Code"
-              fullWidth
-              margin="normal"
-              value={product.code}
-              onChange={e => handleChange('code', e.target.value)}
-              placeholder="SKU or product code"
-            />
-          </Grid>
-          <Grid item xs={12}>
-            <TextField
-              label="Description"
-              fullWidth
-              margin="normal"
-              multiline
-              rows={3}
-              value={product.description}
-              onChange={e => handleChange('description', e.target.value)}
-              placeholder="Detailed product description..."
-            />
-          </Grid>
-
-          {/* Pricing and Inventory */}
-          <Grid item xs={12}>
-            <Divider sx={{ my: 1 }} />
-            <Typography variant="h6" sx={{ my: 2, display: 'flex', alignItems: 'center' }}>
-              Pricing & Inventory
-            </Typography>
-          </Grid>
-          
-          <Grid item xs={12} md={4}>
-            <TextField
-              label="Price"
-              fullWidth
-              margin="normal"
-              type="number"
-              required
-              value={product.price}
-              onChange={e => handleChange('price', e.target.value)}
-              InputProps={{
-                startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-              }}
-              error={!product.price}
-              helperText={!product.price ? "Price is required" : ""}
-            />
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <TextField
-              label="Stock Quantity"
-              fullWidth
-              margin="normal"
-              type="number"
-              value={product.stock}
-              onChange={e => handleChange('stock', Number(e.target.value))}
-            />
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <TextField
-              label="Category"
-              fullWidth
-              margin="normal"
-              value={product.category}
-              onChange={e => handleChange('category', e.target.value)}
-              placeholder="Product category"
-            />
-          </Grid>
-
-          {/* Product Specifications */}
-          <Grid item xs={12}>
-            <Divider sx={{ my: 1 }} />
-            <Typography variant="h6" sx={{ my: 2, display: 'flex', alignItems: 'center' }}>
-              Product Specifications
-            </Typography>
-          </Grid>
-          
-          <Grid item xs={12} md={4}>
-            <TextField
-              label="Color"
-              fullWidth
-              margin="normal"
-              value={product.color || ''}
-              onChange={e => handleChange('color', e.target.value)}
-              placeholder="e.g., Natural Terracotta"
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <ColorLens fontSize="small" />
-                  </InputAdornment>
-                ),
-              }}
-            />
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <TextField
-              label="Dimensions"
-              fullWidth
-              margin="normal"
-              value={product.dimensions || ''}
-              onChange={e => handleChange('dimensions', e.target.value)}
-              placeholder="e.g., 10\ x 10\ x 1.5\"
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Straighten fontSize="small" />
-                  </InputAdornment>
-                ),
-              }}
-            />
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <TextField
-              label="Weight"
-              fullWidth
-              margin="normal"
-              value={product.weight || ''}
-              onChange={e => handleChange('weight', e.target.value)}
-              placeholder="e.g., 0.8 kg"
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Scale fontSize="small" />
-                  </InputAdornment>
-                ),
-              }}
-            />
-          </Grid>
-          
-          {/* Hyderabad-only delivery option */}
-          <Grid item xs={12}>
-            <Divider sx={{ my: 1 }} />
-            <Typography variant="h6" sx={{ my: 2, display: 'flex', alignItems: 'center' }}>
-              Delivery Options
-            </Typography>
-          </Grid>
-          
-          <Grid item xs={12}>
-            <Box sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              p: 2, 
-              borderRadius: 2, 
-              bgcolor: 'rgba(210, 105, 30, 0.08)',
-              border: '1px dashed',
-              borderColor: 'primary.main'
-            }}>
-              <FormControlLabel
-                control={
-                  <Checkbox 
-                    checked={product.hyderabadOnly || false}
-                    onChange={(e) => handleChange('hyderabadOnly', e.target.checked)}
-                    color="primary"
-                  />
-                }
-                label={
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <LocationOn color="primary" sx={{ mr: 1 }} />
-                    <Typography variant="body1" fontWeight="medium">Hyderabad Only Delivery</Typography>
-                  </Box>
-                }
+              name="name"
+              rules={[{ required: true, message: 'Product name is required' }]}
+            >
+              <Input
+                value={product.name}
+                onChange={e => handleChange('name', e.target.value)}
+                placeholder="Enter product name"
               />
-              <Tooltip title="This product will be available for delivery only within Hyderabad city limits">
-                <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>
-                  Restrict this product to be delivered only within Hyderabad
-                </Typography>
-              </Tooltip>
-            </Box>
-          </Grid>
-        </Grid>
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item label="Product Code" name="code">
+              <Input
+                value={product.code}
+                onChange={e => handleChange('code', e.target.value)}
+                placeholder="SKU or product code"
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Form.Item label="Description" name="description">
+          <TextArea
+            rows={3}
+            value={product.description}
+            onChange={e => handleChange('description', e.target.value)}
+            placeholder="Detailed product description..."
+          />
+        </Form.Item>
+
+        {/* Pricing and Inventory */}
+        <Divider />
+        <Title level={5}>Pricing & Inventory</Title>
+        
+        <Row gutter={16}>
+          <Col span={8}>
+            <Form.Item
+              label="Price"
+              name="price"
+              rules={[{ required: true, message: 'Price is required' }]}
+            >
+              <InputNumber
+                style={{ width: '100%' }}
+                value={product.price}
+                onChange={value => handleChange('price', value)}
+                formatter={value => `₹ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                parser={value => value.replace(/₹\s?|(,*)/g, '')}
+                placeholder="Enter price"
+              />
+            </Form.Item>
+          </Col>
+          <Col span={8}>
+            <Form.Item label="Stock Quantity" name="stock">
+              <InputNumber
+                style={{ width: '100%' }}
+                value={product.stock}
+                onChange={value => handleChange('stock', value)}
+                min={0}
+                placeholder="Enter stock quantity"
+              />
+            </Form.Item>
+          </Col>
+          <Col span={8}>
+            <Form.Item label="Category" name="category">
+              <Input
+                value={product.category}
+                onChange={e => handleChange('category', e.target.value)}
+                placeholder="Product category"
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        {/* Product Specifications */}
+        <Divider />
+        <Title level={5}>Product Specifications</Title>
+        
+        <Row gutter={16}>
+          <Col span={8}>
+            <Form.Item label="Color" name="color">
+              <Input
+                prefix={<BgColorsOutlined />}
+                value={product.color || ''}
+                onChange={e => handleChange('color', e.target.value)}
+                placeholder="e.g., Natural Terracotta"
+              />
+            </Form.Item>
+          </Col>
+          <Col span={8}>
+            <Form.Item label="Dimensions" name="dimensions">
+              <Input
+                prefix={<ColumnWidthOutlined />}
+                value={product.dimensions || ''}
+                onChange={e => handleChange('dimensions', e.target.value)}
+                placeholder="e.g., 10 x 10 x 1.5 inches"
+              />
+            </Form.Item>
+          </Col>
+          <Col span={8}>
+            <Form.Item label="Weight" name="weight">
+              <Input
+                prefix={<ExperimentOutlined />}
+                value={product.weight || ''}
+                onChange={e => handleChange('weight', e.target.value)}
+                placeholder="e.g., 0.8 kg"
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        {/* Delivery Options */}
+        <Divider />
+        <Title level={5}>Delivery Options</Title>
+        
+        <Card 
+          style={{ 
+            backgroundColor: 'rgba(210, 105, 30, 0.08)',
+            border: '1px dashed #D2691E',
+            borderRadius: '8px'
+          }}
+        >
+          <Form.Item name="hyderabadOnly" valuePropName="checked">
+            <Checkbox 
+              checked={product.hyderabadOnly || false}
+              onChange={(e) => handleChange('hyderabadOnly', e.target.checked)}
+            >
+              <Space>
+                <EnvironmentOutlined style={{ color: '#D2691E' }} />
+                <Text strong>Hyderabad Only Delivery</Text>
+              </Space>
+            </Checkbox>
+          </Form.Item>
+          <Text type="secondary" style={{ marginLeft: '24px' }}>
+            Restrict this product to be delivered only within Hyderabad
+          </Text>
+        </Card>
 
         {/* Image Upload Section */}
-        <Box sx={{ mt: 4 }}>
-          <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-            <PhotoCamera />
+        <Divider />
+        <Title level={5}>
+          <Space>
+            <CameraOutlined />
             Product Images (Upload up to 8 images)
-          </Typography>
-          <Grid container spacing={2}>
-            {product.images.slice(0, 8).map((url, index) => (
-              <Grid item xs={6} sm={3} key={index}>
-                <Paper
-                  sx={{
-                    width: '100%',
-                    height: 120,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    border: '2px dashed',
-                    borderColor: 'grey.300',
-                    cursor: 'pointer',
+          </Space>
+        </Title>
+        
+        <Row gutter={[16, 16]}>
+          {Array.from({ length: 8 }).map((_, index) => {
+            const imageUrl = product.images?.[index];
+            return (
+              <Col span={6} key={index}>
+                <Card
+                  style={{
+                    height: '120px',
+                    border: '2px dashed #d9d9d9',
+                    borderRadius: '8px',
                     position: 'relative',
-                    '&:hover': {
-                      borderColor: 'primary.main',
-                      bgcolor: 'primary.50',
-                    },
+                  }}
+                  bodyStyle={{ 
+                    padding: 0, 
+                    height: '100%', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center' 
                   }}
                 >
-                  {url === 'loading' ? (
-                    <CircularProgress size={24} />
-                  ) : url ? (
+                  {imageUrl === 'loading' ? (
+                    <div style={{ textAlign: 'center' }}>
+                      <div className="ant-spin ant-spin-spinning">
+                        <span className="ant-spin-dot ant-spin-dot-spin">
+                          <i className="ant-spin-dot-item"></i>
+                          <i className="ant-spin-dot-item"></i>
+                          <i className="ant-spin-dot-item"></i>
+                          <i className="ant-spin-dot-item"></i>
+                        </span>
+                      </div>
+                    </div>
+                  ) : imageUrl ? (
                     <>
                       <img
-                        src={url}
+                        src={imageUrl}
                         alt={`Product ${index + 1}`}
                         style={{
                           width: '100%',
                           height: '100%',
                           objectFit: 'cover',
-                          borderRadius: 8,
+                          borderRadius: '6px',
                         }}
                       />
-                      <IconButton
-                        sx={{ 
-                          position: 'absolute', 
-                          top: 4, 
-                          right: 4, 
-                          bgcolor: 'white',
-                          boxShadow: 1,
-                        }}
+                      <Button
+                        type="primary"
+                        danger
                         size="small"
-                        onClick={() => {
-                          const newImages = [...product.images];
-                          newImages[index] = '';
-                          handleChange('images', newImages);
+                        icon={<DeleteOutlined />}
+                        style={{
+                          position: 'absolute',
+                          top: '4px',
+                          right: '4px',
                         }}
-                      >
-                        <CancelIcon color="error" />
-                      </IconButton>
+                        onClick={() => removeImage(index)}
+                      />
                     </>
                   ) : (
-                    <label style={{ width: '100%', height: '100%', cursor: 'pointer' }}>
-                      <input
-                        type="file"
-                        hidden
-                        accept="image/*"
-                        onChange={(e) => onImageUpload(e, index, false)}
-                      />
-                      <Box sx={{ 
-                        display: 'flex', 
-                        flexDirection: 'column', 
-                        alignItems: 'center', 
-                        justifyContent: 'center',
-                        height: '100%',
-                        textAlign: 'center',
-                      }}>
-                        <CloudUpload sx={{ fontSize: 32, color: 'grey.400', mb: 1 }} />
-                        <Typography variant="caption" color="text.secondary">
-                          Upload Image
-                        </Typography>
-                      </Box>
-                    </label>
+                    <Upload
+                      name="image"
+                      listType="picture-card"
+                      showUploadList={false}
+                      beforeUpload={() => false}
+                      onChange={(info) => handleImageChange(info, index)}
+                      style={{ border: 'none' }}
+                    >
+                      {uploadButton(index)}
+                    </Upload>
                   )}
-                </Paper>
-              </Grid>
-            ))}
-          </Grid>
-        </Box>
-      </DialogContent>
-      <DialogActions sx={{ p: 3, gap: 1 }}>
-        <Button 
-          onClick={onClose}
-          startIcon={<Cancel />}
-          variant="outlined"
-        >
-          Cancel
-        </Button>
-        <Button 
-          onClick={onSave}
-          variant="contained" 
-          startIcon={<Save />}
-          sx={{ 
-            background: 'linear-gradient(135deg, #D2691E 0%, #F4A460 100%)',
-            '&:hover': {
-              background: 'linear-gradient(135deg, #A0522D 0%, #D2691E 100%)',
-            },
-          }}
-        >
-          Add Product
-        </Button>
-      </DialogActions>
-    </Dialog>
+                </Card>
+              </Col>
+            );
+          })}
+        </Row>
+      </Form>
+    </Modal>
   );
 };
 

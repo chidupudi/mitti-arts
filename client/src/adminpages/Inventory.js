@@ -1,27 +1,21 @@
 import React from 'react';
-import {
-  Box,
-  Container,
-  Grid,
-  TablePagination,
-} from '@mui/material';
-import { ThemeProvider } from '@mui/material/styles';
+import { Layout, Row, Col, Pagination, Spin } from 'antd';
 
 // Components
 import StatisticsCards from './components/Inventory/StatisticsCards';
 import FilterPanel from './components/Inventory/FilterPanel';
 import ProductCard from './components/Inventory/ProductCard';
-import ProductTable from './components/Inventory/ProductCard';
+import ProductTable from './components/Inventory/ProductTable';
 import AddProductDialog from './components/Inventory/AddProductDiallog';
 import EditProductDialog from './components/Inventory/EditProductDialog';
 import DeleteConfirmationDialog from './components/Inventory/DeleteConfirmationDialog';
 import EmptyState from './components/Inventory/EmptyState';
 import NotificationSnackbar from './components/NotificationSnackbar';
-import LoadingScreen from './components/LoadingScreen';
 
-// Theme and Hooks
-import { terracottaTheme } from '../theme/terracottaTheme';
+// Hooks
 import { useInventory } from '../hooks/useInventory';
+
+const { Content } = Layout;
 
 const Inventory = () => {
   const {
@@ -76,17 +70,22 @@ const Inventory = () => {
   } = useInventory();
 
   if (loading) {
-    return <LoadingScreen />;
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '100vh' 
+      }}>
+        <Spin size="large" />
+      </div>
+    );
   }
 
   return (
-    <ThemeProvider theme={terracottaTheme}>
-      <Box sx={{ 
-        backgroundColor: 'background.default', 
-        minHeight: '100vh',
-        pb: 4
-      }}>
-        <Container maxWidth="xl" sx={{ py: 4 }}>
+    <Layout style={{ minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
+      <Content style={{ padding: '24px' }}>
+        <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
           {/* Statistics Cards */}
           <StatisticsCards statistics={statistics} />
 
@@ -112,31 +111,43 @@ const Inventory = () => {
             <>
               {viewMode === 'grid' ? (
                 <>
-                  <Grid container spacing={3}>
+                  <Row gutter={[24, 24]}>
                     {paginatedProducts.map((product) => (
-                      <Grid item xs={12} sm={6} lg={4} xl={3} key={product.id}>
+                      <Col xs={24} sm={12} md={8} lg={6} key={product.id}>
                         <ProductCard
                           product={product}
                           onEdit={handleEditProduct}
                           onDelete={handleDeleteClick}
                           onToggleHide={handleToggleHide}
                         />
-                      </Grid>
+                      </Col>
                     ))}
-                  </Grid>
+                  </Row>
 
                   {/* Pagination */}
-                  <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-                    <TablePagination
-                      component="div"
-                      count={filteredProducts.length}
-                      page={page}
-                      onPageChange={handleChangePage}
-                      rowsPerPage={rowsPerPage}
-                      onRowsPerPageChange={handleChangeRowsPerPage}
-                      rowsPerPageOptions={[12, 24, 48, 96]}
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'center', 
+                    marginTop: '32px' 
+                  }}>
+                    <Pagination
+                      current={page + 1}
+                      pageSize={rowsPerPage}
+                      total={filteredProducts.length}
+                      onChange={(page, pageSize) => {
+                        handleChangePage(null, page - 1);
+                        if (pageSize !== rowsPerPage) {
+                          handleChangeRowsPerPage({ target: { value: pageSize } });
+                        }
+                      }}
+                      showSizeChanger
+                      pageSizeOptions={['12', '24', '48', '96']}
+                      showQuickJumper
+                      showTotal={(total, range) => 
+                        `${range[0]}-${range[1]} of ${total} products`
+                      }
                     />
-                  </Box>
+                  </div>
                 </>
               ) : (
                 <ProductTable
@@ -187,9 +198,9 @@ const Inventory = () => {
             snackbar={snackbar}
             onClose={handleCloseSnackbar}
           />
-        </Container>
-      </Box>
-    </ThemeProvider>
+        </div>
+      </Content>
+    </Layout>
   );
 };
 

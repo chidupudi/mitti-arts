@@ -1,16 +1,8 @@
 import React from 'react';
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Typography,
-  Button,
-  Alert,
-} from '@mui/material';
-import {
-  Warning,
-} from '@mui/icons-material';
+import { Modal, Typography, Alert, Space } from 'antd';
+import { ExclamationCircleOutlined } from '@ant-design/icons';
+
+const { Text } = Typography;
 
 const DeleteConfirmationDialog = ({
   open,
@@ -19,47 +11,41 @@ const DeleteConfirmationDialog = ({
   onConfirm,
 }) => {
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      maxWidth="xs"
-      fullWidth
-      PaperProps={{ sx: { borderRadius: 3 } }}
-    >
-      <DialogTitle sx={{ p: 3 }}>
-        <Typography variant="h6" component="div" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Warning color="error" />
+    <Modal
+      title={
+        <Space>
+          <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />
           Confirm Delete
-        </Typography>
-      </DialogTitle>
-      <DialogContent sx={{ p: 3 }}>
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          This action cannot be undone!
-        </Alert>
-        <Typography variant="body1">
+        </Space>
+      }
+      open={open}
+      onCancel={onClose}
+      onOk={onConfirm}
+      okText="Delete Product"
+      cancelText="Cancel"
+      okType="danger"
+      width={400}
+    >
+      <div style={{ marginTop: '16px' }}>
+        <Alert
+          message="This action cannot be undone!"
+          type="warning"
+          showIcon
+          style={{ marginBottom: '16px' }}
+        />
+        
+        <Text style={{ fontSize: '16px' }}>
           Are you sure you want to delete{' '}
-          <strong>{product?.name}</strong>?
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-          This will permanently remove the product from your inventory.
-        </Typography>
-      </DialogContent>
-      <DialogActions sx={{ p: 3, gap: 1 }}>
-        <Button 
-          onClick={onClose}
-          variant="outlined"
-        >
-          Cancel
-        </Button>
-        <Button 
-          onClick={onConfirm}
-          variant="contained"
-          color="error"
-        >
-          Delete Product
-        </Button>
-      </DialogActions>
-    </Dialog>
+          <Text strong>{product?.name}</Text>?
+        </Text>
+        
+        <div style={{ marginTop: '8px' }}>
+          <Text type="secondary">
+            This will permanently remove the product from your inventory.
+          </Text>
+        </div>
+      </div>
+    </Modal>
   );
 };
 

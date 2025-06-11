@@ -346,8 +346,8 @@ const CartItem = memo(({
   );
 });
 
-// OrderSummary component (memoized)
-const OrderSummary = memo(({ cartItems, products, navigate, totalPrice, subtotal, shippingCost, discount }) => {
+// OrderSummary component (memoized) - Fixed item count calculation
+const OrderSummary = memo(({ cartItems, products, navigate, totalPrice, subtotal, shippingCost, discount, totalItemCount, uniqueItemCount }) => {
   return (
     <Fade in={true} timeout={600}>
       <Paper elevation={2} sx={{ 
@@ -365,10 +365,20 @@ const OrderSummary = memo(({ cartItems, products, navigate, totalPrice, subtotal
         <Stack spacing={1.5}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
             <Typography variant="body2" color="text.secondary">
-              Subtotal ({cartItems.length} {cartItems.length === 1 ? 'item' : 'items'})
+              Subtotal ({totalItemCount} {totalItemCount === 1 ? 'item' : 'items'})
             </Typography>
             <Typography variant="body2">
               ₹{subtotal.toLocaleString('en-IN')}
+            </Typography>
+          </Box>
+          
+          {/* Additional info about unique products */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+              {uniqueItemCount} unique {uniqueItemCount === 1 ? 'product' : 'products'}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+              Total qty: {totalItemCount}
             </Typography>
           </Box>
           
@@ -466,151 +476,30 @@ const OrderSummary = memo(({ cartItems, products, navigate, totalPrice, subtotal
   );
 });
 
-// Recommended Products component (memoized)
-const RecommendedProducts = memo(({ products, isMobile, isTablet }) => {
-  return (
-    <Slide direction="up" in={true} timeout={500} mountOnEnter unmountOnExit>
-      <Paper elevation={2} sx={{ p: 3, textAlign: 'center' }}>
-        <Typography variant="h6" gutterBottom>
-          Recommended for You
-        </Typography>
-        <Grid container spacing={2} sx={{ mt: 1 }}>
-          {products.slice(0, isMobile ? 2 : isTablet ? 3 : 4).map((product, index) => (
-            <Grid item xs={6} sm={4} md={3} key={product.id}>
-              <Zoom in={true} timeout={400 + index * 75}>
-                <Card sx={{ 
-                  height: '100%', 
-                  display: 'flex', 
-                  flexDirection: 'column',
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    boxShadow: 3,
-                    transform: 'translateY(-4px)',
-                  }
-                }}>
-                  <Box sx={{ position: 'relative', pt: '75%', backgroundColor: 'rgba(0,0,0,0.04)' }}>
-                    <CardMedia
-                      component="img"
-                      image={product.images?.[0] || 'https://via.placeholder.com/140'}
-                      alt={product.name}
-                      sx={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                        '&:hover': {
-                          transform: 'scale(1.08)',
-                        }
-                      }}
-                    />
-                  </Box>
-                  <CardContent sx={{ flexGrow: 1, py: 1.5 }}>
-                    <Typography variant="subtitle2" noWrap fontWeight="medium">
-                      {product.name}
-                    </Typography>
-                    <Typography variant="subtitle1" color="primary" fontWeight="bold" sx={{ mt: 0.5 }}>
-                      ₹{product.price.toLocaleString('en-IN')}
-                    </Typography>
-                  </CardContent>
-                  <CardActions sx={{ px: 2, pb: 2 }}>
-                    <Button 
-                      size="small" 
-                      fullWidth
-                      variant="outlined"
-                      color="primary"
-                    >
-                      Add to Cart
-                    </Button>
-                  </CardActions>
-                </Card>
-              </Zoom>
-            </Grid>
-          ))}
-        </Grid>
-      </Paper>
-    </Slide>
-  );
-});
+// Function to deduplicate cart items by consolidating quantities
+const deduplicateCartItems = (items) => {
+  const productMap = new Map();
+  
+  items.forEach(item => {
+    const key = String(item.productId);
+    if (productMap.has(key)) {
+      // If product already exists, add to quantity and keep the first item's ID
+      const existing = productMap.get(key);
+      existing.quantity += item.quantity;
+      existing.duplicateIds = existing.duplicateIds || [];
+      existing.duplicateIds.push(item.id);
+    } else {
+      // New product
+      productMap.set(key, { ...item });
+    }
+  });
+  
+  return Array.from(productMap.values());
+};
 
-// Empty Cart component
-const EmptyCart = memo(({ navigate }) => (
-  <Fade in={true} timeout={500}>
-    <Box sx={{ 
-      py: 8, 
-      textAlign: 'center',
-      backgroundColor: (theme) => theme.palette.grey[50],
-      borderRadius: 2
-    }}>
-      <ShoppingCart sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
-      <Typography variant="h6" color="textSecondary" gutterBottom>
-        Your cart is empty
-      </Typography>
-      <Typography variant="body2" color="textSecondary" sx={{ mb: 3, maxWidth: 400, mx: 'auto' }}>
-        Looks like you haven't added anything to your cart yet. Explore our products and find something you'll love!
-      </Typography>
-      <Button 
-        variant="contained" 
-        color="primary"
-        size="large"
-        startIcon={<ShoppingBagOutlined />}
-        onClick={() => navigate('/products')}
-      >
-        Start Shopping
-      </Button>
-    </Box>
-  </Fade>
-));
-
-// Loading Skeleton for cart
-const CartSkeleton = memo(() => (
-  <Box>
-    <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-      <Skeleton variant="circular" width={32} height={32} sx={{ mr: 1 }} />
-      <Skeleton variant="text" width={120} height={40} />
-    </Box>
-    <Divider sx={{ mb: 3 }} />
-    <Grid container spacing={3}>
-      <Grid item xs={12} md={8}>
-        {[1, 2, 3].map((item) => (
-          <Paper key={item} sx={{ p: 2, mb: 2 }}>
-            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' } }}>
-              <Skeleton variant="rectangular" width={120} height={120} sx={{ mr: { xs: 0, sm: 2 }, mb: { xs: 2, sm: 0 } }} />
-              <Box sx={{ width: '100%' }}>
-                <Skeleton variant="text" width="60%" height={32} sx={{ mb: 1 }} />
-                <Skeleton variant="text" width="90%" height={20} />
-                <Skeleton variant="text" width="80%" height={20} sx={{ mb: 2 }} />
-                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Skeleton variant="rectangular" width={100} height={36} />
-                  <Skeleton variant="rectangular" width={80} height={36} />
-                </Box>
-              </Box>
-            </Box>
-          </Paper>
-        ))}
-      </Grid>
-      <Grid item xs={12} md={4}>
-        <Paper sx={{ p: 3 }}>
-          <Skeleton variant="text" width="60%" height={32} sx={{ mb: 2 }} />
-          <Divider sx={{ my: 2 }} />
-          <Skeleton variant="text" width="100%" height={24} sx={{ mb: 1 }} />
-          <Skeleton variant="text" width="100%" height={24} sx={{ mb: 1 }} />
-          <Skeleton variant="text" width="100%" height={24} sx={{ mb: 1 }} />
-          <Divider sx={{ my: 2 }} />
-          <Skeleton variant="text" width="100%" height={32} sx={{ mb: 2 }} />
-          <Skeleton variant="rectangular" width="100%" height={48} sx={{ mb: 2 }} />
-          <Skeleton variant="text" width="100%" height={24} sx={{ mb: 1 }} />
-          <Skeleton variant="text" width="100%" height={24} />
-        </Paper>
-      </Grid>
-    </Grid>
-  </Box>
-));
-
-// Main Cart component (with performance optimizations)
+// Main Cart component (with performance optimizations and duplicate handling)
 const Cart = () => {
-  const [cartItems, setCartItems] = useState([]);
+  const [rawCartItems, setRawCartItems] = useState([]);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [removing, setRemoving] = useState(null);
@@ -631,11 +520,72 @@ const Cart = () => {
       querySnapshot.forEach((doc) => {
         items.push({ id: doc.id, ...doc.data() });
       });
-      setCartItems(items);
+      setRawCartItems(items);
+      
+      // Log for debugging
+      console.log('Raw cart items from DB:', items);
+      console.log('Total raw items:', items.length);
+      
     } catch (error) {
       console.error('Error fetching cart items:', error);
     }
   }, []);
+
+  // Clean up duplicate cart items in database
+  const cleanupDuplicateCartItems = useCallback(async (items) => {
+    if (!user) return;
+    
+    const productGroups = {};
+    items.forEach(item => {
+      const key = String(item.productId);
+      if (!productGroups[key]) {
+        productGroups[key] = [];
+      }
+      productGroups[key].push(item);
+    });
+    
+    // Find products with duplicates
+    const duplicateGroups = Object.values(productGroups).filter(group => group.length > 1);
+    
+    if (duplicateGroups.length === 0) return;
+    
+    console.log('Found duplicate cart items, cleaning up...', duplicateGroups);
+    
+    try {
+      const batch = writeBatch(db);
+      
+      for (const group of duplicateGroups) {
+        // Keep the first item, consolidate quantities
+        const [mainItem, ...duplicates] = group;
+        const totalQuantity = group.reduce((sum, item) => sum + item.quantity, 0);
+        
+        // Update the main item with total quantity
+        const mainItemRef = doc(db, 'cart', mainItem.id);
+        batch.update(mainItemRef, { quantity: totalQuantity });
+        
+        // Delete duplicate items
+        duplicates.forEach(duplicate => {
+          const duplicateRef = doc(db, 'cart', duplicate.id);
+          batch.delete(duplicateRef);
+        });
+      }
+      
+      await batch.commit();
+      
+      // Refresh cart items
+      await fetchCartItems(user.uid);
+      
+    } catch (error) {
+      console.error('Error cleaning up duplicate cart items:', error);
+    }
+  }, [user, fetchCartItems]);
+
+  // Deduplicated cart items (memoized)
+  const cartItems = useMemo(() => {
+    const deduplicated = deduplicateCartItems(rawCartItems);
+    console.log('Deduplicated cart items:', deduplicated);
+    return deduplicated;
+  }, [rawCartItems]);
 
   // Auth state monitoring
   useEffect(() => {
@@ -652,6 +602,25 @@ const Cart = () => {
     
     return unsubscribe;
   }, [navigate, fetchCartItems]);
+
+  // Clean up duplicates when raw cart items change
+  useEffect(() => {
+    if (rawCartItems.length > 0 && user) {
+      // Check if we have duplicates and clean them up
+      const productCounts = {};
+      rawCartItems.forEach(item => {
+        const key = String(item.productId);
+        productCounts[key] = (productCounts[key] || 0) + 1;
+      });
+      
+      const hasDuplicates = Object.values(productCounts).some(count => count > 1);
+      
+      if (hasDuplicates) {
+        console.log('Duplicates detected, cleaning up...');
+        cleanupDuplicateCartItems(rawCartItems);
+      }
+    }
+  }, [rawCartItems, user, cleanupDuplicateCartItems]);
 
   // Fetch products (separate useEffect for clean separation of concerns)
   useEffect(() => {
@@ -686,18 +655,40 @@ const Cart = () => {
     return products.find((p) => String(p.id) === String(productId));
   }, [products]);
 
-  // Remove item handler (memoized)
+  // Remove item handler (memoized) - Updated to handle duplicates
   const handleRemoveItem = useCallback(async (itemId) => {
     try {
       setRemoving(itemId);
+      
+      // Find the item to get duplicate IDs if any
+      const item = cartItems.find(item => item.id === itemId);
+      
+      // Delete the main item
       await deleteDoc(doc(db, 'cart', itemId));
-      setCartItems(prev => prev.filter(item => item.id !== itemId));
+      
+      // Delete any duplicate items
+      if (item?.duplicateIds && item.duplicateIds.length > 0) {
+        const batch = writeBatch(db);
+        item.duplicateIds.forEach(duplicateId => {
+          const duplicateRef = doc(db, 'cart', duplicateId);
+          batch.delete(duplicateRef);
+        });
+        await batch.commit();
+      }
+      
+      // Update local state
+      setRawCartItems(prev => prev.filter(rawItem => {
+        if (rawItem.id === itemId) return false;
+        if (item?.duplicateIds && item.duplicateIds.includes(rawItem.id)) return false;
+        return true;
+      }));
+      
     } catch (error) {
       console.error('Error removing item:', error);
     } finally {
       setRemoving(null);
     }
-  }, []);
+  }, [cartItems]);
 
   // Update quantity handler (memoized)
   const updateQuantity = useCallback(async (itemId, newQuantity) => {
@@ -709,7 +700,7 @@ const Cart = () => {
         quantity: newQuantity
       });
       
-      setCartItems(prev => prev.map(item => 
+      setRawCartItems(prev => prev.map(item => 
         item.id === itemId ? {...item, quantity: newQuantity} : item
       ));
     } catch (error) {
@@ -719,30 +710,18 @@ const Cart = () => {
     }
   }, []);
 
-  // Batch remove all items (for future implementation)
-  const clearCart = useCallback(async () => {
-    if (!user || cartItems.length === 0) return;
+  // Calculate cart totals (memoized) - Fixed calculation
+  const { subtotal, shippingCost, discount, totalPrice, totalItemCount, uniqueItemCount } = useMemo(() => {
+    let sub = 0;
+    let totalItems = 0;
     
-    try {
-      const batch = writeBatch(db);
-      cartItems.forEach(item => {
-        const cartRef = doc(db, 'cart', item.id);
-        batch.delete(cartRef);
-      });
-      
-      await batch.commit();
-      setCartItems([]);
-    } catch (error) {
-      console.error('Error clearing cart:', error);
-    }
-  }, [cartItems, user]);
-
-  // Calculate cart totals (memoized)
-  const { subtotal, shippingCost, discount, totalPrice } = useMemo(() => {
-    const sub = cartItems.reduce((sum, item) => {
+    cartItems.forEach(item => {
       const product = getProductDetails(item.productId);
-      return sum + (product?.price || 0) * item.quantity;
-    }, 0);
+      if (product) {
+        sub += product.price * item.quantity;
+        totalItems += item.quantity;
+      }
+    });
     
     // Free shipping above ₹1500
     const shipping = sub > 1500 ? 0 : 0;
@@ -754,9 +733,155 @@ const Cart = () => {
       subtotal: sub,
       shippingCost: shipping,
       discount: disc,
-      totalPrice: sub + shipping - disc
+      totalPrice: sub + shipping - disc,
+      totalItemCount: totalItems,
+      uniqueItemCount: cartItems.length
     };
   }, [cartItems, getProductDetails]);
+
+  // Remaining components (EmptyCart, RecommendedProducts, CartSkeleton) remain the same...
+  
+  // Empty Cart component
+  const EmptyCart = memo(({ navigate }) => (
+    <Fade in={true} timeout={500}>
+      <Box sx={{ 
+        py: 8, 
+        textAlign: 'center',
+        backgroundColor: (theme) => theme.palette.grey[50],
+        borderRadius: 2
+      }}>
+        <ShoppingCart sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
+        <Typography variant="h6" color="textSecondary" gutterBottom>
+          Your cart is empty
+        </Typography>
+        <Typography variant="body2" color="textSecondary" sx={{ mb: 3, maxWidth: 400, mx: 'auto' }}>
+          Looks like you haven't added anything to your cart yet. Explore our products and find something you'll love!
+        </Typography>
+        <Button 
+          variant="contained" 
+          color="primary"
+          size="large"
+          startIcon={<ShoppingBagOutlined />}
+          onClick={() => navigate('/products')}
+        >
+          Start Shopping
+        </Button>
+      </Box>
+    </Fade>
+  ));
+
+  // Recommended Products component (memoized)
+  const RecommendedProducts = memo(({ products, isMobile, isTablet }) => {
+    return (
+      <Slide direction="up" in={true} timeout={500} mountOnEnter unmountOnExit>
+        <Paper elevation={2} sx={{ p: 3, textAlign: 'center' }}>
+          <Typography variant="h6" gutterBottom>
+            Recommended for You
+          </Typography>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            {products.slice(0, isMobile ? 2 : isTablet ? 3 : 4).map((product, index) => (
+              <Grid item xs={6} sm={4} md={3} key={product.id}>
+                <Zoom in={true} timeout={400 + index * 75}>
+                  <Card sx={{ 
+                    height: '100%', 
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      boxShadow: 3,
+                      transform: 'translateY(-4px)',
+                    }
+                  }}>
+                    <Box sx={{ position: 'relative', pt: '75%', backgroundColor: 'rgba(0,0,0,0.04)' }}>
+                      <CardMedia
+                        component="img"
+                        image={product.images?.[0] || 'https://via.placeholder.com/140'}
+                        alt={product.name}
+                        sx={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          '&:hover': {
+                            transform: 'scale(1.08)',
+                          }
+                        }}
+                      />
+                    </Box>
+                    <CardContent sx={{ flexGrow: 1, py: 1.5 }}>
+                      <Typography variant="subtitle2" noWrap fontWeight="medium">
+                        {product.name}
+                      </Typography>
+                      <Typography variant="subtitle1" color="primary" fontWeight="bold" sx={{ mt: 0.5 }}>
+                        ₹{product.price.toLocaleString('en-IN')}
+                      </Typography>
+                    </CardContent>
+                    <CardActions sx={{ px: 2, pb: 2 }}>
+                      <Button 
+                        size="small" 
+                        fullWidth
+                        variant="outlined"
+                        color="primary"
+                      >
+                        Add to Cart
+                      </Button>
+                    </CardActions>
+                  </Card>
+                </Zoom>
+              </Grid>
+            ))}
+          </Grid>
+        </Paper>
+      </Slide>
+    );
+  });
+
+  // Loading Skeleton for cart
+  const CartSkeleton = memo(() => (
+    <Box>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+        <Skeleton variant="circular" width={32} height={32} sx={{ mr: 1 }} />
+        <Skeleton variant="text" width={120} height={40} />
+      </Box>
+      <Divider sx={{ mb: 3 }} />
+      <Grid container spacing={3}>
+        <Grid item xs={12} md={8}>
+          {[1, 2, 3].map((item) => (
+            <Paper key={item} sx={{ p: 2, mb: 2 }}>
+              <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' } }}>
+                <Skeleton variant="rectangular" width={120} height={120} sx={{ mr: { xs: 0, sm: 2 }, mb: { xs: 2, sm: 0 } }} />
+                <Box sx={{ width: '100%' }}>
+                  <Skeleton variant="text" width="60%" height={32} sx={{ mb: 1 }} />
+                  <Skeleton variant="text" width="90%" height={20} />
+                  <Skeleton variant="text" width="80%" height={20} sx={{ mb: 2 }} />
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Skeleton variant="rectangular" width={100} height={36} />
+                    <Skeleton variant="rectangular" width={80} height={36} />
+                  </Box>
+                </Box>
+              </Box>
+            </Paper>
+          ))}
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <Paper sx={{ p: 3 }}>
+            <Skeleton variant="text" width="60%" height={32} sx={{ mb: 2 }} />
+            <Divider sx={{ my: 2 }} />
+            <Skeleton variant="text" width="100%" height={24} sx={{ mb: 1 }} />
+            <Skeleton variant="text" width="100%" height={24} sx={{ mb: 1 }} />
+            <Skeleton variant="text" width="100%" height={24} sx={{ mb: 1 }} />
+            <Divider sx={{ my: 2 }} />
+            <Skeleton variant="text" width="100%" height={32} sx={{ mb: 2 }} />
+            <Skeleton variant="rectangular" width="100%" height={48} sx={{ mb: 2 }} />
+            <Skeleton variant="text" width="100%" height={24} sx={{ mb: 1 }} />
+            <Skeleton variant="text" width="100%" height={24} />
+          </Paper>
+        </Grid>
+      </Grid>
+    </Box>
+  ));
 
   // Display loading skeletons
   if (loading || loadingProducts) {
@@ -802,7 +927,7 @@ const Cart = () => {
                   My Cart
                 </Typography>
                 <Badge 
-                  badgeContent={cartItems.length} 
+                  badgeContent={uniqueItemCount} 
                   color="primary"
                   sx={{ ml: 2 }}
                 />
@@ -820,6 +945,7 @@ const Cart = () => {
             </Box>
 
             <Divider sx={{ mb: 3 }} />
+
 
             {cartItems.length === 0 ? (
               <EmptyCart navigate={navigate} />
@@ -853,6 +979,8 @@ const Cart = () => {
                     subtotal={subtotal}
                     shippingCost={shippingCost}
                     discount={discount}
+                    totalItemCount={totalItemCount}
+                    uniqueItemCount={uniqueItemCount}
                   />
                 </Grid>
               </Grid>

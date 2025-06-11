@@ -1,4 +1,4 @@
-// ProductDetail.jsx - Updated with Buy Now functionality
+// ProductDetail.jsx - Updated with Fixed Cart functionality
 import React, { 
   useEffect, 
   useState, 
@@ -56,7 +56,7 @@ import {
   InfoCircleOutlined,
   FireOutlined,
   EnvironmentOutlined,
-  ThunderboltOutlined, // Added for Buy Now button
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import { auth, db } from '../Firebase/Firebase';
 import { 
@@ -70,6 +70,9 @@ import {
   deleteDoc 
 } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
+
+// Import the FIXED cart utilities
+import { addToCartSafe } from '../utils/cartUtility';
 
 const { Title, Text, Paragraph } = Typography;
 const { TabPane } = Tabs;
@@ -128,7 +131,6 @@ const customStyles = {
     height: '48px',
     fontSize: '16px',
   },
-  // New Buy Now button style
   buyNowButton: {
     background: `linear-gradient(135deg, ${colors.success} 0%, #4CAF50 100%)`,
     borderColor: colors.success,
@@ -161,7 +163,7 @@ const customStyles = {
   },
 };
 
-// Custom hook for product data (unchanged)
+// Custom hook for product data
 const useProductData = (productId, code) => {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -228,7 +230,7 @@ const useProductData = (productId, code) => {
   return { product, loading, error };
 };
 
-// Custom hook for wishlist (unchanged)
+// Custom hook for wishlist
 const useWishlist = (user) => {
   const [wishlist, setWishlist] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -305,7 +307,7 @@ const useWishlist = (user) => {
   return { wishlist, toggleWishlist, isInWishlist, loading };
 };
 
-// Image Gallery Component (unchanged)
+// Image Gallery Component
 const ImageGallery = memo(({ images, productName }) => {
   const [selectedImage, setSelectedImage] = useState(0);
   const [previewVisible, setPreviewVisible] = useState(false);
@@ -420,7 +422,7 @@ const ImageGallery = memo(({ images, productName }) => {
   );
 });
 
-// Quantity Selector Component (unchanged)
+// Quantity Selector Component
 const QuantitySelector = memo(({ value, onChange, max, disabled }) => {
   return (
     <Space.Compact style={customStyles.quantitySelector}>
@@ -454,7 +456,7 @@ const QuantitySelector = memo(({ value, onChange, max, disabled }) => {
   );
 });
 
-// Updated Product Info Component with Buy Now button
+// Product Info Component with FIXED cart functionality
 const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, isInWishlist }) => {
   const [quantity, setQuantity] = useState(1);
   const [expandedDescription, setExpandedDescription] = useState(false);
@@ -640,7 +642,7 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
             />
           </div>
 
-          {/* Action Buttons - Updated with Buy Now */}
+          {/* Action Buttons */}
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
             {/* Add to Cart and Wishlist Row */}
             <Space size="middle" style={{ width: '100%' }}>
@@ -709,7 +711,7 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
   );
 });
 
-// Updated Mobile Actions Component with Buy Now button
+// Mobile Actions Component with FIXED cart functionality
 const MobileActions = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, isInWishlist }) => {
   const [quantity, setQuantity] = useState(1);
   const [modalVisible, setModalVisible] = useState(false);
@@ -747,7 +749,7 @@ const MobileActions = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, 
           borderTop: `1px solid ${colors.divider}`,
           borderRadius: '20px 20px 0 0',
         }}>
-          {/* Hyderabad-Only Badge - Visible on mobile bottom bar */}
+          {/* Hyderabad-Only Badge */}
           {product.hyderabadOnly && (
             <div style={{
               display: 'flex',
@@ -763,7 +765,7 @@ const MobileActions = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, 
             </div>
           )}
           
-          {/* Updated Mobile Action Buttons */}
+          {/* Mobile Action Buttons */}
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
             {/* First Row: Wishlist + Add to Cart */}
             <Space size="middle" style={{ width: '100%' }}>
@@ -810,7 +812,7 @@ const MobileActions = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, 
         </div>
       </Affix>
 
-      {/* Updated Quantity Modal */}
+      {/* Quantity Modal */}
       <Modal
         title={actionType === 'cart' ? 'Select Quantity' : 'Buy Now - Select Quantity'}
         open={modalVisible}
@@ -867,24 +869,21 @@ const MobileActions = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, 
           </div>
 
           {/* Hyderabad-Only delivery info */}
-          <div style={{ 
-            background: product.hyderabadOnly ? '#9C27B010' : 'inherit',
-            padding: product.hyderabadOnly ? '12px' : '0',
-            borderRadius: '8px',
-            marginTop: product.hyderabadOnly ? '16px' : '0',
-            display: product.hyderabadOnly ? 'flex' : 'none',
-            alignItems: 'center',
-            gap: '8px',
-          }}>
-            {product.hyderabadOnly && (
-              <>
-                <EnvironmentOutlined style={{ color: '#9C27B0' }} />
-                <Text type="secondary" style={{ color: '#9C27B0' }}>
-                  This product is available for delivery only within Hyderabad city limits.
-                </Text>
-              </>
-            )}
-          </div>
+          {product.hyderabadOnly && (
+            <div style={{ 
+              background: '#9C27B010',
+              padding: '12px',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}>
+              <EnvironmentOutlined style={{ color: '#9C27B0' }} />
+              <Text type="secondary" style={{ color: '#9C27B0' }}>
+                This product is available for delivery only within Hyderabad city limits.
+              </Text>
+            </div>
+          )}
 
           <div style={{
             background: `${colors.primary}08`,
@@ -903,7 +902,7 @@ const MobileActions = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, 
   );
 });
 
-// Service Features Component (unchanged)
+// Service Features Component
 const ServiceFeatures = memo(({ product }) => {
   const features = [
     {
@@ -954,7 +953,7 @@ const ServiceFeatures = memo(({ product }) => {
   );
 });
 
-// Product Tabs Component (unchanged - keeping all existing tabs)
+// Product Tabs Component
 const ProductTabs = memo(({ product }) => {
   const specifications = [
     { label: 'Material', value: product?.material || 'Premium Natural Clay' },
@@ -1413,7 +1412,7 @@ const ProductTabs = memo(({ product }) => {
   );
 });
 
-// Loading Skeleton Component (unchanged)
+// Loading Skeleton Component
 const ProductDetailSkeleton = () => (
   <div style={customStyles.container}>
     <Skeleton.Button size="large" style={{ marginBottom: '24px' }} />
@@ -1437,7 +1436,7 @@ const ProductDetailSkeleton = () => (
   </div>
 );
 
-// Main ProductDetail Component - Updated with Buy Now functionality
+// Main ProductDetail Component - FIXED with Cart Utils
 const ProductDetail = () => {
   const { id } = useParams();
   const { search } = useLocation();
@@ -1458,6 +1457,7 @@ const ProductDetail = () => {
     return unsubscribe;
   }, []);
 
+  // FIXED Add to Cart handler using cartUtils
   const handleAddToCart = useCallback(async (product, quantity) => {
     if (!user) {
       navigate('/auth');
@@ -1465,26 +1465,24 @@ const ProductDetail = () => {
     }
 
     try {
-      await addDoc(collection(db, 'cart'), {
-        userId: user.uid,
-        productId: product.id,
-        name: product.name,
-        price: product.price,
-        quantity: quantity,
-        imgUrl: product.images?.[0] || product.imgUrl,
-        code: product.code,
-        addedAt: new Date().toISOString(),
-        hyderabadOnly: product.hyderabadOnly || false,
-      });
+      const result = await addToCartSafe(user.uid, product.id, quantity);
       
-      message.success(`${product.name} added to cart successfully!`);
+      if (result.success) {
+        if (result.action === 'added') {
+          message.success(`${product.name} added to cart successfully!`);
+        } else if (result.action === 'updated') {
+          message.success(`Cart updated! Total quantity: ${result.newQuantity}`);
+        }
+      } else {
+        message.error(result.message || 'Failed to add to cart');
+      }
     } catch (error) {
       message.error('Failed to add to cart');
       console.error('Error adding to cart:', error);
     }
   }, [user, navigate]);
 
-  // New Buy Now handler - adds to cart and redirects
+  // FIXED Buy Now handler using cartUtils
   const handleBuyNow = useCallback(async (product, quantity) => {
     if (!user) {
       navigate('/auth');
@@ -1492,28 +1490,21 @@ const ProductDetail = () => {
     }
 
     try {
-      await addDoc(collection(db, 'cart'), {
-        userId: user.uid,
-        productId: product.id,
-        name: product.name,
-        price: product.price,
-        quantity: quantity,
-        imgUrl: product.images?.[0] || product.imgUrl,
-        code: product.code,
-        addedAt: new Date().toISOString(),
-        hyderabadOnly: product.hyderabadOnly || false,
-      });
+      const result = await addToCartSafe(user.uid, product.id, quantity);
       
-      message.success(`${product.name} added to cart!`);
-      
-      // Navigate to cart page after a short delay
-      setTimeout(() => {
-        navigate('/cart');
-      }, 1000);
-      
+      if (result.success) {
+        message.success(`${product.name} added to cart!`);
+        
+        // Navigate to cart page after a short delay
+        setTimeout(() => {
+          navigate('/cart');
+        }, 1000);
+      } else {
+        message.error(result.message || 'Failed to add to cart');
+      }
     } catch (error) {
       message.error('Failed to add to cart');
-      console.error('Error adding to cart:', error);
+      console.error('Error in Buy Now:', error);
     }
   }, [user, navigate]);
 
@@ -1588,7 +1579,7 @@ const ProductDetail = () => {
           <ProductInfo
             product={product}
             onAddToCart={handleAddToCart}
-            onBuyNow={handleBuyNow} // Pass the Buy Now handler
+            onBuyNow={handleBuyNow}
             onToggleWishlist={handleToggleWishlist}
             isInWishlist={isInWishlist(product.id)}
           />
@@ -1606,7 +1597,7 @@ const ProductDetail = () => {
         <MobileActions
           product={product}
           onAddToCart={handleAddToCart}
-          onBuyNow={handleBuyNow} // Pass the Buy Now handler
+          onBuyNow={handleBuyNow}
           onToggleWishlist={handleToggleWishlist}
           isInWishlist={isInWishlist(product.id)}
         />

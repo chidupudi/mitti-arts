@@ -1,4 +1,4 @@
-// Updated AdminOrders.js component with cancel order functionality and email notifications
+// Updated AdminOrders.js component with payment status synchronization
 import React from 'react';
 import { Box, Container } from '@mui/material';
 import { ThemeProvider } from '@mui/material/styles';
@@ -7,18 +7,18 @@ import OrdersTable from './components/AdminOrders/OrderTable';
 import OrdersCards from './components/AdminOrders/OrdersCards';
 import DeliveryDetailsDialog from './components/AdminOrders/DeliveryDetailsDialog';
 import OrderDetailsDialog from './components/AdminOrders/OrderDetailsDialog';
-import CancelOrderDialog from './components/AdminOrders/CancelOrderDialog'; // Import the new dialog
+import CancelOrderDialog from './components/AdminOrders/CancelOrderDialog';
 import NotificationSnackbar from './components/NotificationSnackbar';
 import LoadingScreen from './components/LoadingScreen';
 import { terracottaTheme } from '../theme/terracottaTheme';
 import { useAdminOrders } from '../hooks/useAdminOrders';
-import { useOrderNotifications } from '../hooks/useOrderNotifications'; // Import the notifications hook
+import { useOrderNotifications } from '../hooks/useOrderNotifications';
 import { useMediaQuery } from '@mui/material';
 
 const AdminOrders = () => {
   const isMedium = useMediaQuery(terracottaTheme.breakpoints.down('md'));
   
-  // 🔔 ADD THIS LINE - Enable real-time order notifications with email alerts
+  // 🔔 Enable real-time order notifications with email alerts
   useOrderNotifications();
   
   // Custom hook for all admin orders logic
@@ -71,6 +71,7 @@ const AdminOrders = () => {
     
     // Data maps
     deliveryDetailsMap,
+    paymentStatuses, // This is the shared state for payment switches
     snackbar,
     
     // Action handlers
@@ -132,10 +133,11 @@ const AdminOrders = () => {
               setExpandedOrderId={setExpandedOrderId}
               searchQuery={searchQuery}
               deliveryDetailsMap={deliveryDetailsMap}
+              paymentStatuses={paymentStatuses} // Pass payment statuses to cards
               handlePaymentToggle={handlePaymentToggle}
               handleMarkDelivered={handleMarkDelivered}
               handleViewOrderDetails={handleViewOrderDetails}
-              handleCancelOrderClick={handleCancelOrderClick} // Add cancel handler
+              handleCancelOrderClick={handleCancelOrderClick}
               setSelectedOrderForDelivery={setSelectedOrderForDelivery}
               setDeliveryDialogOpen={setDeliveryDialogOpen}
               handleChangePage={handleChangePage}
@@ -148,10 +150,11 @@ const AdminOrders = () => {
               page={page}
               rowsPerPage={rowsPerPage}
               deliveryDetailsMap={deliveryDetailsMap}
+              paymentStatuses={paymentStatuses} // Pass payment statuses to table
               handlePaymentToggle={handlePaymentToggle}
               handleMarkDelivered={handleMarkDelivered}
               handleViewOrderDetails={handleViewOrderDetails}
-              handleCancelOrderClick={handleCancelOrderClick} // Add cancel handler
+              handleCancelOrderClick={handleCancelOrderClick}
               setSelectedOrderForDelivery={setSelectedOrderForDelivery}
               setDeliveryDialogOpen={setDeliveryDialogOpen}
               handleChangePage={handleChangePage}

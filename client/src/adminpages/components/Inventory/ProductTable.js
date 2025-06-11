@@ -1,32 +1,27 @@
 import React from 'react';
 import {
   Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TablePagination,
-  Paper,
-  Typography,
-  Box,
   Avatar,
-  Chip,
-  IconButton,
-  Stack,
+  Typography,
+  Tag,
+  Button,
+  Space,
   Tooltip,
-} from '@mui/material';
+  Image,
+} from 'antd';
 import {
-  Edit,
-  Delete,
-  Visibility,
-  VisibilityOff,
-  Image as ImageIcon,
-  LocationOn,
-  ColorLens,
-  Straighten,
-  Scale,
-} from '@mui/icons-material';
+  EditOutlined,
+  DeleteOutlined,
+  EyeOutlined,
+  EyeInvisibleOutlined,
+  PictureOutlined,
+  EnvironmentOutlined,
+  BgColorsOutlined,
+  ColumnWidthOutlined,
+  ExperimentOutlined,
+} from '@ant-design/icons';
+
+const { Text } = Typography;
 
 const ProductTable = ({ 
   products, 
@@ -39,158 +34,197 @@ const ProductTable = ({
   onChangePage,
   onChangeRowsPerPage,
 }) => {
-  return (
-    <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
-      <Table>
-        <TableHead>
-          <TableRow sx={{ bgcolor: 'grey.50' }}>
-            <TableCell sx={{ fontWeight: 600 }}>Product</TableCell>
-            <TableCell sx={{ fontWeight: 600 }}>Code</TableCell>
-            <TableCell sx={{ fontWeight: 600 }}>Specifications</TableCell>
-            <TableCell sx={{ fontWeight: 600 }}>Price</TableCell>
-            <TableCell sx={{ fontWeight: 600 }}>Stock</TableCell>
-            <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-            <TableCell sx={{ fontWeight: 600 }}>Actions</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {products.map((product) => (
-            <TableRow key={product.id} hover>
-              <TableCell>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  {product.images?.[0] ? (
-                    <Avatar
-                      src={product.images[0]}
-                      alt={product.name}
-                      sx={{ width: 48, height: 48, borderRadius: 2 }}
-                      variant="rounded"
-                    />
-                  ) : (
-                    <Avatar
-                      sx={{ width: 48, height: 48, borderRadius: 2, bgcolor: 'grey.100' }}
-                      variant="rounded"
-                    >
-                      <ImageIcon color="disabled" />
-                    </Avatar>
-                  )}
-                  <Box>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                      {product.name}
-                      {product.hyderabadOnly && (
-                        <Chip 
-                          icon={<LocationOn sx={{ fontSize: '0.7rem' }} />}
-                          label="Hyderabad Only" 
-                          size="small"
-                          color="secondary"
-                          sx={{ ml: 1, height: 20, '& .MuiChip-icon': { fontSize: '1rem' } }}
-                        />
-                      )}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {product.description?.substring(0, 50)}{product.description?.length > 50 ? '...' : ''}
-                    </Typography>
-                  </Box>
-                </Box>
-              </TableCell>
-              <TableCell>
-                <Typography variant="body2" color="text.secondary">
-                  {product.code || '-'}
-                </Typography>
-              </TableCell>
-              <TableCell>
-                <Stack spacing={0.5}>
-                  {product.color && (
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <ColorLens fontSize="small" sx={{ mr: 0.5, fontSize: '0.9rem', color: 'text.secondary' }} />
-                      <Typography variant="body2" color="text.secondary">
-                        {product.color}
-                      </Typography>
-                    </Box>
-                  )}
-                  
-                  {product.dimensions && (
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Straighten fontSize="small" sx={{ mr: 0.5, fontSize: '0.9rem', color: 'text.secondary' }} />
-                      <Typography variant="body2" color="text.secondary">
-                        {product.dimensions}
-                      </Typography>
-                    </Box>
-                  )}
-                  
-                  {product.weight && (
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Scale fontSize="small" sx={{ mr: 0.5, fontSize: '0.9rem', color: 'text.secondary' }} />
-                      <Typography variant="body2" color="text.secondary">
-                        {product.weight}
-                      </Typography>
-                    </Box>
-                  )}
-                  
-                  {!product.color && !product.dimensions && !product.weight && (
-                    <Typography variant="body2" color="text.secondary">
-                      -
-                    </Typography>
-                  )}
-                </Stack>
-              </TableCell>
-              <TableCell>
-                <Typography variant="subtitle2" color="primary.main" sx={{ fontWeight: 600 }}>
-                  ₹{product.price?.toLocaleString()}
-                </Typography>
-              </TableCell>
-              <TableCell>
-                <Chip 
-                  label={product.stock}
+  const getStockColor = (stock) => {
+    if (stock > 10) return 'success';
+    if (stock > 0) return 'warning';
+    return 'error';
+  };
+
+  const columns = [
+    {
+      title: 'Product',
+      dataIndex: 'product',
+      key: 'product',
+      render: (_, record) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {record.images?.[0] ? (
+            <Avatar
+              src={record.images[0]}
+              size={48}
+              shape="square"
+            />
+          ) : (
+            <Avatar
+              size={48}
+              shape="square"
+              style={{ backgroundColor: '#f5f5f5' }}
+              icon={<PictureOutlined style={{ color: '#d9d9d9' }} />}
+            />
+          )}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Text strong style={{ fontSize: '14px' }}>
+                {record.name}
+              </Text>
+              {record.hyderabadOnly && (
+                <Tag 
+                  icon={<EnvironmentOutlined />}
+                  color="purple" 
                   size="small"
-                  color={product.stock > 10 ? "success" : product.stock > 0 ? "warning" : "error"}
-                />
-              </TableCell>
-              <TableCell>
-                <Stack direction="row" spacing={1}>
-                  {product.hidden && (
-                    <Chip label="Hidden" size="small" color="warning" variant="outlined" />
-                  )}
-                  <Chip 
-                    label={product.inStock ? "In Stock" : "Out of Stock"} 
-                    size="small"
-                    color={product.inStock ? "success" : "error"}
-                    variant="outlined"
-                  />
-                </Stack>
-              </TableCell>
-              <TableCell>
-                <Box sx={{ display: 'flex', gap: 0.5 }}>
-                  <Tooltip title="Edit">
-                    <IconButton size="small" onClick={() => onEdit(product)}>
-                      <Edit />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title={product.hidden ? "Show" : "Hide"}>
-                    <IconButton size="small" onClick={() => onToggleHide(product.id)}>
-                      {product.hidden ? <Visibility /> : <VisibilityOff />}
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Delete">
-                    <IconButton size="small" color="error" onClick={() => onDelete(product)}>
-                      <Delete />
-                    </IconButton>
-                  </Tooltip>
-                </Box>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      <TablePagination
-        component="div"
-        count={totalCount}
-        page={page}
-        onPageChange={onChangePage}
-        rowsPerPage={rowsPerPage}
-        onRowsPerPageChange={onChangeRowsPerPage}
-        rowsPerPageOptions={[12, 24, 48, 96]}
-      />
-    </TableContainer>
+                >
+                  Hyderabad Only
+                </Tag>
+              )}
+            </div>
+            <Text type="secondary" style={{ fontSize: '12px' }}>
+              {record.description?.substring(0, 50)}
+              {record.description?.length > 50 ? '...' : ''}
+            </Text>
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: 'Code',
+      dataIndex: 'code',
+      key: 'code',
+      render: (code) => (
+        <Text type="secondary">{code || '-'}</Text>
+      ),
+    },
+    {
+      title: 'Specifications',
+      dataIndex: 'specifications',
+      key: 'specifications',
+      render: (_, record) => (
+        <Space direction="vertical" size="small">
+          {record.color && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <BgColorsOutlined style={{ fontSize: '12px', color: '#8c8c8c' }} />
+              <Text type="secondary" style={{ fontSize: '12px' }}>
+                {record.color}
+              </Text>
+            </div>
+          )}
+          
+          {record.dimensions && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <ColumnWidthOutlined style={{ fontSize: '12px', color: '#8c8c8c' }} />
+              <Text type="secondary" style={{ fontSize: '12px' }}>
+                {record.dimensions}
+              </Text>
+            </div>
+          )}
+          
+          {record.weight && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <ExperimentOutlined style={{ fontSize: '12px', color: '#8c8c8c' }} />
+              <Text type="secondary" style={{ fontSize: '12px' }}>
+                {record.weight}
+              </Text>
+            </div>
+          )}
+          
+          {!record.color && !record.dimensions && !record.weight && (
+            <Text type="secondary">-</Text>
+          )}
+        </Space>
+      ),
+    },
+    {
+      title: 'Price',
+      dataIndex: 'price',
+      key: 'price',
+      render: (price) => (
+        <Text strong style={{ color: '#D2691E', fontSize: '14px' }}>
+          ₹{price?.toLocaleString()}
+        </Text>
+      ),
+    },
+    {
+      title: 'Stock',
+      dataIndex: 'stock',
+      key: 'stock',
+      render: (stock) => (
+        <Tag color={getStockColor(stock)}>
+          {stock}
+        </Tag>
+      ),
+    },
+    {
+      title: 'Status',
+      dataIndex: 'status',
+      key: 'status',
+      render: (_, record) => (
+        <Space direction="vertical" size="small">
+          {record.hidden && (
+            <Tag color="warning">Hidden</Tag>
+          )}
+          <Tag color={record.inStock ? "success" : "error"}>
+            {record.inStock ? "In Stock" : "Out of Stock"}
+          </Tag>
+        </Space>
+      ),
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      render: (_, record) => (
+        <Space size="small">
+          <Tooltip title="Edit">
+            <Button 
+              type="text" 
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => onEdit(record)}
+            />
+          </Tooltip>
+          <Tooltip title={record.hidden ? "Show" : "Hide"}>
+            <Button 
+              type="text" 
+              size="small"
+              icon={record.hidden ? <EyeOutlined /> : <EyeInvisibleOutlined />}
+              onClick={() => onToggleHide(record.id)}
+            />
+          </Tooltip>
+          <Tooltip title="Delete">
+            <Button 
+              type="text" 
+              size="small"
+              danger
+              icon={<DeleteOutlined />}
+              onClick={() => onDelete(record)}
+            />
+          </Tooltip>
+        </Space>
+      ),
+    },
+  ];
+
+  return (
+    <Table
+      columns={columns}
+      dataSource={products}
+      rowKey="id"
+      pagination={{
+        current: page + 1,
+        pageSize: rowsPerPage,
+        total: totalCount,
+        onChange: (page, pageSize) => {
+          onChangePage(null, page - 1);
+          if (pageSize !== rowsPerPage) {
+            onChangeRowsPerPage({ target: { value: pageSize } });
+          }
+        },
+        showSizeChanger: true,
+        pageSizeOptions: ['12', '24', '48', '96'],
+        showQuickJumper: true,
+        showTotal: (total, range) => 
+          `${range[0]}-${range[1]} of ${total} products`,
+      }}
+      scroll={{ x: 800 }}
+      style={{ borderRadius: '8px' }}
+    />
   );
 };
 

@@ -58,19 +58,20 @@ import {
   FilterOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { auth } from '../Firebase/Firebase';
+import { auth, db } from '../Firebase/Firebase';
+import { 
+  collection, 
+  getDocs, 
+  query, 
+  where, 
+  deleteDoc, 
+  doc, 
+  addDoc 
+} from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 
-// Import FIXED optimization hooks
-import {
-  useProducts,
-  useProductSearch,
-  useCartOperations,
-  useWishlistOperations,
-  usePerformanceMonitor,
-  useLazyImage,
-  useMemoryStorage,
-} from '../hooks/useProductsOptimization';
+// Import FIXED cart utilities
+import { addToCartSafe } from '../utils/cartUtility';
 
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
@@ -281,7 +282,202 @@ const formatPrice = (price) => {
   return `₹${price.toLocaleString('en-IN')}`;
 };
 
-// ProductCard Component
+// Custom hooks for data fetching
+const useProducts = () => {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setLoading(true);
+      try {
+        const querySnapshot = await getDocs(collection(db, 'products'));
+        const productsArr = [];
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          productsArr.push({
+            id: doc.id,
+            ...data,
+            price: Number(data.price) || 0,
+            stock: Number(data.stock) || 0,
+            rating: Number(data.rating) || 4.2,
+            reviews: Number(data.reviews) || 156,
+            imgUrl: data.images?.[0] || data.imgUrl || '',
+            hyderabadOnly: data.hyderabadOnly || false,
+            isFeatured: data.isFeatured || false,
+            hidden: data.hidden || false,
+            originalPrice: data.originalPrice || 0,
+            discount: data.discount || 0,
+            category: data.category || '',
+            code: data.code || `PRD${doc.id.slice(-6)}`,
+            createdAt: data.createdAt || new Date().toISOString(),
+          });
+        });
+        setProducts(productsArr);
+      } catch (error) {
+        console.error('Error fetching products:', error);
+        setError('Failed to load products');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchProducts();
+  }, []);
+
+  return { products, loading, error };
+};
+
+// Wishlist hook
+const useWishlist = (user) => {
+  const [wishlist, setWishlist] = useState([]);
+
+  useEffect(() => {
+    const fetchWishlist = async () => {
+      if (!user) {
+        setWishlist([]);
+        return;
+      }
+      
+      try {
+        const wishlistRef = collection(db, 'wishlist');
+        const q = query(wishlistRef, where("userId", "==", user.uid));
+        const querySnapshot = await getDocs(q);
+        
+        const items = querySnapshot.docs.map(doc => ({
+          ...doc.data(),
+          id: doc.data().productId,
+          wishlistDocId: doc.id,
+        }));
+        
+        setWishlist(items);
+      } catch (error) {
+        console.error("Error fetching wishlist:", error);
+      }
+    };
+
+    fetchWishlist();
+  }, [user]);
+
+  const toggleWishlistItem = useCallback(async (product) => {
+    if (!user) return { success: false, message: 'Please log in first' };
+
+    const isInWishlist = wishlist.some(item => item.id === product.id);
+    
+    try {
+      if (isInWishlist) {
+        const itemToRemove = wishlist.find(item => item.id === product.id);
+        if (itemToRemove?.wishlistDocId) {
+          await deleteDoc(doc(db, 'wishlist', itemToRemove.wishlistDocId));
+          setWishlist(prev => prev.filter(item => item.id !== product.id));
+          return { success: true, message: 'Removed from wishlist' };
+        }
+      } else {
+        const docRef = await addDoc(collection(db, 'wishlist'), {
+          userId: user.uid,
+          productId: product.id,
+          name: product.name,
+          imgUrl: product.imgUrl,
+          price: product.price,
+          code: product.code,
+          addedAt: new Date().toISOString(),
+          hyderabadOnly: product.hyderabadOnly || false,
+        });
+
+        const newItem = { ...product, wishlistDocId: docRef.id };
+        setWishlist(prev => [...prev, newItem]);
+        return { success: true, message: 'Added to wishlist' };
+      }
+    } catch (error) {
+      console.error("Error toggling wishlist:", error);
+      return { success: false, message: 'Failed to update wishlist' };
+    }
+  }, [user, wishlist]);
+
+  const isInWishlist = useCallback((productId) => {
+    return wishlist.some(item => item.id === productId);
+  }, [wishlist]);
+
+  return { wishlist, toggleWishlistItem, isInWishlist };
+};
+
+// Product search and filtering hook
+const useProductSearch = (products, searchQuery, filters) => {
+  return useMemo(() => {
+    let filtered = [...products];
+
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(product =>
+        product.name?.toLowerCase().includes(query) ||
+        product.description?.toLowerCase().includes(query) ||
+        product.code?.toLowerCase().includes(query) ||
+        product.category?.toLowerCase().includes(query)
+      );
+    }
+
+    // Price range filter
+    if (filters.priceRange) {
+      filtered = filtered.filter(product =>
+        product.price >= filters.priceRange[0] && product.price <= filters.priceRange[1]
+      );
+    }
+
+    // Hyderabad-only filter
+    if (filters.hyderabadOnly) {
+      filtered = filtered.filter(product => product.hyderabadOnly);
+    }
+
+    // Sort products
+    switch (filters.sortBy) {
+      case 'relevance':
+        // Hyderabad products first, then by rating
+        filtered.sort((a, b) => {
+          if (a.hyderabadOnly && !b.hyderabadOnly) return -1;
+          if (!a.hyderabadOnly && b.hyderabadOnly) return 1;
+          return (b.rating || 0) - (a.rating || 0);
+        });
+        break;
+      case 'priceLowToHigh':
+        filtered.sort((a, b) => a.price - b.price);
+        break;
+      case 'priceHighToLow':
+        filtered.sort((a, b) => b.price - a.price);
+        break;
+      case 'alphabetical':
+        filtered.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      case 'rating':
+        filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+        break;
+      case 'newest':
+        filtered.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+        break;
+      case 'featured':
+        filtered.sort((a, b) => (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0));
+        break;
+      case 'discount':
+        filtered.sort((a, b) => (b.discount || 0) - (a.discount || 0));
+        break;
+      default:
+        break;
+    }
+
+    const totalCount = products.length;
+    const hyderabadCount = products.filter(p => p.hyderabadOnly).length;
+
+    return {
+      products: filtered,
+      totalCount,
+      hyderabadCount,
+      isSearching: false
+    };
+  }, [products, searchQuery, filters.priceRange, filters.sortBy, filters.hyderabadOnly]);
+};
+
+// FIXED ProductCard Component with cart utilities
 const ProductCard = memo(({ 
   product, 
   onAddToCart, 
@@ -290,10 +486,8 @@ const ProductCard = memo(({
   onProductClick,
   isInWishlist
 }) => {
-  const [imageSrc, setImageRef] = useLazyImage(
-    product.imgUrl, 
-    'https://via.placeholder.com/300x220/D2691E/FFFFFF?text=Product'
-  );
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageSrc, setImageSrc] = useState(product.imgUrl || 'https://via.placeholder.com/300x220/D2691E/FFFFFF?text=Product');
   
   const isOutOfStock = product.stock === 0;
   const isHidden = product.hidden;
@@ -353,11 +547,11 @@ const ProductCard = memo(({
       );
     }
 
-   return (
-    <Tag icon={<EnvironmentOutlined />} color="green">
-      Pan India Delivery
-    </Tag>
-  );
+    return (
+      <Tag icon={<EnvironmentOutlined />} color="green">
+        Pan India Delivery
+      </Tag>
+    );
   };
 
   return (
@@ -398,10 +592,11 @@ const ProductCard = memo(({
 
       <div style={{ position: 'relative' }}>
         <img
-          ref={setImageRef}
           src={imageSrc}
           alt={product.name}
           className="product-image"
+          onLoad={() => setImageLoaded(true)}
+          onError={() => setImageSrc('https://via.placeholder.com/300x220/D2691E/FFFFFF?text=Product')}
         />
       </div>
 
@@ -445,7 +640,7 @@ const ProductCard = memo(({
           >
             {formatPrice(product.price)}
           </Text>
-          {product.originalPrice > product.price && (
+          {product.originalPrice && product.originalPrice > product.price && (
             <>
               <Text
                 delete
@@ -455,7 +650,7 @@ const ProductCard = memo(({
                 {formatPrice(product.originalPrice)}
               </Text>
               <Tag color="error" style={{ margin: 0, fontSize: '10px' }}>
-                {product.discount}% OFF
+                {product.discount || Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
               </Tag>
             </>
           )}
@@ -712,7 +907,7 @@ const FilterPanel = memo(({
   );
 });
 
-// QuantityModal Component
+// FIXED QuantityModal Component
 const QuantityModal = ({ 
   open, 
   onClose, 
@@ -797,7 +992,7 @@ const QuantityModal = ({
             >
               {formatPrice(product.price)}
             </Text>
-            {product.originalPrice > product.price && (
+            {product.originalPrice && product.originalPrice > product.price && (
               <>
                 <Text
                   delete
@@ -806,7 +1001,7 @@ const QuantityModal = ({
                   {formatPrice(product.originalPrice)}
                 </Text>
                 <Tag color="error">
-                  {product.discount}% OFF
+                  {product.discount || Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
                 </Tag>
               </>
             )}
@@ -833,31 +1028,31 @@ const QuantityModal = ({
           </Text>
         </Text>
         
-{product.hyderabadOnly ? (
-  <div style={{ 
-    marginTop: '8px', 
-    display: 'flex', 
-    alignItems: 'center',
-    color: '#9C27B0'
-  }}>
-    <EnvironmentOutlined style={{ marginRight: '4px' }} />
-    <Text style={{ fontWeight: 600, color: '#9C27B0' }}>
-      Available for delivery in Hyderabad only
-    </Text>
-  </div>
-) : (
-  <div style={{ 
-    marginTop: '8px', 
-    display: 'flex', 
-    alignItems: 'center',
-    color: '#4CAF50'
-  }}>
-    <EnvironmentOutlined style={{ marginRight: '4px' }} />
-    <Text style={{ fontWeight: 600, color: '#4CAF50' }}>
-      Available for Pan India delivery
-    </Text>
-  </div>
-)}
+        {product.hyderabadOnly ? (
+          <div style={{ 
+            marginTop: '8px', 
+            display: 'flex', 
+            alignItems: 'center',
+            color: '#9C27B0'
+          }}>
+            <EnvironmentOutlined style={{ marginRight: '4px' }} />
+            <Text style={{ fontWeight: 600, color: '#9C27B0' }}>
+              Available for delivery in Hyderabad only
+            </Text>
+          </div>
+        ) : (
+          <div style={{ 
+            marginTop: '8px', 
+            display: 'flex', 
+            alignItems: 'center',
+            color: '#4CAF50'
+          }}>
+            <EnvironmentOutlined style={{ marginRight: '4px' }} />
+            <Text style={{ fontWeight: 600, color: '#4CAF50' }}>
+              Available for Pan India delivery
+            </Text>
+          </div>
+        )}
       </div>
 
       <Divider />
@@ -958,7 +1153,7 @@ const QuantityModal = ({
           <Text type="secondary">
             {quantity} × {formatPrice(product.price)}
           </Text>
-          {product.originalPrice > product.price && (
+          {product.originalPrice && product.originalPrice > product.price && (
             <div>
               <Text 
                 style={{ 
@@ -1054,7 +1249,7 @@ const ProductSkeleton = () => {
   );
 };
 
-// Main Products Component
+// Main Products Component - FIXED with Cart Utils
 const Products = () => {
   const navigate = useNavigate();
   const screens = useBreakpoint();
@@ -1071,11 +1266,9 @@ const Products = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
 
-  // Use FIXED optimization hooks
+  // Use hooks
   const { products, loading: productsLoading, error: productsError } = useProducts();
-  const { addToCart } = useCartOperations(user);
-  const { wishlist, toggleWishlistItem, isInWishlist } = useWishlistOperations(user);
-  const { metrics, startTimer } = usePerformanceMonitor();
+  const { wishlist, toggleWishlistItem, isInWishlist } = useWishlist(user);
   
   // Memoize search parameters to prevent unnecessary re-renders
   const searchParams = useMemo(() => ({
@@ -1091,7 +1284,7 @@ const Products = () => {
     totalCount, 
     hyderabadCount,
     isSearching 
-  } = useProductSearch(products, searchQuery, searchParams, true);
+  } = useProductSearch(products, searchQuery, searchParams);
 
   // Auth effect
   useEffect(() => {
@@ -1122,6 +1315,7 @@ const Products = () => {
     window.location.href = `/product/${id}?code=${code}`;
   }, []);
 
+  // FIXED Add to Cart handler using cartUtils
   const handleAddToCart = useCallback(async (product) => {
     if (product.hidden || product.stock === 0) {
       showMessage(
@@ -1141,6 +1335,7 @@ const Products = () => {
     setModalOpen(true);
   }, [user, navigate, showMessage]);
 
+  // FIXED Buy Now handler using cartUtils
   const handleBuyNow = useCallback(async (product) => {
     if (product.hidden || product.stock === 0) {
       showMessage(
@@ -1157,20 +1352,24 @@ const Products = () => {
     }
 
     try {
-      const result = await addToCart(product, 1);
+      const result = await addToCartSafe(user.uid, product.id, 1);
       if (result.success) {
-        showMessage(result.message, 'success');
+        if (result.action === 'added') {
+          showMessage(`${product.name} added to cart!`, 'success');
+        } else if (result.action === 'updated') {
+          showMessage(`Cart updated! Total quantity: ${result.newQuantity}`, 'success');
+        }
         setTimeout(() => {
           navigate('/cart');
         }, 1000);
       } else {
-        showMessage(result.message, 'error');
+        showMessage(result.message || 'Failed to add to cart', 'error');
       }
     } catch (error) {
       console.error('Error in Buy Now:', error);
       showMessage('Error processing your request', 'error');
     }
-  }, [user, navigate, showMessage, addToCart]);
+  }, [user, navigate, showMessage]);
 
   const handleToggleWishlist = useCallback(async (product) => {
     if (!user) {
@@ -1192,6 +1391,7 @@ const Products = () => {
     }
   }, [user, navigate, showMessage, toggleWishlistItem]);
 
+  // FIXED Confirm Add to Cart handler using cartUtils
   const handleConfirmAddToCart = useCallback(async (quantity) => {
     if (!selectedProduct || !user) return;
 
@@ -1201,11 +1401,15 @@ const Products = () => {
     }
 
     try {
-      const result = await addToCart(selectedProduct, quantity);
+      const result = await addToCartSafe(user.uid, selectedProduct.id, quantity);
       if (result.success) {
-        showMessage(result.message, 'success');
+        if (result.action === 'added') {
+          showMessage(`${selectedProduct.name} added to cart successfully!`, 'success');
+        } else if (result.action === 'updated') {
+          showMessage(`Cart updated! Total quantity: ${result.newQuantity}`, 'success');
+        }
       } else {
-        showMessage(result.message, 'error');
+        showMessage(result.message || 'Failed to add to cart', 'error');
       }
       setModalOpen(false);
       setSelectedProduct(null);
@@ -1213,7 +1417,7 @@ const Products = () => {
       console.error('Error adding to cart:', error);
       showMessage('Error adding to cart', 'error');
     }
-  }, [selectedProduct, user, showMessage, addToCart]);
+  }, [selectedProduct, user, showMessage]);
 
   const handleResetFilters = useCallback(() => {
     setPriceRange([1, 5000]);
@@ -1533,7 +1737,7 @@ const Products = () => {
           />
         </Drawer>
 
-        {/* Quantity Modal */}
+        {/* FIXED Quantity Modal */}
         {modalOpen && selectedProduct && (
           <QuantityModal
             open={modalOpen}

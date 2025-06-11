@@ -33,7 +33,7 @@ import {
   LocationOn,
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
-import { DatePicker } from 'antd';
+import { DatePicker, Space, Checkbox } from 'antd'; // Using Antd components
 import { CalendarOutlined } from '@ant-design/icons';
 import moment from 'moment';
 
@@ -66,6 +66,16 @@ const formatCurrency = (amount) => {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount);
+};
+
+// Get payment status from order
+const getPaymentStatus = (order, paymentStatuses) => {
+  // Check if admin manually set the status via switch
+  if (paymentStatuses[order.id] !== undefined) {
+    return paymentStatuses[order.id];
+  }
+  // Otherwise check the order's payment status
+  return order.paymentStatus === 'COMPLETED' || order.paymentStatus === 'SUCCESS';
 };
 
 const RecentOrders = ({
@@ -105,18 +115,21 @@ const RecentOrders = ({
           </Typography>
         </Box>
         
-        <DatePicker
-          value={dateFilter ? moment(dateFilter) : null}
-          onChange={(date) => setDateFilter(date ? date.toDate() : null)}
-          suffixIcon={<CalendarOutlined style={{ color: theme.palette.primary.main }} />}
-          style={{ 
-            width: isMobile ? '100%' : 200,
-            borderRadius: 8
-          }}
-          allowClear
-          format="DD/MM/YYYY"
-          placeholder="Filter by date"
-        />
+        {/* Antd DatePicker */}
+        <Space>
+          <DatePicker
+            value={dateFilter ? moment(dateFilter) : null}
+            onChange={(date) => setDateFilter(date ? date.toDate() : null)}
+            suffixIcon={<CalendarOutlined style={{ color: theme.palette.primary.main }} />}
+            style={{ 
+              width: isMobile ? '100%' : 200,
+              borderRadius: 8
+            }}
+            allowClear
+            format="DD/MM/YYYY"
+            placeholder="Filter by date"
+          />
+        </Space>
       </Box>
 
       {filteredOrders.length === 0 ? (
@@ -139,27 +152,33 @@ const RecentOrders = ({
         <Grid container spacing={2}>
           {filteredOrders.map(order => {
             const isDelivered = deliveredOrders[order.id];
-            const isPaid = paymentStatuses[order.id];
+            const isPaid = getPaymentStatus(order, paymentStatuses);
             const hasDeliveryDetails = deliveryDetailsMap[order.id];
             const isExpanded = expandedOrder === order.id;
+            const isFailed = order.paymentStatus === 'FAILED' || order.paymentStatus === 'CANCELLED';
+
+            // Determine card color based on payment status
+            let cardBorderColor = theme.palette.warning.light;
+            let cardBackground = 'linear-gradient(145deg, #FFF3E0 0%, #FFF8E1 100%)';
+            
+            if (isDelivered) {
+              cardBorderColor = theme.palette.success.light;
+              cardBackground = 'linear-gradient(145deg, #E8F5E9 0%, #F1F8E9 100%)';
+            } else if (isPaid) {
+              cardBorderColor = theme.palette.primary.light;
+              cardBackground = 'linear-gradient(145deg, #E3F2FD 0%, #E8F5E9 100%)';
+            } else if (isFailed) {
+              cardBorderColor = theme.palette.error.light;
+              cardBackground = 'linear-gradient(145deg, #FFEBEE 0%, #FCE4EC 100%)';
+            }
 
             return (
               <Grid item xs={12} lg={6} xl={4} key={order.id}>
                 <Card
                   sx={{
                     borderRadius: 3,
-                    border: `2px solid ${
-                      isDelivered 
-                        ? theme.palette.success.light
-                        : isPaid 
-                          ? theme.palette.primary.light
-                          : theme.palette.warning.light
-                    }`,
-                    background: isDelivered 
-                      ? 'linear-gradient(145deg, #E8F5E9 0%, #F1F8E9 100%)'
-                      : isPaid 
-                        ? 'linear-gradient(145deg, #FFF8E1 0%, #FFFDE7 100%)'
-                        : 'linear-gradient(145deg, #FFF3E0 0%, #FFF8E1 100%)',
+                    border: `2px solid ${cardBorderColor}`,
+                    background: cardBackground,
                     cursor: 'pointer',
                     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                     '&:hover': {
@@ -181,7 +200,9 @@ const RecentOrders = ({
                               ? 'success.main'
                               : isPaid 
                                 ? 'primary.main' 
-                                : 'warning.main'
+                                : isFailed
+                                  ? 'error.main'
+                                  : 'warning.main'
                           }
                         >
                           #{order.id.slice(-8).toUpperCase()}
@@ -202,6 +223,13 @@ const RecentOrders = ({
                             label="Delivered"
                             color="success"
                             icon={<CheckCircle />}
+                            size="small"
+                            sx={{ fontWeight: 'bold' }}
+                          />
+                        ) : isFailed ? (
+                          <Chip
+                            label="Failed"
+                            color="error"
                             size="small"
                             sx={{ fontWeight: 'bold' }}
                           />
@@ -235,31 +263,37 @@ const RecentOrders = ({
                       </Typography>
                     </Box>
 
-                    {/* Payment Toggle */}
-                    {!isDelivered && (
+                    {/* Payment Toggle - Using Antd Checkbox with custom styling */}
+                    {!isDelivered && !isFailed && (
                       <Box mb={2}>
-                        <FormControlLabel
-                          control={
-                            <Switch
-                              checked={isPaid}
-                              onChange={(e) => {
-                                e.stopPropagation();
-                                handlePaymentToggle(order.id);
+                        <Space>
+                          <Checkbox
+                            checked={isPaid}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              handlePaymentToggle(order.id, order.paymentStatus);
+                            }}
+                            style={{
+                              color: isPaid ? '#4caf50' : '#ff9800',
+                            }}
+                          >
+                            <Typography 
+                              variant="body2" 
+                              fontWeight="600"
+                              sx={{ 
+                                color: isPaid ? 'success.main' : 'warning.main',
+                                ml: 1
                               }}
-                              color="success"
-                            />
-                          }
-                          label={
-                            <Typography variant="body2" fontWeight="600">
-                              Payment {isPaid ? 'Completed' : 'Pending'}
+                            >
+                               {isPaid ? 'Checked In' : 'Not Checked In'}
                             </Typography>
-                          }
-                        />
+                          </Checkbox>
+                        </Space>
                       </Box>
                     )}
 
                     {/* Delivery Section */}
-                    {isPaid && !isDelivered && (
+                    {isPaid && !isDelivered && !isFailed && (
                       <Box mb={2}>
                         {hasDeliveryDetails ? (
                           <Box sx={{ 
@@ -343,6 +377,25 @@ const RecentOrders = ({
                             ? new Date(order.deliveredAt.seconds * 1000).toLocaleString('en-IN')
                             : 'Recently delivered'
                           }
+                        </Typography>
+                      </Box>
+                    )}
+
+                    {/* Failed Payment Status */}
+                    {isFailed && (
+                      <Box sx={{ 
+                        p: 2, 
+                        background: 'rgba(244, 67, 54, 0.1)', 
+                        borderRadius: 2,
+                        border: `1px solid ${theme.palette.error.light}`
+                      }}>
+                        <Box display="flex" alignItems="center">
+                          <Typography variant="body2" fontWeight="bold" color="error.main">
+                            ❌ Payment Failed/Cancelled
+                          </Typography>
+                        </Box>
+                        <Typography variant="caption" color="text.secondary">
+                          Order could not be processed
                         </Typography>
                       </Box>
                     )}
