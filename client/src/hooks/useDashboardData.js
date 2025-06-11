@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '../Firebase/Firebase';
-import { collection, getDocs, onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot } from 'firebase/firestore';
 
 // Enhanced utility functions
 const getOrderDate = (order) => {
@@ -31,6 +31,11 @@ export const useDashboardData = () => {
     monthlyGrowth: 0,
     pendingOrders: 0,
     completedOrders: 0,
+    processingOrders: 0,
+    checkedInOrders: 0,
+    inTransitOrders: 0,
+    deliveredOrders: 0,
+    cancelledOrders: 0,
   });
   const [userMap, setUserMap] = useState({});
   const [productMap, setProductMap] = useState({});
@@ -48,20 +53,59 @@ export const useDashboardData = () => {
     // Products subscription
     const unsubProducts = onSnapshot(collection(db, 'products'), (snap) => {
       setStats(prev => ({ ...prev, products: snap.size }));
+      
+      // Create product map for quick lookup
+      const products = {};
+      snap.forEach(doc => {
+        products[doc.id] = doc.data().name || doc.id;
+      });
+      setProductMap(products);
     });
 
-    // Wishlist subscription
-    const unsubWishlist = onSnapshot(collection(db, 'wishlist'), (snap) => {
+    // Wishlist subscription with top products calculation
+    const unsubWishlist = onSnapshot(collection(db, 'wishlist'), async (snap) => {
       setStats(prev => ({ ...prev, wishlist: snap.size }));
+      
+      // Calculate top products from wishlist
+      const productCounts = {};
+      snap.forEach((doc) => {
+        const pid = doc.data().productId;
+        productCounts[pid] = (productCounts[pid] || 0) + 1;
+      });
+
+      // Get product details and combine with wishlist counts
+      const productsSnap = await collection(db, 'products');
+      onSnapshot(productsSnap, (productsSnapshot) => {
+        const productsArr = [];
+        productsSnapshot.forEach((doc) => {
+          const data = doc.data();
+          productsArr.push({
+            id: doc.id,
+            ...data,
+            wishlistCount: productCounts[doc.id] || 0,
+          });
+        });
+        
+        productsArr.sort((a, b) => b.wishlistCount - a.wishlistCount);
+        setStats(prev => ({ ...prev, topProducts: productsArr.slice(0, 5) }));
+      });
     });
 
-    // Orders subscription
+    // Enhanced Orders subscription with detailed status tracking
     const unsubOrders = onSnapshot(collection(db, 'orders'), (snap) => {
       let sales = 0;
       let orderTrends = [];
       let recentOrders = [];
+      
+      // Status counters with new flow
       let pendingOrders = 0;
       let completedOrders = 0;
+      let processingOrders = 0;
+      let checkedInOrders = 0;
+      let inTransitOrders = 0;
+      let deliveredOrders = 0;
+      let cancelledOrders = 0;
+      
       const newDeliveryDetails = {};
       const newDeliveredOrders = {};
       
@@ -70,11 +114,37 @@ export const useDashboardData = () => {
         const orderAmount = data?.orderDetails?.totalAmount || 0;
         sales += orderAmount;
         
-        // Count order statuses
-        if (data.paymentStatus === 'COMPLETED') {
+        // Enhanced status counting based on new flow
+        const orderStatus = (data.status || 'PENDING').toUpperCase();
+        const paymentStatus = (data.paymentStatus || 'PENDING').toUpperCase();
+        
+        switch (orderStatus) {
+          case 'PENDING':
+            pendingOrders++;
+            break;
+          case 'PROCESSING':
+          case 'CONFIRMED':
+            processingOrders++;
+            break;
+          case 'CHECKED_IN':
+            checkedInOrders++;
+            break;
+          case 'IN_TRANSIT':
+            inTransitOrders++;
+            break;
+          case 'DELIVERED':
+            deliveredOrders++;
+            break;
+          case 'CANCELLED':
+            cancelledOrders++;
+            break;
+          default:
+            pendingOrders++;
+        }
+        
+        // Count completed orders (paid orders)
+        if (paymentStatus === 'COMPLETED' || paymentStatus === 'SUCCESS') {
           completedOrders++;
-        } else {
-          pendingOrders++;
         }
         
         const orderDate = getOrderDate(data);
@@ -105,7 +175,7 @@ export const useDashboardData = () => {
           newDeliveryDetails[doc.id] = data.deliveryDetails;
         }
         
-        if (data.deliveryStatus === 'DELIVERED') {
+        if (data.deliveryStatus === 'DELIVERED' || data.status === 'DELIVERED') {
           newDeliveredOrders[doc.id] = true;
         }
       });
@@ -118,73 +188,38 @@ export const useDashboardData = () => {
         orders: snap.size,
         sales,
         orderTrends: orderTrends.slice(-10), // Last 10 days
-        recentOrders: recentOrders.slice(0, 10), // Top 10 recent orders
+        recentOrders: recentOrders.slice(0, 20), // Top 20 recent orders for dashboard
         pendingOrders,
         completedOrders,
+        processingOrders,
+        checkedInOrders,
+        inTransitOrders,
+        deliveredOrders,
+        cancelledOrders,
         monthlyGrowth: orderTrends.length > 1 ? 
           ((orderTrends[orderTrends.length - 1]?.amount || 0) - (orderTrends[0]?.amount || 0)) / (orderTrends[0]?.amount || 1) * 100 : 0
       }));
+      
       setDeliveryDetailsMap(newDeliveryDetails);
       setDeliveredOrders(newDeliveredOrders);
       setLoading(false);
     });
 
-    // Fetch top products
-    const fetchTopProducts = async () => {
-      try {
-        const wishlistSnap = await getDocs(collection(db, 'wishlist'));
-        const productCounts = {};
-        wishlistSnap.forEach((doc) => {
-          const pid = doc.data().productId;
-          productCounts[pid] = (productCounts[pid] || 0) + 1;
-        });
-
-        const productsSnap = await getDocs(collection(db, 'products'));
-        const productsArr = [];
-        productsSnap.forEach((doc) => {
-          const data = doc.data();
-          productsArr.push({
-            id: doc.id,
-            ...data,
-            wishlistCount: productCounts[data.id] || 0,
-          });
-        });
-        productsArr.sort((a, b) => b.wishlistCount - a.wishlistCount);
-        setStats(prev => ({ ...prev, topProducts: productsArr.slice(0, 5) }));
-      } catch (error) {
-        console.error('Error fetching top products:', error);
-      }
-    };
-
-    // Fetch lookup data
-    const fetchLookups = async () => {
-      try {
-        const usersSnap = await getDocs(collection(db, 'users'));
-        const users = {};
-        usersSnap.forEach(doc => {
-          users[doc.id] = doc.data().name || doc.data().email || doc.id;
-        });
-        setUserMap(users);
-
-        const productsSnap = await getDocs(collection(db, 'products'));
-        const products = {};
-        productsSnap.forEach(doc => {
-          products[doc.id] = doc.data().name || doc.id;
-        });
-        setProductMap(products);
-      } catch (error) {
-        console.error('Error fetching lookup data:', error);
-      }
-    };
-
-    fetchTopProducts();
-    fetchLookups();
+    // Users lookup for order display
+    const unsubUsersLookup = onSnapshot(collection(db, 'users'), (snap) => {
+      const users = {};
+      snap.forEach(doc => {
+        users[doc.id] = doc.data().name || doc.data().email || doc.id;
+      });
+      setUserMap(users);
+    });
 
     return () => {
       unsubUsers();
       unsubProducts();
       unsubWishlist();
       unsubOrders();
+      unsubUsersLookup();
     };
   }, []);
 

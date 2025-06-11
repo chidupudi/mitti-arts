@@ -1,10 +1,10 @@
-// Updated useOrderManagement.js with independent check-in system for dashboard
+// Updated useOrderManagement.js with proper order status flow
 import { useState } from 'react';
 import { db } from '../Firebase/Firebase';
 import { doc, updateDoc, getDoc, increment, writeBatch, Timestamp, serverTimestamp } from 'firebase/firestore';
 
 export const useOrderManagement = () => {
-  // FIXED: Independent check-in statuses (not tied to payment status)
+  // Independent check-in statuses
   const [checkInStatuses, setCheckInStatuses] = useState({});
   const [expandedOrder, setExpandedOrder] = useState(null);
   const [dateFilter, setDateFilter] = useState(null);
@@ -17,21 +17,45 @@ export const useOrderManagement = () => {
     severity: 'success'
   });
 
-  // FIXED: Handle check-in toggle (completely independent of payment status)
+  // Get the next status based on current status and action
+  const getNextStatus = (currentStatus, action) => {
+    const statusFlow = {
+      'PENDING': { checkIn: 'CHECKED_IN' },
+      'PROCESSING': { checkIn: 'CHECKED_IN' },
+      'CHECKED_IN': { addDelivery: 'IN_TRANSIT', uncheck: 'PROCESSING' },
+      'IN_TRANSIT': { deliver: 'DELIVERED' },
+      'DELIVERED': { /* final state */ }
+    };
+
+    return statusFlow[currentStatus]?.[action] || currentStatus;
+  };
+
+  // Handle check-in toggle with proper status flow
   const handleCheckInToggle = async (orderId) => {
     try {
       const currentCheckInStatus = checkInStatuses[orderId] || false;
       const newCheckInStatus = !currentCheckInStatus;
       
       const orderRef = doc(db, 'orders', orderId);
-      
-      // Get order data before update
       const orderDoc = await getDoc(orderRef);
       const orderData = orderDoc.data();
       
-      // Update only the admin check-in field (independent of payment status)
+      let newStatus = orderData.status || 'PROCESSING';
+      
+      // Determine new status based on check-in action
+      if (newCheckInStatus) {
+        // Checking in - move to CHECKED_IN
+        newStatus = getNextStatus(newStatus, 'checkIn');
+      } else {
+        // Unchecking - move back to PROCESSING (only if currently CHECKED_IN)
+        if (newStatus === 'CHECKED_IN') {
+          newStatus = getNextStatus(newStatus, 'uncheck');
+        }
+      }
+      
       await updateDoc(orderRef, {
         adminCheckIn: newCheckInStatus,
+        status: newStatus, // Update order status
         adminCheckInDate: newCheckInStatus ? serverTimestamp() : null,
         updatedAt: serverTimestamp()
       });
@@ -44,7 +68,7 @@ export const useOrderManagement = () => {
       
       setSnackbar({
         open: true,
-        message: `Order ${newCheckInStatus ? 'checked in' : 'unchecked'} successfully`,
+        message: `Order ${newCheckInStatus ? 'checked in' : 'unchecked'} successfully - Status: ${newStatus}`,
         severity: 'success'
       });
     } catch (error) {
@@ -57,70 +81,104 @@ export const useOrderManagement = () => {
     }
   };
 
-  // Function to deduct stock when payment is confirmed
-  const deductStockForOrder = async (orderData) => {
-    const batch = writeBatch(db);
-    let hasUpdates = false;
-
-    // Get items from order
-    let items = [];
-    if (orderData.orderDetails?.items && orderData.orderDetails.items.length > 0) {
-      items = orderData.orderDetails.items;
-    } else if (orderData.orderDetails?.cartData?.items && orderData.orderDetails.cartData.items.length > 0) {
-      items = orderData.orderDetails.cartData.items;
-    } else if (orderData.items && orderData.items.length > 0) {
-      items = orderData.items;
-    }
-
-    for (const item of items) {
-      const productId = item.id || item.productId;
+  // Save delivery details and update status to IN_TRANSIT
+  const handleSaveDeliveryDetails = async (orderId, details) => {
+    try {
+      const orderRef = doc(db, 'orders', orderId);
+      const orderDoc = await getDoc(orderRef);
+      const orderData = orderDoc.data();
       
-      if (!productId) {
-        console.warn('Product ID not found for item:', item);
-        continue;
+      // Only allow adding delivery details if order is CHECKED_IN
+      if (orderData.status !== 'CHECKED_IN') {
+        setSnackbar({
+          open: true,
+          message: 'Order must be checked in before adding delivery details',
+          severity: 'warning'
+        });
+        return;
       }
       
-      const productRef = doc(db, 'products', productId);
-      const productSnap = await getDoc(productRef);
-      
-      if (!productSnap.exists()) {
-        console.warn(`Product ${productId} not found in database`);
-        continue;
-      }
-
-      const currentStock = productSnap.data().stock || 0;
-      
-      // Check if we have enough stock
-      if (currentStock < item.quantity) {
-        throw new Error(`Insufficient stock for ${item.name}. Available: ${currentStock}, Required: ${item.quantity}`);
-      }
-      
-      batch.update(productRef, {
-        stock: increment(-item.quantity),
-        updatedAt: Timestamp.now()
+      await updateDoc(orderRef, {
+        deliveryDetails: details,
+        status: 'IN_TRANSIT', // Update status to IN_TRANSIT
+        deliveryStatus: 'DISPATCHED',
+        dispatchedAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
       });
       
-      hasUpdates = true;
-    }
-
-    if (hasUpdates) {
-      await batch.commit();
-      console.log('Stock deducted for order items');
+      setSnackbar({
+        open: true,
+        message: 'Delivery details updated successfully - Status: IN_TRANSIT',
+        severity: 'success'
+      });
+    } catch (error) {
+      console.error('Error saving delivery details:', error);
+      setSnackbar({
+        open: true,
+        message: 'Error saving delivery details',
+        severity: 'error'
+      });
     }
   };
 
-  // Function to restore stock when order is cancelled or payment fails
+  // Mark order as delivered - final status
+  const handleMarkDelivered = async (orderId) => {
+    if (processingOrder === orderId) return;
+    
+    try {
+      setProcessingOrder(orderId);
+      
+      const orderRef = doc(db, 'orders', orderId);
+      const orderDoc = await getDoc(orderRef);
+      const orderData = orderDoc.data();
+      
+      // Only allow delivery if order is IN_TRANSIT
+      if (orderData.status !== 'IN_TRANSIT') {
+        setSnackbar({
+          open: true,
+          message: 'Order must be in transit before marking as delivered',
+          severity: 'warning'
+        });
+        return;
+      }
+      
+      await updateDoc(orderRef, {
+        status: 'DELIVERED', // Final status
+        deliveryStatus: 'DELIVERED',
+        deliveredAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+      
+      setSnackbar({
+        open: true,
+        message: 'Order marked as delivered successfully',
+        severity: 'success'
+      });
+      
+    } catch (error) {
+      console.error('Error marking order as delivered:', error);
+      setSnackbar({
+        open: true,
+        message: `Error: ${error.message || 'Failed to mark as delivered'}`,
+        severity: 'error'
+      });
+    } finally {
+      setProcessingOrder(null);
+    }
+  };
+
+  // Function to restore stock when order is cancelled
   const restoreStockForOrder = async (orderData) => {
     const batch = writeBatch(db);
     let hasUpdates = false;
 
     // Get items from order
     let items = [];
-    if (orderData.orderDetails?.items && orderData.orderDetails.items.length > 0) {
+    if (orderData.orderDetails?.items?.length > 0) {
       items = orderData.orderDetails.items;
-    } else if (orderData.orderDetails?.cartData?.items && orderData.orderDetails.cartData.items.length > 0) {
+    } else if (orderData.orderDetails?.cartData?.items?.length > 0) {
       items = orderData.orderDetails.cartData.items;
-    } else if (orderData.items && orderData.items.length > 0) {
+    } else if (orderData.items?.length > 0) {
       items = orderData.items;
     }
 
@@ -141,8 +199,8 @@ export const useOrderManagement = () => {
       }
       
       batch.update(productRef, {
-        stock: increment(item.quantity), // Add back to stock
-        updatedAt: Timestamp.now()
+        stock: increment(item.quantity),
+        updatedAt: serverTimestamp()
       });
       
       hasUpdates = true;
@@ -177,10 +235,11 @@ export const useOrderManagement = () => {
       await updateDoc(orderRef, {
         status: 'CANCELLED',
         paymentStatus: 'CANCELLED',
-        adminCheckIn: false, // Reset check-in status when cancelled
-        cancelledAt: Timestamp.now(),
+        deliveryStatus: 'CANCELLED',
+        adminCheckIn: false,
+        cancelledAt: serverTimestamp(),
         cancelledBy: 'admin',
-        updatedAt: Timestamp.now()
+        updatedAt: serverTimestamp()
       });
 
       // Update local check-in status
@@ -207,77 +266,13 @@ export const useOrderManagement = () => {
     }
   };
 
-  // Save delivery details
-  const handleSaveDeliveryDetails = async (orderId, details) => {
-    try {
-      const orderRef = doc(db, 'orders', orderId);
-      await updateDoc(orderRef, {
-        deliveryDetails: details,
-        deliveryStatus: 'DISPATCHED', // Set status when delivery details are added
-        dispatchedAt: Timestamp.now(),
-        updatedAt: Timestamp.now()
-      });
-      setSnackbar({
-        open: true,
-        message: 'Delivery details updated successfully',
-        severity: 'success'
-      });
-    } catch (error) {
-      console.error('Error saving delivery details:', error);
-      setSnackbar({
-        open: true,
-        message: 'Error saving delivery details',
-        severity: 'error'
-      });
-    }
-  };
-
-  // Mark order as delivered (no stock changes here since already deducted)
-  const handleMarkDelivered = async (orderId) => {
-    if (processingOrder === orderId) return;
-    
-    try {
-      setProcessingOrder(orderId);
-      
-      const orderRef = doc(db, 'orders', orderId);
-      const orderSnap = await getDoc(orderRef);
-      
-      if (!orderSnap.exists()) {
-        throw new Error('Order not found');
-      }
-      
-      await updateDoc(orderRef, {
-        deliveryStatus: 'DELIVERED',
-        status: 'COMPLETED', // Mark overall order as completed
-        deliveredAt: Timestamp.now(),
-        updatedAt: Timestamp.now()
-      });
-      
-      setSnackbar({
-        open: true,
-        message: 'Order marked as delivered successfully',
-        severity: 'success'
-      });
-      
-    } catch (error) {
-      console.error('Error marking order as delivered:', error);
-      setSnackbar({
-        open: true,
-        message: `Error: ${error.message || 'Failed to mark as delivered'}`,
-        severity: 'error'
-      });
-    } finally {
-      setProcessingOrder(null);
-    }
-  };
-
   // Close snackbar
   const handleCloseSnackbar = () => {
     setSnackbar(prev => ({ ...prev, open: false }));
   };
 
   return {
-    checkInStatuses, // FIXED: Now independent check-in statuses
+    checkInStatuses,
     setCheckInStatuses,
     expandedOrder,
     setExpandedOrder,
@@ -289,7 +284,7 @@ export const useOrderManagement = () => {
     setSelectedOrderForDelivery,
     processingOrder,
     snackbar,
-    handleCheckInToggle, // FIXED: Now independent check-in toggle
+    handleCheckInToggle,
     handleSaveDeliveryDetails,
     handleMarkDelivered,
     handleCancelOrder,

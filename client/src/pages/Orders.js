@@ -22,7 +22,9 @@ import {
   Statistic,
   List,
   Rate,
-  notification
+  notification,
+  Alert,
+  Result
 } from 'antd';
 import {
   ShoppingCartOutlined,
@@ -40,10 +42,14 @@ import {
   CalendarOutlined,
   ShopOutlined,
   HeartOutlined,
-  ShareAltOutlined
+  ShareAltOutlined,
+  HourglassOutlined,
+  ArrowRightOutlined,
+  CarOutlined,
+  ExclamationCircleOutlined
 } from '@ant-design/icons';
 import { auth, db } from '../Firebase/Firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, getDocs } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 
@@ -53,23 +59,22 @@ const { Step } = Steps;
 
 // Terracotta Theme Colors
 const terracottaTheme = {
-  primary: '#D2691E',      // Terracotta
-  secondary: '#CD853F',    // Peru
-  accent: '#F4A460',       // Sandy Brown
-  dark: '#A0522D',         // Sienna
-  light: '#FFEEE6',        // Very light terracotta
-  success: '#6B7821',      // Olive green
-  warning: '#FF8F00',      // Amber
-  error: '#C62828',        // Red
+  primary: '#D2691E',
+  secondary: '#CD853F',
+  accent: '#F4A460',
+  dark: '#A0522D',
+  light: '#FFEEE6',
+  success: '#6B7821',
+  warning: '#FF8F00',
+  error: '#C62828',
   text: {
-    primary: '#3D405B',    // Dark blue-grey
-    secondary: '#797B8E'   // Medium blue-grey
+    primary: '#3D405B',
+    secondary: '#797B8E'
   }
 };
 
 // Inline CSS Styles with Terracotta Theme
 const styles = {
-  // Main container styles
   pageContainer: {
     minHeight: '100vh',
     background: `linear-gradient(135deg, ${terracottaTheme.primary} 0%, ${terracottaTheme.secondary} 50%, ${terracottaTheme.accent} 100%)`,
@@ -82,7 +87,6 @@ const styles = {
     padding: '0 20px'
   },
 
-  // Card styles
   headerCard: {
     borderRadius: '20px',
     marginBottom: '24px',
@@ -109,24 +113,6 @@ const styles = {
     borderColor: terracottaTheme.primary
   },
 
-  productItemCard: {
-    marginBottom: '12px',
-    borderRadius: '12px',
-    border: `1px solid ${terracottaTheme.light}`,
-    boxShadow: `0 2px 8px rgba(210, 105, 30, 0.08)`,
-    transition: 'all 0.2s ease',
-    background: 'rgba(255, 255, 255, 0.9)'
-  },
-
-  glassCard: {
-    background: 'rgba(255, 255, 255, 0.25)',
-    backdropFilter: 'blur(20px)',
-    border: `1px solid rgba(210, 105, 30, 0.18)`,
-    boxShadow: `0 8px 32px rgba(210, 105, 30, 0.2)`,
-    borderRadius: '12px'
-  },
-
-  // Button styles
   primaryButton: {
     background: `linear-gradient(135deg, ${terracottaTheme.primary} 0%, ${terracottaTheme.accent} 100%)`,
     border: 'none',
@@ -136,12 +122,6 @@ const styles = {
     color: 'white'
   },
 
-  primaryButtonHover: {
-    background: `linear-gradient(135deg, ${terracottaTheme.dark} 0%, ${terracottaTheme.primary} 100%)`,
-    boxShadow: `0 6px 20px rgba(210, 105, 30, 0.4)`,
-    transform: 'translateY(-2px)'
-  },
-
   secondaryButton: {
     borderColor: terracottaTheme.primary,
     color: terracottaTheme.primary,
@@ -149,7 +129,6 @@ const styles = {
     transition: 'all 0.3s ease'
   },
 
-  // Text styles
   gradientText: {
     background: `linear-gradient(135deg, ${terracottaTheme.primary} 0%, ${terracottaTheme.secondary} 100%)`,
     WebkitBackgroundClip: 'text',
@@ -158,12 +137,11 @@ const styles = {
     fontWeight: 600
   },
 
-  // Loading styles
   loadingContainer: {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    height: '80vh',
+    height: '100vh',
     background: `linear-gradient(135deg, ${terracottaTheme.primary} 0%, ${terracottaTheme.secondary} 100%)`
   },
 
@@ -177,7 +155,6 @@ const styles = {
     boxShadow: `0 8px 32px rgba(210, 105, 30, 0.15)`
   },
 
-  // Empty state styles
   emptyStateCard: {
     borderRadius: '20px',
     textAlign: 'center',
@@ -187,21 +164,19 @@ const styles = {
     border: 'none'
   },
 
-  // Modal styles
+  errorCard: {
+    borderRadius: '20px',
+    background: 'rgba(255,255,255,0.95)',
+    backdropFilter: 'blur(10px)',
+    border: `2px solid ${terracottaTheme.error}`,
+    boxShadow: `0 8px 32px rgba(198, 40, 40, 0.15)`
+  },
+
   modalHeader: {
     background: `linear-gradient(135deg, ${terracottaTheme.primary} 0%, ${terracottaTheme.secondary} 100%)`,
     borderRadius: '8px 8px 0 0'
   },
 
-  // Item preview styles
-  itemPreviewCard: {
-    marginBottom: '16px',
-    borderRadius: '12px',
-    backgroundColor: terracottaTheme.light,
-    border: `1px solid ${terracottaTheme.accent}`
-  },
-
-  // Quick actions styles
   quickActionButton: {
     borderRadius: '8px',
     fontSize: '12px',
@@ -210,55 +185,69 @@ const styles = {
     color: terracottaTheme.primary
   },
 
-  // Status badge styles
   statusBadge: {
     borderRadius: '16px',
     fontWeight: 500,
     padding: '4px 12px',
     border: 'none',
     boxShadow: `0 2px 4px rgba(210, 105, 30, 0.15)`
-  },
-
-  // Terracotta themed status colors
-  statusColors: {
-    delivered: terracottaTheme.success,
-    shipped: terracottaTheme.primary,
-    processing: terracottaTheme.warning,
-    ordered: terracottaTheme.secondary
   }
 };
 
-// Enhanced Order Status Component with Terracotta Theme
+// Order Status Component
 const OrderStatusBadge = ({ status, paymentStatus }) => {
   const getStatusConfig = () => {
-    if (status === 'Delivered') {
-      return { 
-        color: styles.statusColors.delivered, 
-        text: 'Delivered', 
-        icon: <CheckCircleOutlined />,
-        bgColor: 'rgba(107, 120, 33, 0.1)'
-      };
-    } else if (status === 'Shipped') {
-      return { 
-        color: styles.statusColors.shipped, 
-        text: 'In Transit', 
-        icon: <TruckOutlined />,
-        bgColor: 'rgba(210, 105, 30, 0.1)'
-      };
-    } else if (status === 'Processing') {
-      return { 
-        color: styles.statusColors.processing, 
-        text: 'Processing', 
-        icon: <ClockCircleOutlined />,
-        bgColor: 'rgba(255, 143, 0, 0.1)'
-      };
-    } else {
-      return { 
-        color: styles.statusColors.ordered, 
-        text: 'Confirmed', 
-        icon: <ShoppingCartOutlined />,
-        bgColor: 'rgba(205, 133, 63, 0.1)'
-      };
+    switch (status?.toUpperCase()) {
+      case 'DELIVERED':
+        return { 
+          color: terracottaTheme.success, 
+          text: 'Delivered', 
+          icon: <CheckCircleOutlined />,
+          bgColor: 'rgba(107, 120, 33, 0.1)'
+        };
+      case 'IN_TRANSIT':
+        return { 
+          color: terracottaTheme.primary, 
+          text: 'In Transit', 
+          icon: <CarOutlined />,
+          bgColor: 'rgba(210, 105, 30, 0.1)'
+        };
+      case 'CHECKED_IN':
+        return { 
+          color: '#7B1FA2', 
+          text: 'Checked In', 
+          icon: <ArrowRightOutlined />,
+          bgColor: 'rgba(123, 31, 162, 0.1)'
+        };
+      case 'PROCESSING':
+      case 'CONFIRMED':
+        return { 
+          color: terracottaTheme.warning, 
+          text: 'Processing', 
+          icon: <HourglassOutlined />,
+          bgColor: 'rgba(255, 143, 0, 0.1)'
+        };
+      case 'PENDING':
+        return { 
+          color: terracottaTheme.secondary, 
+          text: 'Pending', 
+          icon: <ClockCircleOutlined />,
+          bgColor: 'rgba(205, 133, 63, 0.1)'
+        };
+      case 'CANCELLED':
+        return { 
+          color: terracottaTheme.error, 
+          text: 'Cancelled', 
+          icon: <ClockCircleOutlined />,
+          bgColor: 'rgba(198, 40, 40, 0.1)'
+        };
+      default:
+        return { 
+          color: terracottaTheme.secondary, 
+          text: 'Confirmed', 
+          icon: <ShoppingCartOutlined />,
+          bgColor: 'rgba(205, 133, 63, 0.1)'
+        };
     }
   };
 
@@ -296,13 +285,15 @@ const OrderStatusBadge = ({ status, paymentStatus }) => {
   );
 };
 
-// Order Progress Tracker with Terracotta Theme
-const OrderProgress = ({ status, orderDate, deliveryDate }) => {
+// Order Progress Tracker
+const OrderProgress = ({ status, orderDate, deliveryDate, deliveredAt }) => {
   const getActiveStep = () => {
-    switch (status) {
-      case 'Delivered': return 3;
-      case 'Shipped': return 2;
-      case 'Processing': return 1;
+    switch (status?.toUpperCase()) {
+      case 'DELIVERED': return 4;
+      case 'IN_TRANSIT': return 3;
+      case 'CHECKED_IN': return 2;
+      case 'PROCESSING':
+      case 'CONFIRMED': return 1;
       default: return 0;
     }
   };
@@ -315,17 +306,24 @@ const OrderProgress = ({ status, orderDate, deliveryDate }) => {
     },
     {
       title: 'Processing',
-      description: 'Preparing your order',
-      icon: <ClockCircleOutlined />
+      description: 'Order is being prepared',
+      icon: <HourglassOutlined />
     },
     {
-      title: 'Shipped',
+      title: 'Checked In',
+      description: 'Order verified by admin',
+      icon: <ArrowRightOutlined />
+    },
+    {
+      title: 'In Transit',
       description: 'On the way to you',
       icon: <TruckOutlined />
     },
     {
       title: 'Delivered',
-      description: status === 'Delivered' ? 'Successfully delivered' : `Expected ${new Date(deliveryDate).toLocaleDateString()}`,
+      description: status === 'DELIVERED' 
+        ? `Delivered on ${deliveredAt ? new Date(deliveredAt.seconds * 1000).toLocaleDateString() : 'Recently'}` 
+        : `Expected ${new Date(deliveryDate).toLocaleDateString()}`,
       icon: <CheckCircleOutlined />
     }
   ];
@@ -336,203 +334,13 @@ const OrderProgress = ({ status, orderDate, deliveryDate }) => {
         current={getActiveStep()}
         size="small"
         items={steps}
-        style={{
-          '& .ant-steps-item-finish .ant-steps-item-icon': {
-            backgroundColor: terracottaTheme.success,
-            borderColor: terracottaTheme.success
-          },
-          '& .ant-steps-item-process .ant-steps-item-icon': {
-            backgroundColor: terracottaTheme.primary,
-            borderColor: terracottaTheme.primary
-          },
-          '& .ant-steps-item-wait .ant-steps-item-icon': {
-            backgroundColor: '#f5f5f5',
-            borderColor: '#d9d9d9'
-          }
-        }}
       />
     </div>
   );
 };
 
-// Enhanced Product Item Card with Terracotta Theme
-const ProductItemCard = ({ item, index }) => {
-  const [isHovered, setIsHovered] = useState(false);
-
-  return (
-    <Card 
-      size="small" 
-      style={{
-        ...styles.productItemCard,
-        ...(isHovered ? { 
-          background: 'rgba(255, 255, 255, 1)',
-          transform: 'translateX(4px)',
-          boxShadow: `0 4px 16px rgba(210, 105, 30, 0.15)`,
-          borderColor: terracottaTheme.primary
-        } : {})
-      }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      <Row align="middle" gutter={16}>
-        <Col>
-          <Avatar
-            src={item.image}
-            size={64}
-            shape="square"
-            style={{ 
-              borderRadius: '8px',
-              border: `2px solid ${terracottaTheme.light}`
-            }}
-            icon={<GiftOutlined />}
-          />
-        </Col>
-        <Col flex="auto">
-          <Space direction="vertical" size={2}>
-            <Text strong style={{ fontSize: '15px', color: terracottaTheme.text.primary }}>
-              {item.name}
-            </Text>
-            <Space>
-              <Tag 
-                color={terracottaTheme.primary}
-                style={{
-                  ...styles.statusBadge,
-                  backgroundColor: 'rgba(210, 105, 30, 0.1)',
-                  color: terracottaTheme.primary
-                }}
-              >
-                Qty: {item.quantity}
-              </Tag>
-              <Text type="secondary">₹{item.price?.toFixed(2)}</Text>
-            </Space>
-            <Rate 
-              disabled 
-              defaultValue={4.5} 
-              size="small"
-              style={{ color: terracottaTheme.warning }}
-            />
-          </Space>
-        </Col>
-        <Col>
-          <Statistic
-            value={item.price * item.quantity}
-            precision={2}
-            prefix="₹"
-            valueStyle={{ 
-              color: terracottaTheme.success, 
-              fontWeight: 'bold',
-              letterSpacing: '-0.5px'
-            }}
-          />
-        </Col>
-      </Row>
-    </Card>
-  );
-};
-
-// Order Summary Card with Terracotta Theme
-const OrderSummaryCard = ({ order }) => (
-  <Card 
-    title={
-      <Space>
-        <DollarOutlined style={{ color: terracottaTheme.success }} />
-        <span style={{ color: terracottaTheme.text.primary }}>Order Summary</span>
-      </Space>
-    }
-    size="small"
-    style={{ 
-      borderRadius: '12px',
-      border: `1px solid ${terracottaTheme.light}`
-    }}
-  >
-    <Space direction="vertical" style={{ width: '100%' }}>
-      <Row justify="space-between">
-        <Text>Subtotal</Text>
-        <Text>₹{order.orderDetails?.subtotal?.toFixed(2) || '0.00'}</Text>
-      </Row>
-      <Row justify="space-between">
-        <Text>Shipping</Text>
-        <Text>₹{order.orderDetails?.shippingCost?.toFixed(2) || '0.00'}</Text>
-      </Row>
-      {order.orderDetails?.discount > 0 && (
-        <Row justify="space-between">
-          <Text style={{ color: terracottaTheme.success }}>Discount</Text>
-          <Text style={{ color: terracottaTheme.success }}>
-            -₹{order.orderDetails?.discount?.toFixed(2)}
-          </Text>
-        </Row>
-      )}
-      <Divider style={{ margin: '8px 0' }} />
-      <Row justify="space-between">
-        <Text strong style={{ fontSize: '16px' }}>Total</Text>
-        <Text strong style={{ fontSize: '16px', color: terracottaTheme.success }}>
-          ₹{order.orderDetails?.totalAmount?.toFixed(2) || '0.00'}
-        </Text>
-      </Row>
-    </Space>
-  </Card>
-);
-
-// Delivery Tracking Card with Terracotta Theme
-const DeliveryTrackingCard = ({ order, onTrack }) => (
-  <Card
-    title={
-      <Space>
-        <TruckOutlined style={{ color: terracottaTheme.primary }} />
-        <span style={{ color: terracottaTheme.text.primary }}>Delivery Tracking</span>
-      </Space>
-    }
-    size="small"
-    extra={
-      order.deliveryDetails?.consignmentNumber && (
-        <Button 
-          type="primary" 
-          size="small" 
-          onClick={() => onTrack(order.deliveryDetails)}
-          style={styles.primaryButton}
-        >
-          Track Package
-        </Button>
-      )
-    }
-    style={{ 
-      borderRadius: '12px',
-      border: `1px solid ${terracottaTheme.light}`
-    }}
-  >
-    <Space direction="vertical" style={{ width: '100%' }}>
-      <Row justify="space-between">
-        <Text type="secondary">Courier</Text>
-        <Text strong>{order.deliveryDetails?.company || 'Not assigned'}</Text>
-      </Row>
-      <Row justify="space-between">
-        <Text type="secondary">Tracking Number</Text>
-        <Text 
-          code
-          style={{ 
-            backgroundColor: terracottaTheme.light,
-            color: terracottaTheme.primary 
-          }}
-        >
-          {order.deliveryDetails?.consignmentNumber || 'Not generated'}
-        </Text>
-      </Row>
-      <Row justify="space-between">
-        <Text type="secondary">Expected Delivery</Text>
-        <Text>{new Date(order.deliveryDate).toLocaleDateString()}</Text>
-      </Row>
-      {order.deliveryDetails?.remarks && (
-        <>
-          <Divider style={{ margin: '8px 0' }} />
-          <Text type="secondary" italic>{order.deliveryDetails.remarks}</Text>
-        </>
-      )}
-    </Space>
-  </Card>
-);
-
-// Main Order Card Component with Terracotta Theme
-const OrderCard = ({ order, onViewDetails, onTrack }) => {
+// Order Card Component
+const OrderCard = ({ order, onTrack }) => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
@@ -545,8 +353,6 @@ const OrderCard = ({ order, onViewDetails, onTrack }) => {
   };
 
   const orderItems = order.orderDetails?.items || [];
-  const displayItems = orderItems.slice(0, 2);
-  const remainingItems = orderItems.length - 2;
 
   return (
     <>
@@ -603,62 +409,20 @@ const OrderCard = ({ order, onViewDetails, onTrack }) => {
                 >
                   View Details
                 </Button>
-                <Tooltip title="Reorder items">
-                  <Button 
-                    icon={<ReloadOutlined />} 
-                    style={styles.secondaryButton}
-                  />
-                </Tooltip>
               </Space>
             </Space>
           </Col>
         </Row>
-
-        {/* Quick Order Items Preview */}
-        <Card 
-          size="small" 
-          title={
-            <span style={{ color: terracottaTheme.text.primary }}>Order Items</span>
-          }
-          style={styles.itemPreviewCard}
-        >
-          {displayItems.map((item, index) => (
-            <Row key={index} align="middle" style={{ marginBottom: '8px' }}>
-              <Col span={2}>
-                <Avatar 
-                  src={item.image} 
-                  size="small" 
-                  icon={<GiftOutlined />}
-                  style={{ border: `1px solid ${terracottaTheme.light}` }}
-                />
-              </Col>
-              <Col span={16}>
-                <Text style={{ fontSize: '14px', color: terracottaTheme.text.primary }}>
-                  {item.quantity}× {item.name}
-                </Text>
-              </Col>
-              <Col span={6} style={{ textAlign: 'right' }}>
-                <Text strong style={{ color: terracottaTheme.success }}>
-                  ₹{(item.price * item.quantity).toFixed(2)}
-                </Text>
-              </Col>
-            </Row>
-          ))}
-          {remainingItems > 0 && (
-            <Text type="secondary" style={{ fontStyle: 'italic' }}>
-              +{remainingItems} more items
-            </Text>
-          )}
-        </Card>
 
         {/* Order Progress */}
         <OrderProgress 
           status={order.status} 
           orderDate={order.orderDate}
           deliveryDate={order.deliveryDate}
+          deliveredAt={order.deliveredAt}
         />
 
-        {/* Quick Actions - Removed Invoice and Review */}
+        {/* Quick Actions */}
         <Row gutter={8} style={{ marginTop: '16px' }}>
           <Col span={12}>
             <Button 
@@ -707,138 +471,158 @@ const OrderCard = ({ order, onViewDetails, onTrack }) => {
         footer={[
           <Button key="close" onClick={handleModalClose}>
             Close
-          </Button>,
-          <Button 
-            key="reorder" 
-            type="primary" 
-            icon={<ReloadOutlined />}
-            style={styles.primaryButton}
-          >
-            Reorder Items
           </Button>
         ]}
-        width={800}
+        width={600}
         style={{ top: 20 }}
         styles={{
           header: styles.modalHeader
         }}
       >
-        <Row gutter={16}>
-          <Col span={14}>
-            <Space direction="vertical" style={{ width: '100%' }} size="middle">
-              {/* All Order Items */}
-              <Card 
-                title={<span style={{ color: terracottaTheme.text.primary }}>Order Items</span>}
-                size="small" 
-                style={{ 
-                  borderRadius: '12px',
-                  border: `1px solid ${terracottaTheme.light}`
-                }}
-              >
-                {orderItems.map((item, index) => (
-                  <ProductItemCard key={index} item={item} index={index} />
-                ))}
-              </Card>
+        <div style={{ padding: '20px 0' }}>
+          <Space direction="vertical" style={{ width: '100%' }} size="large">
+            <div>
+              <Title level={5}>Order Status</Title>
+              <OrderStatusBadge status={order.status} paymentStatus={order.paymentStatus} />
+            </div>
+            
+            <div>
+              <Title level={5}>Order Items</Title>
+              {orderItems.length > 0 ? (
+                orderItems.map((item, index) => (
+                  <div key={index} style={{ marginBottom: '8px', padding: '8px', border: '1px solid #f0f0f0', borderRadius: '4px' }}>
+                    <Text strong>{item.name}</Text> - Qty: {item.quantity} - ₹{(item.price * item.quantity).toFixed(2)}
+                  </div>
+                ))
+              ) : (
+                <Text type="secondary">No items found</Text>
+              )}
+            </div>
 
-              {/* Delivery Address */}
-              <Card 
-                title={
-                  <Space>
-                    <EnvironmentOutlined style={{ color: terracottaTheme.primary }} />
-                    <span style={{ color: terracottaTheme.text.primary }}>Delivery Address</span>
-                  </Space>
-                }
-                size="small"
-                style={{ 
-                  borderRadius: '12px',
-                  border: `1px solid ${terracottaTheme.light}`
-                }}
-              >
-                <Paragraph>
-                  <Text strong style={{ color: terracottaTheme.text.primary }}>
-                    {order.orderDetails?.personalInfo?.fullName}
-                  </Text><br />
-                  {order.orderDetails?.deliveryAddress?.addressLine1}<br />
-                  {order.orderDetails?.deliveryAddress?.addressLine2 && (
-                    <>{order.orderDetails.deliveryAddress.addressLine2}<br /></>
-                  )}
-                  {order.orderDetails?.deliveryAddress?.city}, {order.orderDetails?.deliveryAddress?.state}<br />
-                  PIN: {order.orderDetails?.deliveryAddress?.pincode}<br />
-                  <PhoneOutlined style={{ color: terracottaTheme.primary }} /> {order.orderDetails?.personalInfo?.phone}
-                </Paragraph>
-              </Card>
-            </Space>
-          </Col>
-
-          <Col span={10}>
-            <Space direction="vertical" style={{ width: '100%' }} size="middle">
-              {/* Order Summary */}
-              <OrderSummaryCard order={order} />
-
-              {/* Delivery Tracking */}
-              <DeliveryTrackingCard order={order} onTrack={onTrack} />
-
-              {/* Payment Info */}
-              <Card
-                title={
-                  <Space>
-                    <CreditCardOutlined style={{ color: terracottaTheme.success }} />
-                    <span style={{ color: terracottaTheme.text.primary }}>Payment Info</span>
-                  </Space>
-                }
-                size="small"
-                style={{ 
-                  borderRadius: '12px',
-                  border: `1px solid ${terracottaTheme.light}`
-                }}
-              >
-                <Space direction="vertical" style={{ width: '100%' }}>
-                  <Row justify="space-between">
-                    <Text type="secondary">Status</Text>
-                    <Tag 
-                      color={order.paymentStatus === 'COMPLETED' ? terracottaTheme.success : terracottaTheme.warning}
-                      style={{
-                        ...styles.statusBadge,
-                        backgroundColor: order.paymentStatus === 'COMPLETED' 
-                          ? 'rgba(107, 120, 33, 0.1)' 
-                          : 'rgba(255, 143, 0, 0.1)',
-                        color: order.paymentStatus === 'COMPLETED' ? terracottaTheme.success : terracottaTheme.warning
-                      }}
-                    >
-                      {order.paymentStatus}
-                    </Tag>
-                  </Row>
-                  <Row justify="space-between">
-                    <Text type="secondary">Method</Text>
-                    <Text>{order.paymentMethod || 'Online Payment'}</Text>
-                  </Row>
-                  <Row justify="space-between">
-                    <Text type="secondary">Transaction ID</Text>
-                    <Text 
-                      code
-                      style={{ 
-                        backgroundColor: terracottaTheme.light,
-                        color: terracottaTheme.primary 
-                      }}
-                    >
-                      {order.transactionId || 'N/A'}
-                    </Text>
-                  </Row>
-                </Space>
-              </Card>
-            </Space>
-          </Col>
-        </Row>
+            <div>
+              <Title level={5}>Total Amount</Title>
+              <Text strong style={{ fontSize: '18px', color: terracottaTheme.success }}>
+                ₹{order.orderDetails?.totalAmount?.toFixed(2) || '0.00'}
+              </Text>
+            </div>
+          </Space>
+        </div>
       </Modal>
     </>
   );
 };
 
-// Main Orders Component with Terracotta Theme
+// Loading Component
+const LoadingView = ({ message = "Loading your orders..." }) => (
+  <div style={styles.loadingContainer}>
+    <Card style={styles.loadingCard}>
+      <Spin size="large" />
+      <Title level={4} style={{ marginTop: '20px', ...styles.gradientText }}>
+        {message}
+      </Title>
+    </Card>
+  </div>
+);
+
+// Error Component
+const ErrorView = ({ error, onRetry }) => (
+  <div style={styles.pageContainer}>
+    <div style={styles.contentWrapper}>
+      <Card style={styles.errorCard}>
+        <Result
+          status="error"
+          title="Unable to Load Orders"
+          subTitle={error || "Something went wrong while fetching your orders. Please try again."}
+          extra={[
+            <Button 
+              type="primary" 
+              key="retry" 
+              icon={<ReloadOutlined />}
+              onClick={onRetry}
+              style={styles.primaryButton}
+            >
+              Try Again
+            </Button>,
+            <Button 
+              key="home" 
+              icon={<ShopOutlined />}
+              onClick={() => window.location.href = '/products'}
+              style={styles.secondaryButton}
+            >
+              Continue Shopping
+            </Button>
+          ]}
+        />
+      </Card>
+    </div>
+  </div>
+);
+
+// Empty State Component
+const EmptyOrdersView = ({ onShop, onRetry }) => (
+  <Card style={styles.emptyStateCard}>
+    <Empty
+      image={
+        <ShoppingCartOutlined 
+          style={{ 
+            fontSize: '120px', 
+            color: terracottaTheme.secondary,
+            opacity: 0.3
+          }} 
+        />
+      }
+      imageStyle={{ height: 120 }}
+      description={
+        <div>
+          <Title level={3} style={{ color: terracottaTheme.secondary }}>
+            No orders yet
+          </Title>
+          <Paragraph style={{ 
+            fontSize: '16px', 
+            color: terracottaTheme.text.secondary, 
+            maxWidth: '400px', 
+            margin: '0 auto 24px' 
+          }}>
+            Start exploring our amazing terracotta products and place your first order to see it here!
+          </Paragraph>
+        </div>
+      }
+    >
+      <Space>
+        <Button 
+          type="primary" 
+          size="large"
+          icon={<ShopOutlined />}
+          onClick={onShop}
+          style={{
+            ...styles.primaryButton,
+            padding: '12px 32px', 
+            height: 'auto',
+            fontSize: '16px'
+          }}
+        >
+          Start Shopping
+        </Button>
+        <Button 
+          size="large"
+          icon={<ReloadOutlined />}
+          onClick={onRetry}
+          style={styles.secondaryButton}
+        >
+          Refresh
+        </Button>
+      </Space>
+    </Empty>
+  </Card>
+);
+
+// Main Orders Component
 const Orders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [authLoading, setAuthLoading] = useState(true);
   const [user, setUser] = useState(null);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
 
   // Courier tracking URLs
@@ -852,76 +636,94 @@ const Orders = () => {
 
   // Auth state management
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (!currentUser) {
+        setAuthLoading(false);
+        setLoading(false);
         navigate('/auth');
         return;
       }
       
       setUser(currentUser);
-      await fetchOrders(currentUser.uid);
-      setLoading(false);
+      setAuthLoading(false);
     });
     
-    return unsubscribe;
+    return () => unsubscribe();
   }, [navigate]);
 
-  // Fetch orders
-  const fetchOrders = useCallback(async (uid) => {
+  // Fetch orders function with fallback methods
+  const fetchOrders = useCallback(async (userId) => {
     try {
-      const q = query(collection(db, 'orders'), where('userId', '==', uid));
-      const querySnapshot = await getDocs(q);
-      const ordersData = [];
+      setLoading(true);
+      setError(null);
+
+      // Primary method: Try with orderBy
+      let ordersData = [];
       
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        const orderDate = data.createdAt?.toDate 
-          ? data.createdAt.toDate() 
-          : new Date(data.createdAt || Date.now());
+      try {
+        const q = query(
+          collection(db, 'orders'), 
+          where('userId', '==', userId),
+          orderBy('createdAt', 'desc')
+        );
+        
+        const querySnapshot = await getDocs(q);
+        querySnapshot.forEach((doc) => {
+          ordersData.push({ id: doc.id, ...doc.data() });
+        });
+      } catch (orderByError) {
+        // Fallback: Try without orderBy
+        const q = query(
+          collection(db, 'orders'), 
+          where('userId', '==', userId)
+        );
+        
+        const querySnapshot = await getDocs(q);
+        querySnapshot.forEach((doc) => {
+          ordersData.push({ id: doc.id, ...doc.data() });
+        });
+        
+        // Sort manually
+        ordersData.sort((a, b) => {
+          const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
+          const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
+          return dateB - dateA;
+        });
+      }
+
+      // Process orders data
+      const processedOrders = ordersData.map(order => {
+        const orderDate = order.createdAt?.toDate 
+          ? order.createdAt.toDate() 
+          : new Date(order.createdAt || Date.now());
         
         const deliveryDate = new Date(orderDate);
-        deliveryDate.setDate(deliveryDate.getDate() + Math.floor(Math.random() * 2) + 3);
+        deliveryDate.setDate(deliveryDate.getDate() + 3);
         
-        const today = new Date();
-        let status = 'Ordered';
-        if (today > deliveryDate) {
-          status = 'Delivered';
-        } else if (today > orderDate && (today - orderDate) / (1000 * 60 * 60 * 24) > 1) {
-          status = 'Shipped';
-        } else if (today > orderDate) {
-          status = 'Processing';
-        }
-        
-        ordersData.push({
-          id: doc.id,
-          ...data,
+        return {
+          ...order,
           orderDate,
           deliveryDate,
-          status,
-          paymentStatus: data.paymentStatus || 'INITIATED',
-          deliveryDetails: data.deliveryDetails || {
-            company: 'Not assigned yet',
-            consignmentNumber: 'Not generated yet',
-            tentativeDate: deliveryDate,
-            remarks: 'Order is being processed'
-          }
-        });
+          status: order.status || 'PENDING',
+          paymentStatus: order.paymentStatus || 'INITIATED'
+        };
       });
 
-      ordersData.sort((a, b) => b.orderDate - a.orderDate);
-      setOrders(ordersData);
-    } catch (error) {
-      console.error('Error fetching orders:', error);
-      notification.error({
-        message: 'Error',
-        description: 'Failed to load orders. Please try again.',
-        style: { 
-          borderRadius: '12px',
-          border: `1px solid ${terracottaTheme.error}`
-        }
-      });
+      setOrders(processedOrders);
+      setLoading(false);
+    } catch (err) {
+      console.error('Error fetching orders:', err);
+      setError(err.message || 'Failed to load orders');
+      setLoading(false);
     }
   }, []);
+
+  // Fetch orders when user is authenticated
+  useEffect(() => {
+    if (user?.uid && !authLoading) {
+      fetchOrders(user.uid);
+    }
+  }, [user?.uid, authLoading, fetchOrders]);
 
   // Track package handler
   const handleTrackPackage = useCallback((deliveryDetails) => {
@@ -929,10 +731,6 @@ const Orders = () => {
       notification.warning({
         message: 'Tracking Unavailable',
         description: 'Tracking information is not available yet. Please check back later.',
-        style: { 
-          borderRadius: '12px',
-          border: `1px solid ${terracottaTheme.warning}`
-        }
       });
       return;
     }
@@ -954,26 +752,37 @@ const Orders = () => {
     window.open(trackingUrl, '_blank');
   }, [courierTrackingUrls]);
 
-  // Loading state
+  // Manual retry function
+  const handleRetry = useCallback(() => {
+    if (user?.uid) {
+      fetchOrders(user.uid);
+    } else {
+      window.location.reload();
+    }
+  }, [user?.uid, fetchOrders]);
+
+  // Navigation handlers
+  const handleShopNavigation = useCallback(() => {
+    navigate('/products');
+  }, [navigate]);
+
+  const handleWishlistNavigation = useCallback(() => {
+    navigate('/wishlist');
+  }, [navigate]);
+
+  // Show loading while authentication is being checked
+  if (authLoading) {
+    return <LoadingView message="Checking authentication..." />;
+  }
+
+  // Show error if there's an error
+  if (error) {
+    return <ErrorView error={error} onRetry={handleRetry} />;
+  }
+
+  // Show loading while orders are being fetched
   if (loading) {
-    return (
-      <div style={styles.loadingContainer}>
-        <Card style={styles.loadingCard}>
-          <Spin 
-            size="large" 
-            style={{ 
-              color: terracottaTheme.primary,
-              '& .ant-spin-dot-item': {
-                backgroundColor: terracottaTheme.primary
-              }
-            }}
-          />
-          <Title level={4} style={{ marginTop: '20px', ...styles.gradientText }}>
-            Loading your orders...
-          </Title>
-        </Card>
-      </div>
-    );
+    return <LoadingView />;
   }
 
   return (
@@ -1016,63 +825,31 @@ const Orders = () => {
                     type="primary" 
                     size="large"
                     icon={<ShopOutlined />}
-                    onClick={() => navigate('/products')}
+                    onClick={handleShopNavigation}
                     style={styles.primaryButton}
                   >
                     Continue Shopping
                   </Button>
                 </Badge>
+                <Button 
+                  size="large"
+                  icon={<ReloadOutlined />}
+                  onClick={handleRetry}
+                  style={styles.secondaryButton}
+                >
+                  Refresh
+                </Button>
               </Space>
             </Col>
           </Row>
         </Card>
 
-        {/* Orders List */}
+        {/* Orders List or Empty State */}
         {orders.length === 0 ? (
-          <Card style={styles.emptyStateCard}>
-            <Empty
-              image={
-                <ShoppingCartOutlined 
-                  style={{ 
-                    fontSize: '120px', 
-                    color: terracottaTheme.secondary,
-                    opacity: 0.3
-                  }} 
-                />
-              }
-              imageStyle={{ height: 120 }}
-              description={
-                <div>
-                  <Title level={3} style={{ color: terracottaTheme.secondary }}>
-                    No orders yet
-                  </Title>
-                  <Paragraph style={{ 
-                    fontSize: '16px', 
-                    color: terracottaTheme.text.secondary, 
-                    maxWidth: '400px', 
-                    margin: '0 auto 24px' 
-                  }}>
-                    Start exploring our amazing terracotta products and place your first order to see it here!
-                  </Paragraph>
-                </div>
-              }
-            >
-              <Button 
-                type="primary" 
-                size="large"
-                icon={<ShopOutlined />}
-                onClick={() => navigate('/products')}
-                style={{
-                  ...styles.primaryButton,
-                  padding: '12px 32px', 
-                  height: 'auto',
-                  fontSize: '16px'
-                }}
-              >
-                Start Shopping
-              </Button>
-            </Empty>
-          </Card>
+          <EmptyOrdersView 
+            onShop={handleShopNavigation} 
+            onRetry={handleRetry} 
+          />
         ) : (
           <div>
             {orders.map((order) => (
@@ -1103,7 +880,7 @@ const Orders = () => {
                 type="primary" 
                 size="large"
                 icon={<ShopOutlined />}
-                onClick={() => navigate('/products')}
+                onClick={handleShopNavigation}
                 style={styles.primaryButton}
               >
                 Shop More
@@ -1111,23 +888,15 @@ const Orders = () => {
               <Button 
                 size="large"
                 icon={<HeartOutlined />}
-                onClick={() => navigate('/wishlist')}
-                style={{
-                  ...styles.secondaryButton,
-                  height: '40px',
-                  padding: '0 24px'
-                }}
+                onClick={handleWishlistNavigation}
+                style={styles.secondaryButton}
               >
                 View Wishlist
               </Button>
               <Button 
                 size="large"
                 icon={<PhoneOutlined />}
-                style={{
-                  ...styles.secondaryButton,
-                  height: '40px',
-                  padding: '0 24px'
-                }}
+                style={styles.secondaryButton}
               >
                 Contact Support
               </Button>
@@ -1226,6 +995,34 @@ const Orders = () => {
           outline-offset: 2px;
         }
         
+        .ant-btn-primary:hover {
+          background: linear-gradient(135deg, ${terracottaTheme.dark} 0%, ${terracottaTheme.primary} 100%) !important;
+          border-color: ${terracottaTheme.dark} !important;
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(210, 105, 30, 0.4) !important;
+        }
+        
+        .ant-btn:hover {
+          transform: translateY(-1px);
+          transition: all 0.3s ease;
+        }
+        
+        .ant-tag {
+          transition: all 0.3s ease;
+        }
+        
+        .ant-tag:hover {
+          transform: scale(1.05);
+        }
+        
+        .ant-result-title {
+          color: ${terracottaTheme.text.primary} !important;
+        }
+        
+        .ant-result-subtitle {
+          color: ${terracottaTheme.text.secondary} !important;
+        }
+        
         /* Mobile responsive styles */
         @media (max-width: 768px) {
           .ant-card-body {
@@ -1252,6 +1049,24 @@ const Orders = () => {
           .ant-steps-item-description {
             font-size: 11px !important;
           }
+          
+          .ant-row {
+            flex-direction: column !important;
+          }
+          
+          .ant-col {
+            width: 100% !important;
+            margin-bottom: 16px !important;
+          }
+          
+          .ant-space {
+            flex-direction: column !important;
+            width: 100% !important;
+          }
+          
+          .ant-space-item {
+            width: 100% !important;
+          }
         }
         
         @media (max-width: 576px) {
@@ -1261,13 +1076,130 @@ const Orders = () => {
           
           .ant-btn {
             font-size: 12px !important;
-            height: 28px !important;
-            padding: 0 8px !important;
+            height: 32px !important;
+            padding: 0 12px !important;
+          }
+          
+          .ant-btn-lg {
+            font-size: 14px !important;
+            height: 40px !important;
+            padding: 0 16px !important;
           }
           
           .ant-statistic-content-value {
+            font-size: 16px !important;
+          }
+          
+          .ant-typography h2 {
+            font-size: 20px !important;
+          }
+          
+          .ant-typography h3 {
             font-size: 18px !important;
           }
+          
+          .ant-typography h4 {
+            font-size: 16px !important;
+          }
+          
+          .ant-empty-image {
+            height: 80px !important;
+          }
+          
+          .ant-empty-image svg {
+            font-size: 80px !important;
+          }
+        }
+        
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+          .ant-card {
+            background: rgba(20, 20, 20, 0.95) !important;
+            color: #fff !important;
+          }
+          
+          .ant-typography {
+            color: #fff !important;
+          }
+          
+          .ant-btn:not(.ant-btn-primary) {
+            background: rgba(255, 255, 255, 0.1) !important;
+            border-color: rgba(255, 255, 255, 0.2) !important;
+            color: #fff !important;
+          }
+          
+          .ant-modal-content {
+            background: rgba(20, 20, 20, 0.95) !important;
+            color: #fff !important;
+          }
+        }
+        
+        /* Accessibility improvements */
+        .ant-btn:focus-visible {
+          outline: 3px solid ${terracottaTheme.primary} !important;
+          outline-offset: 2px !important;
+        }
+        
+        .ant-card:focus-within {
+          outline: 2px solid ${terracottaTheme.primary} !important;
+          outline-offset: 2px !important;
+        }
+        
+        /* Animation improvements */
+        .ant-card {
+          animation: fadeInUp 0.6s ease-out;
+        }
+        
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .ant-steps-item {
+          transition: all 0.3s ease;
+        }
+        
+        .ant-steps-item:hover {
+          transform: scale(1.02);
+        }
+        
+        /* Loading animation */
+        .ant-spin-dot {
+          animation: spin 1.2s infinite linear;
+        }
+        
+        @keyframes spin {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+          width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+          background: ${terracottaTheme.light};
+          border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+          background: ${terracottaTheme.primary};
+          border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+          background: ${terracottaTheme.dark};
         }
       `}</style>
     </div>

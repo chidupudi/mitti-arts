@@ -1,4 +1,4 @@
-// Complete OrdersTable.js with independent check-in system using Antd Checkbox
+// Updated OrdersTable.js with enhanced status display and proper flow
 import React from 'react';
 import {
   Paper,
@@ -28,8 +28,11 @@ import {
   Warning,
   Info,
   CancelOutlined,
+  HourglassEmpty,
+  TrendingUp,
+  Done,
 } from '@mui/icons-material';
-import { Checkbox, Space } from 'antd'; // Using Antd Checkbox
+import { Checkbox, Space } from 'antd';
 
 // Utility function to get order date
 const getOrderDate = (order) => {
@@ -48,18 +51,16 @@ const getOrderDate = (order) => {
   }
 };
 
-// FIXED: Get check-in status independently (not from payment status)
+// Get check-in status independently
 const getCheckInStatus = (order, checkInStatuses) => {
-  // Check if admin manually set the check-in status
   if (checkInStatuses && checkInStatuses[order.id] !== undefined) {
     return checkInStatuses[order.id];
   }
-  // Otherwise check the order's adminCheckIn field
   return order.adminCheckIn || false;
 };
 
-// Enhanced status chip with proper colors and icons
-const getEnhancedStatusChip = (status, type = 'payment') => {
+// Enhanced status chip with proper colors and icons for order flow
+const getEnhancedStatusChip = (status, type = 'order') => {
   const getStatusConfig = () => {
     const statusUpper = status?.toUpperCase() || '';
     
@@ -74,7 +75,6 @@ const getEnhancedStatusChip = (status, type = 'payment') => {
             backgroundColor: '#E8F5E8',
             borderColor: '#4CAF50',
             icon: <CheckCircle sx={{ fontSize: 16 }} />,
-            chipColor: 'success'
           };
         case 'PENDING':
         case 'INITIATED':
@@ -84,7 +84,6 @@ const getEnhancedStatusChip = (status, type = 'payment') => {
             backgroundColor: '#FFF3E0',
             borderColor: '#FF9800',
             icon: <Schedule sx={{ fontSize: 16 }} />,
-            chipColor: 'warning'
           };
         case 'FAILED':
         case 'CANCELLED':
@@ -95,16 +94,6 @@ const getEnhancedStatusChip = (status, type = 'payment') => {
             backgroundColor: '#FFEBEE',
             borderColor: '#F44336',
             icon: <Cancel sx={{ fontSize: 16 }} />,
-            chipColor: 'error'
-          };
-        case 'PROCESSING':
-          return {
-            label: 'Processing',
-            color: '#1976D2',
-            backgroundColor: '#E3F2FD',
-            borderColor: '#2196F3',
-            icon: <Payment sx={{ fontSize: 16 }} />,
-            chipColor: 'info'
           };
         default:
           return {
@@ -113,21 +102,33 @@ const getEnhancedStatusChip = (status, type = 'payment') => {
             backgroundColor: '#F5F5F5',
             borderColor: '#BDBDBD',
             icon: <Info sx={{ fontSize: 16 }} />,
-            chipColor: 'default'
           };
       }
     } else if (type === 'order') {
       switch (statusUpper) {
-        case 'COMPLETED':
-        case 'FULFILLED':
         case 'DELIVERED':
           return {
-            label: 'Completed',
+            label: 'Delivered',
             color: '#2E7D32',
             backgroundColor: '#E8F5E8',
             borderColor: '#4CAF50',
-            icon: <CheckCircle sx={{ fontSize: 16 }} />,
-            chipColor: 'success'
+            icon: <Done sx={{ fontSize: 16 }} />,
+          };
+        case 'IN_TRANSIT':
+          return {
+            label: 'In Transit',
+            color: '#1976D2',
+            backgroundColor: '#E3F2FD',
+            borderColor: '#2196F3',
+            icon: <LocalShipping sx={{ fontSize: 16 }} />,
+          };
+        case 'CHECKED_IN':
+          return {
+            label: 'Checked In',
+            color: '#7B1FA2',
+            backgroundColor: '#F3E5F5',
+            borderColor: '#9C27B0',
+            icon: <TrendingUp sx={{ fontSize: 16 }} />,
           };
         case 'PROCESSING':
         case 'CONFIRMED':
@@ -136,18 +137,16 @@ const getEnhancedStatusChip = (status, type = 'payment') => {
             color: '#ED6C02',
             backgroundColor: '#FFF3E0',
             borderColor: '#FF9800',
-            icon: <Schedule sx={{ fontSize: 16 }} />,
-            chipColor: 'warning'
+            icon: <HourglassEmpty sx={{ fontSize: 16 }} />,
           };
         case 'PENDING':
         case 'AWAITING_PAYMENT':
           return {
             label: 'Pending',
-            color: '#9C27B0',
-            backgroundColor: '#F3E5F5',
-            borderColor: '#BA68C8',
+            color: '#795548',
+            backgroundColor: '#EFEBE9',
+            borderColor: '#8D6E63',
             icon: <Schedule sx={{ fontSize: 16 }} />,
-            chipColor: 'secondary'
           };
         case 'CANCELLED':
         case 'REFUNDED':
@@ -157,16 +156,6 @@ const getEnhancedStatusChip = (status, type = 'payment') => {
             backgroundColor: '#FFEBEE',
             borderColor: '#F44336',
             icon: <Cancel sx={{ fontSize: 16 }} />,
-            chipColor: 'error'
-          };
-        case 'ON_HOLD':
-          return {
-            label: 'On Hold',
-            color: '#F57C00',
-            backgroundColor: '#FFF8E1',
-            borderColor: '#FFC107',
-            icon: <Warning sx={{ fontSize: 16 }} />,
-            chipColor: 'warning'
           };
         default:
           return {
@@ -175,77 +164,6 @@ const getEnhancedStatusChip = (status, type = 'payment') => {
             backgroundColor: '#F5F5F5',
             borderColor: '#BDBDBD',
             icon: <Info sx={{ fontSize: 16 }} />,
-            chipColor: 'default'
-          };
-      }
-    } else if (type === 'delivery') {
-      switch (statusUpper) {
-        case 'DELIVERED':
-          return {
-            label: 'Delivered',
-            color: '#2E7D32',
-            backgroundColor: '#E8F5E8',
-            borderColor: '#4CAF50',
-            icon: <CheckCircle sx={{ fontSize: 16 }} />,
-            chipColor: 'success'
-          };
-        case 'OUT_FOR_DELIVERY':
-          return {
-            label: 'Out for Delivery',
-            color: '#1976D2',
-            backgroundColor: '#E3F2FD',
-            borderColor: '#2196F3',
-            icon: <LocalShipping sx={{ fontSize: 16 }} />,
-            chipColor: 'info'
-          };
-        case 'DISPATCHED':
-        case 'SHIPPED':
-        case 'IN_TRANSIT':
-          return {
-            label: 'In Transit',
-            color: '#1976D2',
-            backgroundColor: '#E3F2FD',
-            borderColor: '#2196F3',
-            icon: <LocalShipping sx={{ fontSize: 16 }} />,
-            chipColor: 'info'
-          };
-        case 'PROCESSING':
-        case 'CONFIRMED':
-          return {
-            label: 'Processing',
-            color: '#ED6C02',
-            backgroundColor: '#FFF3E0',
-            borderColor: '#FF9800',
-            icon: <Schedule sx={{ fontSize: 16 }} />,
-            chipColor: 'warning'
-          };
-        case 'CANCELLED':
-        case 'RETURNED':
-          return {
-            label: statusUpper === 'RETURNED' ? 'Returned' : 'Cancelled',
-            color: '#D32F2F',
-            backgroundColor: '#FFEBEE',
-            borderColor: '#F44336',
-            icon: <Cancel sx={{ fontSize: 16 }} />,
-            chipColor: 'error'
-          };
-        case 'PENDING':
-          return {
-            label: 'Pending',
-            color: '#9C27B0',
-            backgroundColor: '#F3E5F5',
-            borderColor: '#BA68C8',
-            icon: <Schedule sx={{ fontSize: 16 }} />,
-            chipColor: 'secondary'
-          };
-        default:
-          return {
-            label: status || 'Unknown',
-            color: '#757575',
-            backgroundColor: '#F5F5F5',
-            borderColor: '#BDBDBD',
-            icon: <Info sx={{ fontSize: 16 }} />,
-            chipColor: 'default'
           };
       }
     }
@@ -268,6 +186,51 @@ const getEnhancedStatusChip = (status, type = 'payment') => {
         }
       }}
     />
+  );
+};
+
+// Order Status Progress Component
+const OrderStatusProgress = ({ status, isCheckedIn }) => {
+  const getStatusLevel = () => {
+    switch (status?.toUpperCase()) {
+      case 'PENDING':
+      case 'PROCESSING':
+      case 'CONFIRMED':
+        return isCheckedIn ? 2 : 1;
+      case 'CHECKED_IN':
+        return 2;
+      case 'IN_TRANSIT':
+        return 3;
+      case 'DELIVERED':
+        return 4;
+      case 'CANCELLED':
+        return 0;
+      default:
+        return 1;
+    }
+  };
+
+  const level = getStatusLevel();
+  const steps = ['Processing', 'Checked In', 'In Transit', 'Delivered'];
+  
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+      {steps.map((step, index) => (
+        <Box
+          key={step}
+          sx={{
+            width: 8,
+            height: 8,
+            borderRadius: '50%',
+            backgroundColor: index < level ? '#4CAF50' : '#E0E0E0',
+            transition: 'background-color 0.3s ease'
+          }}
+        />
+      ))}
+      <Typography variant="caption" sx={{ ml: 1, color: 'text.secondary' }}>
+        {level > 0 ? `${level}/4` : 'Cancelled'}
+      </Typography>
+    </Box>
   );
 };
 
@@ -317,8 +280,8 @@ const OrdersTable = ({
   page,
   rowsPerPage,
   deliveryDetailsMap,
-  checkInStatuses, // FIXED: Now using independent check-in statuses
-  handleCheckInToggle, // FIXED: Now independent toggle function
+  checkInStatuses,
+  handleCheckInToggle,
   handleMarkDelivered,
   handleViewOrderDetails,
   setSelectedOrderForDelivery,
@@ -350,6 +313,27 @@ const OrdersTable = ({
     );
   }
 
+  // Function to determine if actions should be disabled based on status
+  const getActionState = (order) => {
+    const isCancelled = order.status === 'CANCELLED' || order.paymentStatus === 'CANCELLED';
+    const isDelivered = order.status === 'DELIVERED';
+    const isCheckedIn = getCheckInStatus(order, checkInStatuses);
+    const hasDeliveryDetails = !!order.deliveryDetails;
+    const isInTransit = order.status === 'IN_TRANSIT';
+
+    return {
+      isCancelled,
+      isDelivered,
+      isCheckedIn,
+      hasDeliveryDetails,
+      isInTransit,
+      canCheckIn: !isCancelled && !isDelivered,
+      canAddDelivery: isCheckedIn && !isCancelled && !isDelivered,
+      canMarkDelivered: isInTransit && !isCancelled && !isDelivered,
+      canCancel: !isCancelled && !isDelivered
+    };
+  };
+
   return (
     <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: 3 }}>
       <TableContainer>
@@ -362,6 +346,7 @@ const OrdersTable = ({
               <TableCell sx={{ fontWeight: 600, bgcolor: 'grey.50' }}>Amount</TableCell>
               <TableCell align="center" sx={{ fontWeight: 600, bgcolor: 'grey.50' }}>Payment Status</TableCell>
               <TableCell align="center" sx={{ fontWeight: 600, bgcolor: 'grey.50' }}>Order Status</TableCell>
+              <TableCell align="center" sx={{ fontWeight: 600, bgcolor: 'grey.50' }}>Progress</TableCell>
               <TableCell align="center" sx={{ fontWeight: 600, bgcolor: 'grey.50' }}>Delivery</TableCell>
               <TableCell align="right" sx={{ fontWeight: 600, bgcolor: 'grey.50' }}>Actions</TableCell>
             </TableRow>
@@ -370,8 +355,7 @@ const OrdersTable = ({
             {filteredOrders
               .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
               .map((order) => {
-                const isCancelled = order.status === 'CANCELLED' || order.paymentStatus === 'CANCELLED';
-                const isCheckedIn = getCheckInStatus(order, checkInStatuses); // FIXED: Independent check-in status
+                const actionState = getActionState(order);
                 
                 return (
                   <TableRow 
@@ -379,7 +363,7 @@ const OrdersTable = ({
                     hover
                     sx={{ 
                       cursor: 'pointer',
-                      opacity: isCancelled ? 0.7 : 1,
+                      opacity: actionState.isCancelled ? 0.7 : 1,
                       '&:hover': { backgroundColor: 'rgba(210, 105, 30, 0.04)' }
                     }}
                     onClick={() => handleViewOrderDetails(order)}
@@ -388,7 +372,7 @@ const OrdersTable = ({
                       <Typography variant="body2" fontWeight="medium">
                         {order.orderNumber}
                       </Typography>
-                      {isCancelled && (
+                      {actionState.isCancelled && (
                         <Chip 
                           label="CANCELLED" 
                           size="small" 
@@ -397,6 +381,7 @@ const OrdersTable = ({
                         />
                       )}
                     </TableCell>
+                    
                     <TableCell>
                       <Typography variant="body2">
                         {getOrderDate(order).toLocaleDateString()}
@@ -405,6 +390,7 @@ const OrdersTable = ({
                         {getOrderDate(order).toLocaleTimeString()}
                       </Typography>
                     </TableCell>
+                    
                     <TableCell>
                       <Typography variant="body2">
                         {order.orderDetails?.personalInfo?.fullName || order.customerName || 'N/A'}
@@ -413,17 +399,28 @@ const OrdersTable = ({
                         {order.orderDetails?.personalInfo?.phone || order.customerPhone || 'N/A'}
                       </Typography>
                     </TableCell>
+                    
                     <TableCell>
                       <AmountDisplay amount={order.orderDetails?.totalAmount} />
                     </TableCell>
+                    
                     <TableCell align="center">
                       {getEnhancedStatusChip(order.paymentStatus || 'PENDING', 'payment')}
                     </TableCell>
+                    
                     <TableCell align="center">
                       {getEnhancedStatusChip(order.status || 'PENDING', 'order')}
                     </TableCell>
+                    
                     <TableCell align="center">
-                      {isCancelled ? (
+                      <OrderStatusProgress 
+                        status={order.status} 
+                        isCheckedIn={actionState.isCheckedIn}
+                      />
+                    </TableCell>
+                    
+                    <TableCell align="center">
+                      {actionState.isCancelled ? (
                         <Chip 
                           label="Cancelled" 
                           icon={<Cancel />}
@@ -455,7 +452,7 @@ const OrdersTable = ({
                               />
                             </Tooltip>
                             
-                            {order.deliveryStatus !== 'DELIVERED' ? (
+                            {actionState.canMarkDelivered && (
                               <Tooltip title="Mark as Delivered">
                                 <IconButton
                                   size="small"
@@ -473,7 +470,9 @@ const OrdersTable = ({
                                   <CheckCircle />
                                 </IconButton>
                               </Tooltip>
-                            ) : (
+                            )}
+                            
+                            {actionState.isDelivered && (
                               <Chip 
                                 label="Delivered" 
                                 icon={<CheckCircle />}
@@ -491,7 +490,7 @@ const OrdersTable = ({
                           </Box>
                           
                           {order.deliveryStatus && (
-                            getEnhancedStatusChip(order.deliveryStatus, 'delivery')
+                            getEnhancedStatusChip(order.deliveryStatus, 'order')
                           )}
                         </Box>
                       ) : (
@@ -499,45 +498,52 @@ const OrdersTable = ({
                           variant="outlined"
                           size="small"
                           startIcon={<LocalShipping />}
+                          disabled={!actionState.canAddDelivery}
                           sx={{
-                            borderColor: '#CD5C5C',
-                            color: '#CD5C5C',
+                            borderColor: actionState.canAddDelivery ? '#CD5C5C' : '#ccc',
+                            color: actionState.canAddDelivery ? '#CD5C5C' : '#999',
                             '&:hover': {
-                              borderColor: '#B84A4A',
-                              backgroundColor: 'rgba(205, 92, 92, 0.04)'
+                              borderColor: actionState.canAddDelivery ? '#B84A4A' : '#ccc',
+                              backgroundColor: actionState.canAddDelivery ? 'rgba(205, 92, 92, 0.04)' : 'transparent'
                             }
                           }}
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSelectedOrderForDelivery(order.id);
-                            setDeliveryDialogOpen(true);
+                            if (actionState.canAddDelivery) {
+                              setSelectedOrderForDelivery(order.id);
+                              setDeliveryDialogOpen(true);
+                            }
                           }}
                         >
-                          Set Address
+                          {actionState.canAddDelivery ? 'Set Details' : 'Check In First'}
                         </Button>
                       )}
                     </TableCell>
+                    
                     <TableCell align="right">
                       <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 1 }}>
-                        {!isCancelled && (
+                        {!actionState.isCancelled && (
                           <>
-                            {/* FIXED: Independent Check In Checkbox */}
+                            {/* Check In Checkbox */}
                             <Space>
                               <Checkbox
-                                checked={isCheckedIn}
+                                checked={actionState.isCheckedIn}
+                                disabled={!actionState.canCheckIn}
                                 onChange={(e) => {
                                   e.stopPropagation();
-                                  handleCheckInToggle(order.id); // FIXED: Independent toggle
+                                  if (actionState.canCheckIn) {
+                                    handleCheckInToggle(order.id);
+                                  }
                                 }}
                                 style={{
-                                  color: isCheckedIn ? '#2E7D32' : '#757575',
+                                  color: actionState.isCheckedIn ? '#2E7D32' : '#757575',
                                 }}
                               >
                                 <Typography 
                                   variant="caption" 
                                   sx={{ 
-                                    color: isCheckedIn ? '#2E7D32' : '#757575',
-                                    fontWeight: isCheckedIn ? 600 : 400,
+                                    color: actionState.isCheckedIn ? '#2E7D32' : '#757575',
+                                    fontWeight: actionState.isCheckedIn ? 600 : 400,
                                     ml: 0.5
                                   }}
                                 >
@@ -547,23 +553,25 @@ const OrdersTable = ({
                             </Space>
                             
                             {/* Cancel Order Button */}
-                            <Tooltip title="Cancel Order">
-                              <IconButton
-                                size="small"
-                                color="error"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleCancelOrderClick(order);
-                                }}
-                                sx={{
-                                  '&:hover': {
-                                    backgroundColor: 'rgba(211, 47, 47, 0.08)'
-                                  }
-                                }}
-                              >
-                                <CancelOutlined />
-                              </IconButton>
-                            </Tooltip>
+                            {actionState.canCancel && (
+                              <Tooltip title="Cancel Order">
+                                <IconButton
+                                  size="small"
+                                  color="error"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCancelOrderClick(order);
+                                  }}
+                                  sx={{
+                                    '&:hover': {
+                                      backgroundColor: 'rgba(211, 47, 47, 0.08)'
+                                    }
+                                  }}
+                                >
+                                  <CancelOutlined />
+                                </IconButton>
+                              </Tooltip>
+                            )}
                           </>
                         )}
                         

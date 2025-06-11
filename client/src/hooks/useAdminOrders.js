@@ -1,9 +1,9 @@
-// Updated useAdminOrders.js with completely independent Check In system
+// Updated useAdminOrders.js with proper order status flow and real-time updates
 import { useState, useEffect } from 'react';
 import { db } from '../Firebase/Firebase';
 import { 
   collection, 
-  getDocs, 
+  onSnapshot,
   query, 
   orderBy, 
   doc, 
@@ -70,55 +70,79 @@ export const useAdminOrders = () => {
   
   // Data maps and notifications
   const [deliveryDetailsMap, setDeliveryDetailsMap] = useState({});
-  // FIXED: Completely independent check-in statuses (not tied to payment status)
-  const [checkInStatuses, setCheckInStatuses] = useState({}); // This is now independent
+  const [checkInStatuses, setCheckInStatuses] = useState({});
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
     severity: 'success'
   });
 
-  // Fetch orders
+  // Get the next status based on current status and action
+  const getNextStatus = (currentStatus, action) => {
+    const statusFlow = {
+      'PENDING': { checkIn: 'CHECKED_IN' },
+      'PROCESSING': { checkIn: 'CHECKED_IN' },
+      'CONFIRMED': { checkIn: 'CHECKED_IN' },
+      'CHECKED_IN': { addDelivery: 'IN_TRANSIT', uncheck: 'PROCESSING' },
+      'IN_TRANSIT': { deliver: 'DELIVERED' },
+      'DELIVERED': { /* final state */ }
+    };
+
+    return statusFlow[currentStatus]?.[action] || currentStatus;
+  };
+
+  // Real-time orders subscription
   useEffect(() => {
-    const fetchOrders = async () => {
+    const fetchOrders = () => {
       try {
         setLoading(true);
         const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
-        const querySnapshot = await getDocs(q);
         
-        const ordersData = [];
-        const deliveryDetails = {};
-        const initialCheckInStatuses = {};
-        
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
+        // Set up real-time listener
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+          const ordersData = [];
+          const deliveryDetails = {};
+          const initialCheckInStatuses = {};
           
-          if (data.deliveryDetails) {
-            deliveryDetails[doc.id] = data.deliveryDetails;
-          }
+          querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            
+            if (data.deliveryDetails) {
+              deliveryDetails[doc.id] = data.deliveryDetails;
+            }
 
-          // FIXED: Initialize check-in status from adminCheckIn field (independent of payment status)
-          initialCheckInStatuses[doc.id] = data.adminCheckIn || false;
-          
-          ordersData.push({
-            id: doc.id,
-            ...data
+            // Initialize check-in status from adminCheckIn field
+            initialCheckInStatuses[doc.id] = data.adminCheckIn || false;
+            
+            ordersData.push({
+              id: doc.id,
+              ...data
+            });
           });
+          
+          setOrders(ordersData);
+          setFilteredOrders(ordersData);
+          setDeliveryDetailsMap(deliveryDetails);
+          setCheckInStatuses(initialCheckInStatuses);
+          setLoading(false);
+        }, (err) => {
+          console.error('Error fetching orders:', err);
+          setError('Failed to load orders. Please try again later.');
+          setLoading(false);
         });
         
-        setOrders(ordersData);
-        setFilteredOrders(ordersData);
-        setDeliveryDetailsMap(deliveryDetails);
-        setCheckInStatuses(initialCheckInStatuses); // Independent check-in statuses
-        setLoading(false);
+        return unsubscribe;
       } catch (err) {
-        console.error('Error fetching orders:', err);
+        console.error('Error setting up orders listener:', err);
         setError('Failed to load orders. Please try again later.');
         setLoading(false);
       }
     };
     
-    fetchOrders();
+    const unsubscribe = fetchOrders();
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
 
   // Apply filters and sorting
@@ -224,21 +248,32 @@ export const useAdminOrders = () => {
     setPage(0);
   }, [orders, sortBy, searchQuery, dateRange, deliveryFilter, paymentStatusFilter, orderStatusFilter]);
 
-  // FIXED: Handle check-in toggle (completely independent of payment status)
+  // Handle check-in toggle with proper status flow
   const handleCheckInToggle = async (orderId) => {
     try {
       const currentCheckInStatus = checkInStatuses[orderId] || false;
       const newCheckInStatus = !currentCheckInStatus;
       
       const orderRef = doc(db, 'orders', orderId);
-      
-      // Get order data before update for notification
       const orderDoc = await getDoc(orderRef);
       const orderData = orderDoc.data();
       
-      // Update only the admin check-in field (independent of payment status)
+      let newStatus = orderData.status || 'PROCESSING';
+      
+      // Determine new status based on check-in action
+      if (newCheckInStatus) {
+        // Checking in - move to CHECKED_IN
+        newStatus = getNextStatus(newStatus, 'checkIn');
+      } else {
+        // Unchecking - move back to PROCESSING (only if currently CHECKED_IN)
+        if (newStatus === 'CHECKED_IN') {
+          newStatus = getNextStatus(newStatus, 'uncheck');
+        }
+      }
+      
       await updateDoc(orderRef, {
         adminCheckIn: newCheckInStatus,
+        status: newStatus, // Update order status
         adminCheckInDate: newCheckInStatus ? serverTimestamp() : null,
         updatedAt: serverTimestamp()
       });
@@ -249,6 +284,7 @@ export const useAdminOrders = () => {
           order.id === orderId ? { 
             ...order, 
             adminCheckIn: newCheckInStatus,
+            status: newStatus,
             adminCheckInDate: newCheckInStatus ? Timestamp.now() : null
           } : order
         )
@@ -260,23 +296,23 @@ export const useAdminOrders = () => {
         [orderId]: newCheckInStatus
       }));
       
-      // Send email notification for check-in status change (optional)
+      // Send email notification for status change
       try {
         const orderWithId = { id: orderId, ...orderData };
         await sendOrderStatusUpdateNotification(
           orderWithId, 
-          currentCheckInStatus ? 'CHECKED_IN' : 'NOT_CHECKED_IN', 
-          newCheckInStatus ? 'CHECKED_IN' : 'NOT_CHECKED_IN'
+          orderData.status, 
+          newStatus
         );
-        console.log('✅ Check-in status update email sent successfully');
+        console.log('✅ Status update email sent successfully');
       } catch (emailError) {
-        console.error('❌ Failed to send check-in status update email:', emailError);
+        console.error('❌ Failed to send status update email:', emailError);
         // Don't fail the main operation if email fails
       }
       
       setSnackbar({
         open: true,
-        message: `Order ${newCheckInStatus ? 'checked in' : 'unchecked'} successfully`,
+        message: `Order ${newCheckInStatus ? 'checked in' : 'unchecked'} successfully - Status: ${newStatus}`,
         severity: 'success'
       });
     } catch (error) {
@@ -289,17 +325,26 @@ export const useAdminOrders = () => {
     }
   };
 
-  // Handle delivery details update - WITH EMAIL NOTIFICATION
+  // Handle delivery details update with status change to IN_TRANSIT
   const handleSaveDeliveryDetails = async (orderId, details) => {
     try {
       const orderRef = doc(db, 'orders', orderId);
-      
-      // Get order data before update for notification
       const orderDoc = await getDoc(orderRef);
       const orderData = orderDoc.data();
       
+      // Only allow adding delivery details if order is CHECKED_IN
+      if (orderData.status !== 'CHECKED_IN') {
+        setSnackbar({
+          open: true,
+          message: 'Order must be checked in before adding delivery details',
+          severity: 'warning'
+        });
+        return;
+      }
+      
       await updateDoc(orderRef, {
         deliveryDetails: details,
+        status: 'IN_TRANSIT', // Update status to IN_TRANSIT
         deliveryStatus: 'DISPATCHED',
         dispatchedAt: serverTimestamp(),
         updatedAt: serverTimestamp()
@@ -315,6 +360,7 @@ export const useAdminOrders = () => {
           order.id === orderId ? { 
             ...order, 
             deliveryDetails: details,
+            status: 'IN_TRANSIT',
             deliveryStatus: 'DISPATCHED'
           } : order
         )
@@ -325,8 +371,8 @@ export const useAdminOrders = () => {
         const orderWithId = { id: orderId, ...orderData };
         await sendOrderStatusUpdateNotification(
           orderWithId, 
-          orderData.deliveryStatus || 'NO_DELIVERY', 
-          'DISPATCHED'
+          orderData.status, 
+          'IN_TRANSIT'
         );
         console.log('✅ Delivery details update email sent successfully');
       } catch (emailError) {
@@ -335,7 +381,7 @@ export const useAdminOrders = () => {
       
       setSnackbar({
         open: true,
-        message: 'Delivery details updated successfully',
+        message: 'Delivery details updated successfully - Status: IN_TRANSIT',
         severity: 'success'
       });
     } catch (error) {
@@ -348,18 +394,26 @@ export const useAdminOrders = () => {
     }
   };
 
-  // Handle mark as delivered - WITH EMAIL NOTIFICATION
+  // Handle mark as delivered - final status
   const handleMarkDelivered = async (orderId) => {
     try {
       const orderRef = doc(db, 'orders', orderId);
-      
-      // Get order data before update for notification
       const orderDoc = await getDoc(orderRef);
       const orderData = orderDoc.data();
       
+      // Only allow delivery if order is IN_TRANSIT
+      if (orderData.status !== 'IN_TRANSIT') {
+        setSnackbar({
+          open: true,
+          message: 'Order must be in transit before marking as delivered',
+          severity: 'warning'
+        });
+        return;
+      }
+      
       await updateDoc(orderRef, {
+        status: 'DELIVERED', // Final status
         deliveryStatus: 'DELIVERED',
-        status: 'COMPLETED',
         deliveredAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
@@ -368,8 +422,8 @@ export const useAdminOrders = () => {
         prevOrders.map(order => 
           order.id === orderId ? { 
             ...order, 
+            status: 'DELIVERED',
             deliveryStatus: 'DELIVERED',
-            status: 'COMPLETED',
             deliveredAt: Timestamp.now()
           } : order
         )
@@ -380,7 +434,7 @@ export const useAdminOrders = () => {
         const orderWithId = { id: orderId, ...orderData };
         await sendOrderStatusUpdateNotification(
           orderWithId, 
-          orderData.deliveryStatus || 'IN_TRANSIT', 
+          orderData.status, 
           'DELIVERED'
         );
         console.log('✅ Order delivered email sent successfully');
@@ -404,7 +458,52 @@ export const useAdminOrders = () => {
     }
   };
 
-  // Handle cancel order - WITH EMAIL NOTIFICATION
+  // Function to restore stock when order is cancelled
+  const restoreStockForOrder = async (orderData) => {
+    const batch = writeBatch(db);
+    let hasUpdates = false;
+
+    // Get items from order
+    let items = [];
+    if (orderData.orderDetails?.items && orderData.orderDetails.items.length > 0) {
+      items = orderData.orderDetails.items;
+    } else if (orderData.orderDetails?.cartData?.items && orderData.orderDetails.cartData.items.length > 0) {
+      items = orderData.orderDetails.cartData.items;
+    } else if (orderData.items && orderData.items.length > 0) {
+      items = orderData.items;
+    }
+
+    for (const item of items) {
+      const productId = item.id || item.productId;
+      
+      if (!productId) {
+        console.warn('Product ID not found for item:', item);
+        continue;
+      }
+      
+      const productRef = doc(db, 'products', productId);
+      const productSnap = await getDoc(productRef);
+      
+      if (!productSnap.exists()) {
+        console.warn(`Product ${productId} not found in database`);
+        continue;
+      }
+      
+      batch.update(productRef, {
+        stock: increment(item.quantity), // Add back to stock
+        updatedAt: serverTimestamp()
+      });
+      
+      hasUpdates = true;
+    }
+
+    if (hasUpdates) {
+      await batch.commit();
+      console.log('Stock restored for cancelled order');
+    }
+  };
+
+  // Handle cancel order
   const handleCancelOrder = async (orderId) => {
     try {
       const orderRef = doc(db, 'orders', orderId);
@@ -478,51 +577,6 @@ export const useAdminOrders = () => {
         message: `Error: ${error.message || 'Failed to cancel order'}`,
         severity: 'error'
       });
-    }
-  };
-
-  // Function to restore stock when order is cancelled
-  const restoreStockForOrder = async (orderData) => {
-    const batch = writeBatch(db);
-    let hasUpdates = false;
-
-    // Get items from order
-    let items = [];
-    if (orderData.orderDetails?.items && orderData.orderDetails.items.length > 0) {
-      items = orderData.orderDetails.items;
-    } else if (orderData.orderDetails?.cartData?.items && orderData.orderDetails.cartData.items.length > 0) {
-      items = orderData.orderDetails.cartData.items;
-    } else if (orderData.items && orderData.items.length > 0) {
-      items = orderData.items;
-    }
-
-    for (const item of items) {
-      const productId = item.id || item.productId;
-      
-      if (!productId) {
-        console.warn('Product ID not found for item:', item);
-        continue;
-      }
-      
-      const productRef = doc(db, 'products', productId);
-      const productSnap = await getDoc(productRef);
-      
-      if (!productSnap.exists()) {
-        console.warn(`Product ${productId} not found in database`);
-        continue;
-      }
-      
-      batch.update(productRef, {
-        stock: increment(item.quantity), // Add back to stock
-        updatedAt: serverTimestamp()
-      });
-      
-      hasUpdates = true;
-    }
-
-    if (hasUpdates) {
-      await batch.commit();
-      console.log('Stock restored for cancelled order');
     }
   };
 
@@ -686,11 +740,11 @@ export const useAdminOrders = () => {
     
     // Data maps and shared states
     deliveryDetailsMap,
-    checkInStatuses, // FIXED: Now completely independent check-in statuses
+    checkInStatuses,
     snackbar,
     
     // Action handlers
-    handleCheckInToggle, // FIXED: Now independent check-in toggle
+    handleCheckInToggle,
     handleSaveDeliveryDetails,
     handleMarkDelivered,
     handleCancelOrder,
