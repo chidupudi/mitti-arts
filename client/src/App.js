@@ -6,6 +6,9 @@ import { auth, db } from './Firebase/Firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 
+// Season Management - NEW IMPORT
+import { SeasonProvider } from './hooks/useSeason';
+
 // Regular components
 import Header from './components/Header';
 import ResetPassword from './pages/ResetPassword';
@@ -353,79 +356,81 @@ const App = () => {
       <CssBaseline />
       
       <Router>
-       
-        {/* ScrollToTop component - must be inside Router */}
-        <ScrollToTop />
-        
-        {/* Main App Container with mobile-first responsive design */}
-        <Box sx={{
-          width: '100%',
-          minHeight: '100vh',
-          overflow: 'hidden', // Prevent horizontal scroll
-          // iOS-specific fixes
-          WebkitOverflowScrolling: 'touch',
-          // Android-specific fixes
-          overscrollBehavior: 'none',
-        }}>
-          <AppLayout>
-            <Routes>
-              {/* 🌍 Public Routes */}
-              <Route path="/" element={<Welcome />} />
-              <Route path="/products" element={<Products />} />
-              <Route path="/product/:id" element={<ProductDetail />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/policies" element={<Policies />} />
-              <Route path="/contactus" element={<ContactUs />} />
-              
-              {/* 🔑 Authentication Routes */}
-              <Route path="/auth" element={<AuthForm />} />
-              <Route path="/login" element={<AuthForm />} />
+        {/* Season Provider - NEW: Wraps entire app for season management */}
+        <SeasonProvider>
+          {/* ScrollToTop component - must be inside Router */}
+          <ScrollToTop />
+          
+          {/* Main App Container with mobile-first responsive design */}
+          <Box sx={{
+            width: '100%',
+            minHeight: '100vh',
+            overflow: 'hidden', // Prevent horizontal scroll
+            // iOS-specific fixes
+            WebkitOverflowScrolling: 'touch',
+            // Android-specific fixes
+            overscrollBehavior: 'none',
+          }}>
+            <AppLayout>
+              <Routes>
+                {/* 🌍 Public Routes */}
+                <Route path="/" element={<Welcome />} />
+                <Route path="/products" element={<Products />} />
+                <Route path="/product/:id" element={<ProductDetail />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/policies" element={<Policies />} />
+                <Route path="/contactus" element={<ContactUs />} />
+                
+                {/* 🔑 Authentication Routes */}
+                <Route path="/auth" element={<AuthForm />} />
+                <Route path="/login" element={<AuthForm />} />
 
-              {/* 👤 User Routes */}
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/cart" element={<Cart />} />
-              <Route path="/order-summary" element={<OrderSummary />} />
-              <Route path="/order-confirmation" element={<OrderConfirmation />} />
-              <Route path="/wishlist" element={<WishList />} />
-              <Route path="/orders" element={<Order />} />
-              <Route path="/phonepe" element={<PhonePePayment />} />
-              <Route path="/payment-status/:orderId" element={<PaymentStatusPage />} />
-              <Route path="/supercontrollogin" element={<AdminAuth />} />
+                {/* 👤 User Routes */}
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/cart" element={<Cart />} />
+                <Route path="/order-summary" element={<OrderSummary />} />
+                <Route path="/order-confirmation" element={<OrderConfirmation />} />
+                <Route path="/wishlist" element={<WishList />} />
+                <Route path="/orders" element={<Order />} />
+                <Route path="/phonepe" element={<PhonePePayment />} />
+                <Route path="/payment-status/:orderId" element={<PaymentStatusPage />} />
+                <Route path="/supercontrollogin" element={<AdminAuth />} />
 
-              {/* 🔐 Admin Routes */}
-              <Route 
-                path="/dashboard" 
-                element={
-                  <ProtectedAdminRoute adminOnly={true}>
-                    <Dashboard />
-                  </ProtectedAdminRoute>
-                } 
-              />
+                {/* 🔐 Admin Routes */}
+                <Route 
+                  path="/dashboard" 
+                  element={
+                    <ProtectedAdminRoute adminOnly={true}>
+                      <Dashboard />
+                    </ProtectedAdminRoute>
+                  } 
+                />
 
-              <Route 
-                path="/inventory" 
-                element={
-                  <ProtectedAdminRoute adminOnly={true}>
-                    <Inventory />
-                  </ProtectedAdminRoute>
-                }
-              />
+                <Route 
+                  path="/inventory" 
+                  element={
+                    <ProtectedAdminRoute adminOnly={true}>
+                      <Inventory />
+                    </ProtectedAdminRoute>
+                  }
+                />
 
-              <Route
-                path="/adminorders"
-                element={
-                  <ProtectedAdminRoute adminOnly={true}>
-                    <AdminOrders />
-                  </ProtectedAdminRoute>
-                }
-              />
+                <Route
+                  path="/adminorders"
+                  element={
+                    <ProtectedAdminRoute adminOnly={true}>
+                      <AdminOrders />
+                    </ProtectedAdminRoute>
+                  }
+                />
 
-              {/* 🎯 Catch all route - Keep this LAST */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </AppLayout>
-        </Box>
+                {/* 🎯 Catch all route - Keep this LAST */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </AppLayout>
+          </Box>
+        </SeasonProvider>
         
         <Analytics />
       </Router>
