@@ -9,7 +9,7 @@ import {
   DollarCircleOutlined,
   TeamOutlined,
   HistoryOutlined,
-  ImageOutlined
+ PictureOutlined
 } from '@ant-design/icons';
 
 const { Text, Title } = Typography;

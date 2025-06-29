@@ -25,8 +25,8 @@ import {
   StarOutlined,
   FireOutlined,
   HeartOutlined,
-  RulerOutlined,
-  ScaleOutlined,
+  ColumnHeightOutlined,
+  DashboardOutlined,
   BgColorsOutlined,
 } from '@ant-design/icons';
 
@@ -264,7 +264,7 @@ const GaneshIdolCard = ({
             {idol.weight && (
               <Col span={12}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <ScaleOutlined style={{ fontSize: '12px', color: '#FF8F00' }} />
+                  <DashboardOutlined style={{ fontSize: '12px', color: '#FF8F00' }} />
                   <Text type="secondary" style={{ fontSize: '12px' }}>
                     {idol.weight}
                   </Text>
@@ -287,7 +287,7 @@ const GaneshIdolCard = ({
               Material: {idol.material}
             </Text>
           )}
-        </Divider>
+        </Space>
 
         {/* Features */}
         {idol.features && idol.features.length > 0 && (

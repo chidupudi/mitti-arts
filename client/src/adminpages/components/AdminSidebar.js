@@ -1,5 +1,5 @@
-// client/src/adminpages/components/AdminSidebar.js - Updated with Season Management
-import React, { useState } from 'react';
+// client/src/adminpages/components/AdminSidebar.js - Updated and Optimized
+import React, { useState, useMemo, memo } from 'react';
 import {
   Box,
   Drawer,
@@ -16,7 +16,8 @@ import {
   Collapse,
   Badge,
   Tooltip,
-  Alert
+  Alert,
+  Paper
 } from '@mui/material';
 import {
   DashboardOutlined,
@@ -31,7 +32,6 @@ import {
   PeopleOutlined,
   BarChartOutlined,
   SettingsOutlined,
-  // Ganesh Season Icons
   TempleHinduOutlined,
   GroupOutlined,
   RequestQuoteOutlined,
@@ -39,9 +39,181 @@ import {
   SwapHorizOutlined
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
-
-// Season Management
 import { useSeason } from '../../hooks/useSeason';
+
+// Navigation item component
+const NavigationItem = memo(({ 
+  item, 
+  isActive, 
+  collapsed, 
+  onNavigate, 
+  onToggleSubMenu, 
+  openSubMenu, 
+  isGaneshSeason 
+}) => {
+  const theme = useTheme();
+  
+  const handleClick = () => {
+    if (item.hasSubMenu) {
+      onToggleSubMenu(item.key);
+    } else {
+      onNavigate(item.path);
+    }
+  };
+
+  const getItemColor = () => {
+    if (isActive) {
+      return isGaneshSeason ? '#FF8F00' : '#D2691E';
+    }
+    return item.disabled ? 'text.disabled' : 'text.primary';
+  };
+
+  const getBackgroundColor = () => {
+    if (isActive) {
+      return isGaneshSeason ? 'rgba(255, 143, 0, 0.1)' : 'rgba(210, 105, 30, 0.1)';
+    }
+    return 'transparent';
+  };
+
+  return (
+    <>
+      <ListItem
+        button
+        onClick={handleClick}
+        disabled={item.disabled}
+        sx={{
+          borderRadius: 2,
+          mb: 0.5,
+          p: '8px 12px',
+          color: getItemColor(),
+          backgroundColor: getBackgroundColor(),
+          '&:hover': {
+            backgroundColor: item.disabled ? 'transparent' : 'action.hover',
+            transform: item.disabled ? 'none' : 'translateX(5px)',
+            transition: 'all 0.3s ease',
+          },
+          transition: 'all 0.2s ease',
+          fontWeight: isActive ? 600 : 400,
+          opacity: item.disabled ? 0.6 : 1,
+        }}
+      >
+        <Tooltip title={collapsed ? item.title : ''} placement="right">
+          <ListItemIcon
+            sx={{
+              color: getItemColor(),
+              minWidth: '36px'
+            }}
+          >
+            {item.badge && typeof item.badge === 'string' ? (
+              <Badge 
+                badgeContent={item.badge} 
+                color={item.badge === 'ACTIVE' ? 'warning' : 'error'}
+                sx={{
+                  '& .MuiBadge-badge': {
+                    fontSize: '10px',
+                    height: '16px',
+                    minWidth: '16px'
+                  }
+                }}
+              >
+                {item.icon}
+              </Badge>
+            ) : item.badge ? (
+              <Badge badgeContent={item.badge} color="error">
+                {item.icon}
+              </Badge>
+            ) : item.icon}
+          </ListItemIcon>
+        </Tooltip>
+        {!collapsed && (
+          <>
+            <ListItemText
+              primary={item.title}
+              secondary={item.subtitle}
+              primaryTypographyProps={{
+                variant: 'body2',
+                fontWeight: isActive ? 600 : 400
+              }}
+              secondaryTypographyProps={{
+                variant: 'caption',
+                style: { fontSize: '10px' }
+              }}
+            />
+            {item.hasSubMenu && (
+              openSubMenu[item.key] ? <ExpandLess /> : <ExpandMore />
+            )}
+          </>
+        )}
+      </ListItem>
+
+      {/* Submenu */}
+      {item.hasSubMenu && !collapsed && (
+        <Collapse in={openSubMenu[item.key]} timeout="auto" unmountOnExit>
+          <List component="div" disablePadding>
+            {item.subItems.map((subItem) => (
+              <ListItem
+                button
+                key={subItem.path}
+                onClick={() => onNavigate(subItem.path)}
+                sx={{
+                  pl: 4,
+                  borderRadius: 2,
+                  mb: 0.5,
+                  p: '6px 16px',
+                  color: isActive && subItem.path === location.pathname 
+                    ? (isGaneshSeason ? '#FF8F00' : '#D2691E') 
+                    : 'text.secondary',
+                  backgroundColor: isActive && subItem.path === location.pathname 
+                    ? (isGaneshSeason ? 'rgba(255, 143, 0, 0.05)' : 'rgba(210, 105, 30, 0.05)') 
+                    : subItem.highlight 
+                      ? 'rgba(25, 118, 210, 0.05)'
+                      : 'transparent',
+                  '&:hover': {
+                    backgroundColor: 'action.hover',
+                    transform: 'translateX(5px)',
+                  },
+                  transition: 'all 0.2s ease',
+                  fontWeight: isActive && subItem.path === location.pathname ? 600 : 400,
+                  border: subItem.highlight ? '1px solid rgba(25, 118, 210, 0.3)' : 'none',
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: '30px' }}>
+                  {subItem.icon || (
+                    <Box
+                      sx={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: '50%',
+                        bgcolor: isActive && subItem.path === location.pathname 
+                          ? (isGaneshSeason ? '#FF8F00' : '#D2691E') 
+                          : 'text.disabled',
+                      }}
+                    />
+                  )}
+                </ListItemIcon>
+                <ListItemText
+                  primary={subItem.title}
+                  secondary={subItem.description}
+                  primaryTypographyProps={{
+                    variant: 'body2',
+                    fontWeight: isActive && subItem.path === location.pathname ? 600 : 400
+                  }}
+                  secondaryTypographyProps={{
+                    variant: 'caption',
+                    style: { fontSize: '10px' }
+                  }}
+                />
+                {subItem.badge && (
+                  <Badge badgeContent={subItem.badge} color="error" />
+                )}
+              </ListItem>
+            ))}
+          </List>
+        </Collapse>
+      )}
+    </>
+  );
+});
 
 const AdminSidebar = ({ open, onToggle }) => {
   const theme = useTheme();
@@ -58,14 +230,14 @@ const AdminSidebar = ({ open, onToggle }) => {
 
   const [collapsed, setCollapsed] = useState(false);
 
-  const [adminInfo] = useState({
+  const adminInfo = {
     name: 'Admin',
     role: 'Administrator',
     avatar: null
-  });
+  };
 
-  // Navigation items that change based on season
-  const getNavigationItems = () => {
+  // Memoized navigation items that change based on season
+  const navigationItems = useMemo(() => {
     const baseItems = [
       {
         title: 'Dashboard',
@@ -81,7 +253,6 @@ const AdminSidebar = ({ open, onToggle }) => {
       }
     ];
 
-    // Season-specific inventory and management
     if (isGaneshSeason) {
       return [
         ...baseItems,
@@ -120,7 +291,7 @@ const AdminSidebar = ({ open, onToggle }) => {
           icon: <StorefrontOutlined />,
           path: '/inventory',
           subtitle: 'Hidden during Ganesh season',
-          disabled: false // Still accessible for management
+          disabled: false
         },
         {
           title: 'Customers',
@@ -149,7 +320,6 @@ const AdminSidebar = ({ open, onToggle }) => {
         }
       ];
     } else {
-      // Normal season navigation
       return [
         ...baseItems,
         {
@@ -191,9 +361,7 @@ const AdminSidebar = ({ open, onToggle }) => {
         }
       ];
     }
-  };
-
-  const navigationItems = getNavigationItems();
+  }, [isGaneshSeason]);
 
   const handleNavigation = (path) => {
     navigate(path);
@@ -203,10 +371,10 @@ const AdminSidebar = ({ open, onToggle }) => {
   };
 
   const handleToggleSubMenu = (key) => {
-    setOpenSubMenu({
-      ...openSubMenu,
-      [key]: !openSubMenu[key]
-    });
+    setOpenSubMenu(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
   };
 
   const handleLogout = () => {
@@ -309,156 +477,16 @@ const AdminSidebar = ({ open, onToggle }) => {
       {/* Navigation Items */}
       <List sx={{ p: 1, flexGrow: 1 }}>
         {navigationItems.map((item) => (
-          <React.Fragment key={item.path || item.key}>
-            <ListItem
-              button
-              onClick={item.hasSubMenu
-                ? () => handleToggleSubMenu(item.key)
-                : () => handleNavigation(item.path)}
-              disabled={item.disabled}
-              sx={{
-                borderRadius: 2,
-                mb: 0.5,
-                p: '8px 12px',
-                color: isPathActive(item.path) 
-                  ? (isGaneshSeason ? '#FF8F00' : '#D2691E') 
-                  : item.disabled 
-                    ? 'text.disabled'
-                    : 'text.primary',
-                backgroundColor: isPathActive(item.path) 
-                  ? (isGaneshSeason ? 'rgba(255, 143, 0, 0.1)' : 'rgba(210, 105, 30, 0.1)') 
-                  : 'transparent',
-                '&:hover': {
-                  backgroundColor: item.disabled 
-                    ? 'transparent'
-                    : 'action.hover',
-                  transform: item.disabled ? 'none' : 'translateX(5px)',
-                  transition: 'all 0.3s ease',
-                },
-                transition: 'all 0.2s ease',
-                fontWeight: isPathActive(item.path) ? 600 : 400,
-                opacity: item.disabled ? 0.6 : 1,
-              }}
-            >
-              <Tooltip title={collapsed ? item.title : ''} placement="right">
-                <ListItemIcon
-                  sx={{
-                    color: isPathActive(item.path) 
-                      ? (isGaneshSeason ? '#FF8F00' : '#D2691E') 
-                      : item.disabled 
-                        ? 'text.disabled'
-                        : 'text.secondary',
-                    minWidth: '36px'
-                  }}
-                >
-                  {item.badge && typeof item.badge === 'string' ? (
-                    <Badge 
-                      badgeContent={item.badge} 
-                      color={item.badge === 'ACTIVE' ? 'warning' : 'error'}
-                      sx={{
-                        '& .MuiBadge-badge': {
-                          fontSize: '10px',
-                          height: '16px',
-                          minWidth: '16px'
-                        }
-                      }}
-                    >
-                      {item.icon}
-                    </Badge>
-                  ) : item.badge ? (
-                    <Badge badgeContent={item.badge} color="error">
-                      {item.icon}
-                    </Badge>
-                  ) : item.icon}
-                </ListItemIcon>
-              </Tooltip>
-              {!collapsed && (
-                <>
-                  <ListItemText
-                    primary={item.title}
-                    secondary={item.subtitle}
-                    primaryTypographyProps={{
-                      variant: 'body2',
-                      fontWeight: isPathActive(item.path) ? 600 : 400
-                    }}
-                    secondaryTypographyProps={{
-                      variant: 'caption',
-                      style: { fontSize: '10px' }
-                    }}
-                  />
-                  {item.hasSubMenu && (
-                    openSubMenu[item.key] ? <ExpandLess /> : <ExpandMore />
-                  )}
-                </>
-              )}
-            </ListItem>
-
-            {/* Submenu */}
-            {item.hasSubMenu && !collapsed && (
-              <Collapse in={openSubMenu[item.key]} timeout="auto" unmountOnExit>
-                <List component="div" disablePadding>
-                  {item.subItems.map((subItem) => (
-                    <ListItem
-                      button
-                      key={subItem.path}
-                      onClick={() => handleNavigation(subItem.path)}
-                      sx={{
-                        pl: 4,
-                        borderRadius: 2,
-                        mb: 0.5,
-                        p: '6px 16px',
-                        color: isPathActive(subItem.path) 
-                          ? (isGaneshSeason ? '#FF8F00' : '#D2691E') 
-                          : 'text.secondary',
-                        backgroundColor: isPathActive(subItem.path) 
-                          ? (isGaneshSeason ? 'rgba(255, 143, 0, 0.05)' : 'rgba(210, 105, 30, 0.05)') 
-                          : subItem.highlight 
-                            ? 'rgba(25, 118, 210, 0.05)'
-                            : 'transparent',
-                        '&:hover': {
-                          backgroundColor: 'action.hover',
-                          transform: 'translateX(5px)',
-                        },
-                        transition: 'all 0.2s ease',
-                        fontWeight: isPathActive(subItem.path) ? 600 : 400,
-                        border: subItem.highlight ? '1px solid rgba(25, 118, 210, 0.3)' : 'none',
-                      }}
-                    >
-                      <ListItemIcon sx={{ minWidth: '30px' }}>
-                        {subItem.icon || (
-                          <Box
-                            sx={{
-                              width: 6,
-                              height: 6,
-                              borderRadius: '50%',
-                              bgcolor: isPathActive(subItem.path) 
-                                ? (isGaneshSeason ? '#FF8F00' : '#D2691E') 
-                                : 'text.disabled',
-                            }}
-                          />
-                        )}
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={subItem.title}
-                        secondary={subItem.description}
-                        primaryTypographyProps={{
-                          variant: 'body2',
-                          fontWeight: isPathActive(subItem.path) ? 600 : 400
-                        }}
-                        secondaryTypographyProps={{
-                          variant: 'caption',
-                          style: { fontSize: '10px' }
-                        }}
-                      />
-                      {subItem.badge && (
-                        <Badge badgeContent={subItem.badge} color="error" />
-                      )}
-                    </ListItem>
-                  ))}
-                </List>
-              </Collapse>
-            )}
-          </React.Fragment>
+          <NavigationItem
+            key={item.path || item.key}
+            item={item}
+            isActive={isPathActive(item.path)}
+            collapsed={collapsed}
+            onNavigate={handleNavigation}
+            onToggleSubMenu={handleToggleSubMenu}
+            openSubMenu={openSubMenu}
+            isGaneshSeason={isGaneshSeason}
+          />
         ))}
       </List>
 
@@ -588,4 +616,4 @@ const AdminSidebar = ({ open, onToggle }) => {
   );
 };
 
-export default AdminSidebar;
+export default memo(AdminSidebar);

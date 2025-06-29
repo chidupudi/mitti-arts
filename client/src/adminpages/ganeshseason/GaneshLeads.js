@@ -515,8 +515,9 @@ const GaneshLeads = () => {
                       WhatsApp
                     </Button>
                   </Space>
-                </div>
-              }
+                </Space>
+              </div>
+            )}
           </Modal>
 
           {/* Convert to Order Modal */}

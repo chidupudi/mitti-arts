@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, Typography, Button, Empty, Space, Alert, Row, Col } from 'antd';
 import { 
   PlusOutlined, 
-  TempleBuddhistOutlined,
+  HomeOutlined,
   InfoCircleOutlined,
   CrownOutlined,
   StarOutlined,

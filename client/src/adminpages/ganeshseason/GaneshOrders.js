@@ -12,7 +12,7 @@ import {
   GiftOutlined,
   EyeOutlined,
   EditOutlined,
-  PaymentOutlined,
+  CreditCardOutlined,
   HistoryOutlined,
   CalendarOutlined,
   WarningOutlined

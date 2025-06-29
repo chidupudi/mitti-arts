@@ -1,122 +1,113 @@
-// client/src/App.js - Updated with Ganesh Season Routes
-import React, { useState, useEffect } from 'react';
+// client/src/App.js - Updated and Optimized
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react';
-import { Box, useTheme, useMediaQuery, CssBaseline, ThemeProvider, createTheme } from '@mui/material';
+import { Box, useTheme, useMediaQuery, CssBaseline, ThemeProvider, createTheme, CircularProgress } from '@mui/material';
 import { auth, db } from './Firebase/Firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 
-// Season Management - NEW IMPORT
+// Season Management
 import { SeasonProvider } from './hooks/useSeason';
 
 // Regular components
 import Header from './components/Header';
-import ResetPassword from './pages/ResetPassword';
-import Welcome from './pages/Welcome';
-import Products from './pages/Products';
-import ProductDetail from './pages/ProductDetail';
-import About from './pages/aboutus';
-import Policies from './pages/Policies';
-import ContactUs from './pages/Contact';
-import AuthForm from './components/AuthForm';
-import Profile from './pages/Profile';
-import Cart from './pages/Cart';
-import OrderSummary from './pages/OrderSummary';
-import OrderConfirmation from './pages/OrderConfirmations';
-import WishList from './pages/WishList';
-import Order from './pages/Orders';
 import Footer from './components/Footer';
-import PhonePePayment from './components/PhonePePayment';
-import PaymentStatusPage from './pages/PaymentStatusPage';
-import NotFound from './components/NotFound';
-
-// Admin components
-import Dashboard from './adminpages/Dashboard';
-import Inventory from './adminpages/Inventory';
-import AdminOrders from './adminpages/adminorders';
-import AdminAuth, { ProtectedAdminRoute } from './adminpages/adminauth';
-import AdminSidebar from './adminpages/components/AdminSidebar';
-
-// Ganesh Season Components - NEW
-import GaneshInventory from './adminpages/ganeshseason/GaneshInventory';
-import GaneshLeads from './adminpages/ganeshseason/components/';
-import GaneshOrders from './adminpages/ganeshseason/GaneshOrders';
-
-// ScrollToTop component
 import ScrollToTop from './components/ScrollToTop';
 import SSLErrorHandler from './components/SSLErrorHandler';
+import NotFound from './components/NotFound';
 
-// Create responsive theme with mobile-first approach
+// Lazy load components for better performance
+const Welcome = lazy(() => import('./pages/Welcome'));
+const Products = lazy(() => import('./pages/Products'));
+const ProductDetail = lazy(() => import('./pages/ProductDetail'));
+const About = lazy(() => import('./pages/aboutus'));
+const Policies = lazy(() => import('./pages/Policies'));
+const ContactUs = lazy(() => import('./pages/Contact'));
+const AuthForm = lazy(() => import('./components/AuthForm'));
+const Profile = lazy(() => import('./pages/Profile'));
+const Cart = lazy(() => import('./pages/Cart'));
+const OrderSummary = lazy(() => import('./pages/OrderSummary'));
+const OrderConfirmation = lazy(() => import('./pages/OrderConfirmations'));
+const WishList = lazy(() => import('./pages/WishList'));
+const Order = lazy(() => import('./pages/Orders'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const PhonePePayment = lazy(() => import('./components/PhonePePayment'));
+const PaymentStatusPage = lazy(() => import('./pages/PaymentStatusPage'));
+
+// Admin components
+const Dashboard = lazy(() => import('./adminpages/Dashboard'));
+const Inventory = lazy(() => import('./adminpages/Inventory'));
+const AdminOrders = lazy(() => import('./adminpages/adminorders'));
+const AdminAuth = lazy(() => import('./adminpages/adminauth'));
+const { ProtectedAdminRoute } = require('./adminpages/adminauth');
+const AdminSidebar = lazy(() => import('./adminpages/components/AdminSidebar'));
+
+// Ganesh Season Components
+const GaneshInventory = lazy(() => import('./adminpages/ganeshseason/GaneshInventory'));
+const GaneshLeads = lazy(() => import('./adminpages/ganeshseason/GaneshLeads'));
+const GaneshOrders = lazy(() => import('./adminpages/ganeshseason/GaneshOrders'));
+
+// Create responsive theme with terracotta colors
 const responsiveTheme = createTheme({
+  palette: {
+    primary: {
+      main: '#E07A5F', // Terracotta
+      light: '#F2CC8F',
+      dark: '#BE5A38',
+      contrastText: '#fff',
+    },
+    secondary: {
+      main: '#3D405B', // Dark blue-grey
+      light: '#6C6F94',
+      dark: '#2A2C3F',
+    },
+    background: {
+      default: '#FFF9F5', // Very light coconut
+      paper: '#FFFFFF',
+    },
+    text: {
+      primary: '#3D405B',
+      secondary: '#797B8E',
+    },
+  },
   breakpoints: {
     values: {
-      xs: 0,      // Extra small devices (phones, 0px and up)
-      sm: 576,    // Small devices (landscape phones, 576px and up)
-      md: 768,    // Medium devices (tablets, 768px and up)  
-      lg: 992,    // Large devices (desktops, 992px and up)
-      xl: 1200,   // Extra large devices (large desktops, 1200px and up)
+      xs: 0,
+      sm: 576,
+      md: 768,
+      lg: 992,
+      xl: 1200,
     },
   },
   typography: {
-    // Responsive font sizes
-    h1: {
-      fontSize: 'clamp(1.5rem, 4vw, 2.5rem)',
-    },
-    h2: {
-      fontSize: 'clamp(1.25rem, 3.5vw, 2rem)',
-    },
-    h3: {
-      fontSize: 'clamp(1.125rem, 3vw, 1.75rem)',
-    },
-    h4: {
-      fontSize: 'clamp(1rem, 2.5vw, 1.5rem)',
-    },
-    h5: {
-      fontSize: 'clamp(0.875rem, 2vw, 1.25rem)',
-    },
-    h6: {
-      fontSize: 'clamp(0.75rem, 1.5vw, 1.125rem)',
-    },
-    body1: {
-      fontSize: 'clamp(0.875rem, 1.5vw, 1rem)',
-    },
-    body2: {
-      fontSize: 'clamp(0.75rem, 1.25vw, 0.875rem)',
-    },
+    fontFamily: '"Poppins", "Roboto", "Helvetica", "Arial", sans-serif',
+    h1: { fontSize: 'clamp(1.5rem, 4vw, 2.5rem)' },
+    h2: { fontSize: 'clamp(1.25rem, 3.5vw, 2rem)' },
+    h3: { fontSize: 'clamp(1.125rem, 3vw, 1.75rem)' },
+    h4: { fontSize: 'clamp(1rem, 2.5vw, 1.5rem)' },
+    h5: { fontSize: 'clamp(0.875rem, 2vw, 1.25rem)' },
+    h6: { fontSize: 'clamp(0.75rem, 1.5vw, 1.125rem)' },
+    body1: { fontSize: 'clamp(0.875rem, 1.5vw, 1rem)' },
+    body2: { fontSize: 'clamp(0.75rem, 1.25vw, 0.875rem)' },
   },
   components: {
-    // Global styles for responsive behavior
     MuiCssBaseline: {
       styleOverrides: {
-        '*': {
-          boxSizing: 'border-box',
-        },
+        '*': { boxSizing: 'border-box' },
         html: {
-          // Prevent horizontal scroll on mobile
           overflowX: 'hidden',
-          // Smooth scrolling
           scrollBehavior: 'smooth',
-          // Fix iOS zoom issue
           WebkitTextSizeAdjust: '100%',
         },
         body: {
           overflowX: 'hidden',
-          // Improve text rendering
           WebkitFontSmoothing: 'antialiased',
           MozOsxFontSmoothing: 'grayscale',
-          // Prevent pull-to-refresh on mobile
           overscrollBehavior: 'none',
-        },
-        // Fix iOS Safari bottom bar issue
-        '@supports (-webkit-touch-callout: none)': {
-          '.ios-safe-area': {
-            paddingBottom: 'env(safe-area-inset-bottom)',
-          },
         },
       },
     },
-    // Make all Material-UI components responsive by default
     MuiContainer: {
       styleOverrides: {
         root: {
@@ -133,25 +124,31 @@ const responsiveTheme = createTheme({
       styleOverrides: {
         root: {
           '@media (max-width: 576px)': {
-            minHeight: '44px', // iOS minimum touch target
+            minHeight: '44px',
             fontSize: '0.875rem',
-          },
-        },
-      },
-    },
-    MuiTextField: {
-      styleOverrides: {
-        root: {
-          '@media (max-width: 576px)': {
-            '& .MuiInputBase-input': {
-              fontSize: '16px', // Prevent zoom on iOS
-            },
           },
         },
       },
     },
   },
 });
+
+// Loading component
+const LoadingFallback = ({ message = 'Loading...' }) => (
+  <Box sx={{ 
+    display: 'flex', 
+    flexDirection: 'column',
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    minHeight: '60vh',
+    gap: 2 
+  }}>
+    <CircularProgress sx={{ color: 'primary.main' }} />
+    <Box sx={{ color: 'text.secondary', fontSize: '0.875rem' }}>
+      {message}
+    </Box>
+  </Box>
+);
 
 // Hook to check if user is admin
 const useIsAdmin = () => {
@@ -162,14 +159,8 @@ const useIsAdmin = () => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         try {
-          // Check if user is admin
           const adminDoc = await getDoc(doc(db, 'admins', user.uid));
-          
-          if (adminDoc.exists() && adminDoc.data().isAdmin) {
-            setIsAdmin(true);
-          } else {
-            setIsAdmin(false);
-          }
+          setIsAdmin(adminDoc.exists() && adminDoc.data().isAdmin);
         } catch (error) {
           console.error('Error checking admin status:', error);
           setIsAdmin(false);
@@ -186,51 +177,49 @@ const useIsAdmin = () => {
   return { isAdmin, loading };
 };
 
-// Check if current path is admin-specific route (dashboard, inventory, etc.)
+// Check if current path is admin route
 const useIsAdminRoute = () => {
   const location = useLocation();
-  return [
+  const adminRoutes = [
     '/dashboard', 
     '/inventory', 
     '/adminorders', 
     '/admin', 
     '/supercontrollogin',
-    // NEW: Ganesh season routes
     '/ganesh-inventory',
     '/ganesh-leads', 
     '/ganesh-orders'
-  ].includes(location.pathname);
+  ];
+  return adminRoutes.includes(location.pathname);
 };
 
-// Admin Layout Component (for ALL pages when admin is logged in)
+// Admin Layout Component
 const AdminLayoutContent = ({ children }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const isSmallMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleSidebarToggle = () => {
-    setSidebarOpen(!sidebarOpen);
+    setSidebarOpen(prev => !prev);
   };
 
   return (
     <Box sx={{ 
       display: 'flex', 
-      backgroundColor: '#FAF0E6', // Light terracotta background
+      backgroundColor: '#FAF0E6',
       minHeight: '100vh',
       width: '100%',
-      overflow: 'hidden', // Prevent horizontal scroll
+      overflow: 'hidden',
     }}>
-      {/* Admin Sidebar */}
-      <AdminSidebar 
-        open={sidebarOpen} 
-        onToggle={handleSidebarToggle}
-      />
+      <Suspense fallback={<LoadingFallback message="Loading admin panel..." />}>
+        <AdminSidebar 
+          open={sidebarOpen} 
+          onToggle={handleSidebarToggle}
+        />
+      </Suspense>
 
-      {/* Main Content Area */}
       <Box 
         component="main" 
-        className="ios-safe-area"
         sx={{ 
           flexGrow: 1,
           width: isMobile ? '100%' : 'calc(100% - 280px)',
@@ -238,34 +227,19 @@ const AdminLayoutContent = ({ children }) => {
           display: 'flex',
           flexDirection: 'column',
           pt: isMobile && !sidebarOpen ? 8 : 0,
-          // Mobile-specific adjustments
-          ...(isMobile && {
-            maxWidth: '100vw',
-            overflow: 'hidden',
-          }),
-          // Small mobile adjustments
-          ...(isSmallMobile && {
-            pt: 10, // More top padding for very small screens
-          }),
+          maxWidth: '100vw',
+          overflow: 'hidden',
         }}
       >
-        {/* Header */}
         <Header />
-        
-        {/* Page Content */}
         <Box sx={{ 
           flexGrow: 1,
           width: '100%',
-          // Ensure content doesn't overflow on mobile
-          ...(isMobile && {
-            maxWidth: '100vw',
-            overflow: 'hidden',
-          }),
+          maxWidth: '100vw',
+          overflow: 'hidden',
         }}>
           {children}
         </Box>
-        
-        {/* Footer */}
         <Footer />
       </Box>
     </Box>
@@ -276,45 +250,29 @@ const AdminLayoutContent = ({ children }) => {
 const RegularLayoutContent = ({ children }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const isSmallMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   return (
-    <Box 
-      className="ios-safe-area"
-      sx={{
-        width: '100%',
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden', // Prevent horizontal scroll
-        // Mobile-specific adjustments
-        ...(isMobile && {
-          maxWidth: '100vw',
-        }),
-      }}
-    >
+    <Box sx={{
+      width: '100%',
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden',
+      maxWidth: '100vw',
+    }}>
       <Header />
-      
-      {/* Main Content Wrapper */}
       <Box 
         component="main"
         sx={{ 
           flexGrow: 1,
           width: '100%',
-          // Ensure content fits properly on mobile
-          ...(isMobile && {
-            maxWidth: '100vw',
-            overflow: 'hidden',
-          }),
-          // Additional padding for small screens
-          ...(isSmallMobile && {
-            px: 1, // Small horizontal padding
-          }),
+          maxWidth: '100vw',
+          overflow: 'hidden',
+          ...(isMobile && { px: 1 }),
         }}
       >
         {children}
       </Box>
-      
       <Footer />
     </Box>
   );
@@ -325,22 +283,12 @@ const AppLayout = ({ children }) => {
   const { isAdmin, loading } = useIsAdmin();
   const isAdminRoute = useIsAdminRoute();
 
-  // Show loading while checking admin status
   if (loading) {
-    return (
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        minHeight: '100vh' 
-      }}>
-        <div>Loading...</div>
-      </Box>
-    );
+    return <LoadingFallback message="Checking authentication..." />;
   }
 
-  // If user is admin AND not on login/auth pages, show admin layout
-  if (isAdmin && !isAdminRoute) {
+  // Show admin layout for admin users or admin routes
+  if (isAdmin || isAdminRoute) {
     return (
       <AdminLayoutContent>
         {children}
@@ -348,16 +296,6 @@ const AppLayout = ({ children }) => {
     );
   }
 
-  // If user is admin AND on admin-specific pages, show admin layout
-  if (isAdmin && isAdminRoute) {
-    return (
-      <AdminLayoutContent>
-        {children}
-      </AdminLayoutContent>
-    );
-  }
-
-  // For regular users or admin on login pages, show regular layout
   return (
     <RegularLayoutContent>
       {children}
@@ -368,114 +306,105 @@ const AppLayout = ({ children }) => {
 const App = () => {
   return (
     <ThemeProvider theme={responsiveTheme}>
-      {/* CssBaseline kickstart an elegant, consistent, and simple baseline to build upon */}
       <CssBaseline />
-      
       <Router>
-        {/* Season Provider - NEW: Wraps entire app for season management */}
         <SeasonProvider>
-          {/* ScrollToTop component - must be inside Router */}
           <ScrollToTop />
+          <SSLErrorHandler />
           
-          {/* Main App Container with mobile-first responsive design */}
           <Box sx={{
             width: '100%',
             minHeight: '100vh',
-            overflow: 'hidden', // Prevent horizontal scroll
-            // iOS-specific fixes
+            overflow: 'hidden',
             WebkitOverflowScrolling: 'touch',
-            // Android-specific fixes
             overscrollBehavior: 'none',
           }}>
             <AppLayout>
-              <Routes>
-                {/* 🌍 Public Routes */}
-                <Route path="/" element={<Welcome />} />
-                <Route path="/products" element={<Products />} />
-                <Route path="/product/:id" element={<ProductDetail />} />
-                <Route path="/about" element={<About />} />
-                <Route path="/policies" element={<Policies />} />
-                <Route path="/contactus" element={<ContactUs />} />
-                
-                {/* 🔑 Authentication Routes */}
-                <Route path="/auth" element={<AuthForm />} />
-                <Route path="/login" element={<AuthForm />} />
+              <Suspense fallback={<LoadingFallback />}>
+                <Routes>
+                  {/* Public Routes */}
+                  <Route path="/" element={<Welcome />} />
+                  <Route path="/products" element={<Products />} />
+                  <Route path="/product/:id" element={<ProductDetail />} />
+                  <Route path="/about" element={<About />} />
+                  <Route path="/policies" element={<Policies />} />
+                  <Route path="/contactus" element={<ContactUs />} />
+                  
+                  {/* Authentication Routes */}
+                  <Route path="/auth" element={<AuthForm />} />
+                  <Route path="/login" element={<AuthForm />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
 
-                {/* 👤 User Routes */}
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/reset-password" element={<ResetPassword />} />
-                <Route path="/cart" element={<Cart />} />
-                <Route path="/order-summary" element={<OrderSummary />} />
-                <Route path="/order-confirmation" element={<OrderConfirmation />} />
-                <Route path="/wishlist" element={<WishList />} />
-                <Route path="/orders" element={<Order />} />
-                <Route path="/phonepe" element={<PhonePePayment />} />
-                <Route path="/payment-status/:orderId" element={<PaymentStatusPage />} />
-                <Route path="/supercontrollogin" element={<AdminAuth />} />
+                  {/* User Routes */}
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/cart" element={<Cart />} />
+                  <Route path="/order-summary" element={<OrderSummary />} />
+                  <Route path="/order-confirmation" element={<OrderConfirmation />} />
+                  <Route path="/wishlist" element={<WishList />} />
+                  <Route path="/orders" element={<Order />} />
+                  <Route path="/phonepe" element={<PhonePePayment />} />
+                  <Route path="/payment-status/:orderId" element={<PaymentStatusPage />} />
 
-                {/* 🔐 Admin Routes - Regular */}
-                <Route 
-                  path="/dashboard" 
-                  element={
-                    <ProtectedAdminRoute adminOnly={true}>
-                      <Dashboard />
-                    </ProtectedAdminRoute>
-                  } 
-                />
+                  {/* Admin Routes */}
+                  <Route path="/supercontrollogin" element={<AdminAuth />} />
+                  <Route 
+                    path="/dashboard" 
+                    element={
+                      <ProtectedAdminRoute adminOnly={true}>
+                        <Dashboard />
+                      </ProtectedAdminRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/inventory" 
+                    element={
+                      <ProtectedAdminRoute adminOnly={true}>
+                        <Inventory />
+                      </ProtectedAdminRoute>
+                    }
+                  />
+                  <Route
+                    path="/adminorders"
+                    element={
+                      <ProtectedAdminRoute adminOnly={true}>
+                        <AdminOrders />
+                      </ProtectedAdminRoute>
+                    }
+                  />
 
-                <Route 
-                  path="/inventory" 
-                  element={
-                    <ProtectedAdminRoute adminOnly={true}>
-                      <Inventory />
-                    </ProtectedAdminRoute>
-                  }
-                />
+                  {/* Ganesh Season Routes */}
+                  <Route 
+                    path="/ganesh-inventory" 
+                    element={
+                      <ProtectedAdminRoute adminOnly={true}>
+                        <GaneshInventory />
+                      </ProtectedAdminRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/ganesh-leads" 
+                    element={
+                      <ProtectedAdminRoute adminOnly={true}>
+                        <GaneshLeads />
+                      </ProtectedAdminRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/ganesh-orders" 
+                    element={
+                      <ProtectedAdminRoute adminOnly={true}>
+                        <GaneshOrders />
+                      </ProtectedAdminRoute>
+                    } 
+                  />
 
-                <Route
-                  path="/adminorders"
-                  element={
-                    <ProtectedAdminRoute adminOnly={true}>
-                      <AdminOrders />
-                    </ProtectedAdminRoute>
-                  }
-                />
-
-                {/* 🕉️ Ganesh Season Routes - NEW */}
-                <Route 
-                  path="/ganesh-inventory" 
-                  element={
-                    <ProtectedAdminRoute adminOnly={true}>
-                      <GaneshInventory />
-                    </ProtectedAdminRoute>
-                  } 
-                />
-
-                <Route 
-                  path="/ganesh-leads" 
-                  element={
-                    <ProtectedAdminRoute adminOnly={true}>
-                      <GaneshLeads />
-                    </ProtectedAdminRoute>
-                  } 
-                />
-
-                <Route 
-                  path="/ganesh-orders" 
-                  element={
-                    <ProtectedAdminRoute adminOnly={true}>
-                      <GaneshOrders />
-                    </ProtectedAdminRoute>
-                  } 
-                />
-
-                {/* 🎯 Catch all route - Keep this LAST */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
+                  {/* Catch all route */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
             </AppLayout>
           </Box>
         </SeasonProvider>
-        
         <Analytics />
       </Router>
     </ThemeProvider>

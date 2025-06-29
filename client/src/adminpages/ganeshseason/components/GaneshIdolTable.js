@@ -21,8 +21,8 @@ import {
   CrownOutlined,
   StarOutlined,
   FireOutlined,
-  RulerOutlined,
-  ScaleOutlined,
+  ColumnHeightOutlined,
+  DashboardOutlined,
   BgColorsOutlined,
   ClockCircleOutlined,
 } from '@ant-design/icons';
@@ -154,7 +154,7 @@ const GaneshIdolTable = ({
         <Space direction="vertical" size="small">
           {record.height && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <RulerOutlined style={{ fontSize: '12px', color: '#FF8F00' }} />
+              <ColumnHeightOutlined style={{ fontSize: '12px', color: '#FF8F00' }} />
               <Text type="secondary" style={{ fontSize: '12px' }}>
                 H: {record.height}
               </Text>
@@ -163,7 +163,7 @@ const GaneshIdolTable = ({
           
           {record.weight && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <ScaleOutlined style={{ fontSize: '12px', color: '#FF8F00' }} />
+              <DashboardOutlined style={{ fontSize: '12px', color: '#FF8F00' }} />
               <Text type="secondary" style={{ fontSize: '12px' }}>
                 W: {record.weight}
               </Text>
