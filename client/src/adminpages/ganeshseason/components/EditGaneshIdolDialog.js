@@ -9,15 +9,14 @@ import {
   Col,
   Button,
   Typography,
-  Upload,
   Switch,
   Select,
   Divider,
   Card,
   Space,
   Tag,
-  Tooltip,
   Alert,
+  message,
 } from 'antd';
 import {
   EditOutlined,
@@ -34,11 +33,29 @@ import {
   DollarOutlined,
   PlusOutlined,
   HistoryOutlined,
+  LoadingOutlined,
 } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
 const { Option } = Select;
+
+// Import Cloudinary utilities with try-catch for safety
+let uploadToCloudinary, validateImageFile;
+try {
+  const cloudinaryUtils = require('../../../utils/cloudinary');
+  uploadToCloudinary = cloudinaryUtils.uploadToCloudinary;
+  validateImageFile = cloudinaryUtils.validateImageFile;
+} catch (error) {
+  console.warn('Cloudinary utils not found, using fallback');
+  // Fallback functions
+  uploadToCloudinary = async (file) => {
+    throw new Error('Cloudinary not configured');
+  };
+  validateImageFile = (file) => {
+    return true;
+  };
+}
 
 const EditGaneshIdolDialog = ({
   open,
@@ -46,11 +63,11 @@ const EditGaneshIdolDialog = ({
   idol,
   onChange,
   onSave,
-  onImageUpload,
 }) => {
   const [form] = Form.useForm();
   const [features, setFeatures] = useState([]);
   const [newFeature, setNewFeature] = useState('');
+  const [uploadingIndex, setUploadingIndex] = useState(null);
 
   // Initialize features when idol changes
   useEffect(() => {
@@ -79,6 +96,51 @@ const EditGaneshIdolDialog = ({
     onChange('features', updatedFeatures);
   };
 
+  // Handle image upload with direct Cloudinary integration
+  const handleImageChange = async (e, index) => {
+    try {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      // Validate file before upload
+      if (validateImageFile) {
+        validateImageFile(file);
+      }
+
+      // Set loading state for this specific index
+      setUploadingIndex(index);
+      const newImages = [...(idol.images || Array(8).fill(''))];
+      newImages[index] = 'loading';
+      onChange('images', newImages);
+
+      // Upload to cloudinary
+      let imageUrl;
+      if (uploadToCloudinary) {
+        imageUrl = await uploadToCloudinary(file);
+      } else {
+        throw new Error('Upload service not available');
+      }
+
+      // Update with actual URL
+      const updatedImages = [...(idol.images || Array(8).fill(''))];
+      updatedImages[index] = imageUrl;
+      onChange('images', updatedImages);
+
+      message.success('Image uploaded successfully!');
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      
+      // Reset loading state on error
+      const resetImages = [...(idol.images || Array(8).fill(''))];
+      resetImages[index] = '';
+      onChange('images', resetImages);
+      
+      message.error(error.message || 'Failed to upload image');
+    } finally {
+      setUploadingIndex(null);
+    }
+  };
+
   // Function to add an empty slot for a new image
   const handleAddImageSlot = () => {
     const currentImages = [...(idol.images || [])];
@@ -86,27 +148,6 @@ const EditGaneshIdolDialog = ({
       currentImages.push('');
       onChange('images', currentImages);
     }
-  };
-
-  // Handle image upload
-  const handleImageChange = (info, index) => {
-    if (info.file.status === 'uploading') {
-      const newImages = [...(idol.images || [])];
-      newImages[index] = 'loading';
-      onChange('images', newImages);
-      return;
-    }
-    
-    if (info.file.status === 'done') {
-      onImageUpload(info, index, true);
-    }
-  };
-
-  // Remove image
-  const removeImage = (index) => {
-    const newImages = [...(idol.images || [])];
-    newImages[index] = '';
-    onChange('images', newImages);
   };
 
   // Delete image completely (remove from array)
@@ -123,12 +164,98 @@ const EditGaneshIdolDialog = ({
     return Math.round(averagePrice * (idol.advancePercentage || 25) / 100);
   };
 
-  const uploadButton = (index) => (
-    <div style={{ textAlign: 'center' }}>
-      <CloudUploadOutlined style={{ fontSize: '32px', color: '#FF8F00' }} />
-      <div style={{ marginTop: 8, color: '#FF6F00' }}>Upload Image</div>
-    </div>
-  );
+  // Image upload component
+  const ImageUploadCard = ({ index }) => {
+    const imageUrl = idol.images?.[index];
+    const isLoading = uploadingIndex === index || imageUrl === 'loading';
+
+    return (
+      <Card
+        style={{
+          height: '140px',
+          border: '2px dashed #FFB74D',
+          borderRadius: '8px',
+          position: 'relative',
+          cursor: !imageUrl ? 'pointer' : 'default',
+        }}
+        bodyStyle={{ 
+          padding: 0, 
+          height: '100%', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center' 
+        }}
+        onClick={() => {
+          if (!imageUrl && !isLoading) {
+            document.getElementById(`edit-image-upload-${index}`).click();
+          }
+        }}
+      >
+        {isLoading ? (
+          <div style={{ textAlign: 'center' }}>
+            <LoadingOutlined style={{ fontSize: '32px', color: '#FF8F00' }} />
+            <div style={{ marginTop: '8px', color: '#FF8F00', fontSize: '12px' }}>
+              Uploading...
+            </div>
+          </div>
+        ) : imageUrl ? (
+          <>
+            <img
+              src={imageUrl}
+              alt={`Ganesh Idol ${index + 1}`}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                borderRadius: '6px',
+              }}
+            />
+            <div style={{ position: 'absolute', top: '4px', right: '4px', display: 'flex', gap: '4px' }}>
+              <Button
+                type="primary"
+                danger
+                size="small"
+                icon={<DeleteOutlined />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteImage(index);
+                }}
+                title="Delete image permanently"
+              />
+            </div>
+            {index === 0 && (
+              <div style={{
+                position: 'absolute',
+                bottom: '4px',
+                left: '4px',
+                background: 'rgba(255, 143, 0, 0.9)',
+                color: 'white',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                fontSize: '10px',
+                fontWeight: 'bold'
+              }}>
+                PRIMARY
+              </div>
+            )}
+          </>
+        ) : (
+          <div style={{ textAlign: 'center' }}>
+            <CloudUploadOutlined style={{ fontSize: '32px', color: '#FF8F00' }} />
+            <div style={{ marginTop: 8, color: '#FF6F00' }}>Upload Image</div>
+          </div>
+        )}
+        
+        <input
+          type="file"
+          id={`edit-image-upload-${index}`}
+          style={{ display: 'none' }}
+          accept="image/jpeg,image/png,image/gif,image/webp"
+          onChange={(e) => handleImageChange(e, index)}
+        />
+      </Card>
+    );
+  };
 
   return (
     <Modal
@@ -351,7 +478,6 @@ const EditGaneshIdolDialog = ({
                   placeholder="7"
                   min={1}
                   max={30}
-                  prefix={<ClockCircleOutlined />}
                 />
               </Form.Item>
             </Col>
@@ -512,7 +638,7 @@ const EditGaneshIdolDialog = ({
         >
           <Alert
             message="Image Management"
-            description="Upload high-quality images showing different angles. First image will be the primary display image. You can reorder by deleting and re-uploading."
+            description="Upload high-quality images showing different angles. First image will be the primary display image. Supported formats: JPEG, PNG, GIF, WebP (Max 5MB each)"
             type="info"
             style={{ marginBottom: '16px' }}
             icon={<InfoCircleOutlined />}
@@ -521,84 +647,7 @@ const EditGaneshIdolDialog = ({
           <Row gutter={[16, 16]}>
             {(idol.images || []).map((imageUrl, index) => (
               <Col span={6} key={index}>
-                <Card
-                  style={{
-                    height: '140px',
-                    border: '2px dashed #FFB74D',
-                    borderRadius: '8px',
-                    position: 'relative',
-                  }}
-                  bodyStyle={{ 
-                    padding: 0, 
-                    height: '100%', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center' 
-                  }}
-                >
-                  {imageUrl === 'loading' ? (
-                    <div style={{ textAlign: 'center' }}>
-                      <div className="ant-spin ant-spin-spinning">
-                        <span className="ant-spin-dot ant-spin-dot-spin">
-                          <i className="ant-spin-dot-item"></i>
-                          <i className="ant-spin-dot-item"></i>
-                          <i className="ant-spin-dot-item"></i>
-                          <i className="ant-spin-dot-item"></i>
-                        </span>
-                      </div>
-                      <div style={{ marginTop: '8px', color: '#FF8F00' }}>Uploading...</div>
-                    </div>
-                  ) : imageUrl ? (
-                    <>
-                      <img
-                        src={imageUrl}
-                        alt={`Ganesh Idol ${index + 1}`}
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover',
-                          borderRadius: '6px',
-                        }}
-                      />
-                      <div style={{ position: 'absolute', top: '4px', right: '4px', display: 'flex', gap: '4px' }}>
-                        <Button
-                          type="primary"
-                          danger
-                          size="small"
-                          icon={<DeleteOutlined />}
-                          onClick={() => deleteImage(index)}
-                          title="Delete image permanently"
-                        />
-                      </div>
-                      {index === 0 && (
-                        <div style={{
-                          position: 'absolute',
-                          bottom: '4px',
-                          left: '4px',
-                          background: 'rgba(255, 143, 0, 0.9)',
-                          color: 'white',
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          fontSize: '10px',
-                          fontWeight: 'bold'
-                        }}>
-                          PRIMARY
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <Upload
-                      name="image"
-                      listType="picture-card"
-                      showUploadList={false}
-                      beforeUpload={() => false}
-                      onChange={(info) => handleImageChange(info, index)}
-                      style={{ border: 'none' }}
-                    >
-                      {uploadButton(index)}
-                    </Upload>
-                  )}
-                </Card>
+                <ImageUploadCard index={index} />
                 {index === 0 && (
                   <Text type="secondary" style={{ fontSize: '10px', textAlign: 'center', display: 'block', marginTop: '4px' }}>
                     Primary Image

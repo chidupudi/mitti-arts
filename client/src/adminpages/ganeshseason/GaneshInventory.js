@@ -73,7 +73,7 @@ const GaneshInventory = () => {
     handleEditIdol,
     handleEditChange,
     handleSaveEdit,
-    handleImageUpload,
+    // REMOVED: handleImageUpload - now handled directly in components
     handleChangePage,
     handleChangeRowsPerPage,
   } = useGaneshInventory();
@@ -189,9 +189,21 @@ const GaneshInventory = () => {
             </div>
           </div>
 
+          {/* Error Display */}
+          {error && (
+            <Alert
+              message="Error Loading Ganesh Idols"
+              description={error}
+              type="error"
+              style={{ marginBottom: '24px' }}
+              showIcon
+            />
+          )}
+
           {/* Statistics Cards */}
           <GaneshStatisticsCards statistics={statistics} />
 
+          {/* Filter Panel */}
           <GaneshFilterPanel
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
@@ -249,6 +261,12 @@ const GaneshInventory = () => {
                       showTotal={(total, range) => 
                         `${range[0]}-${range[1]} of ${total} Ganesh idols`
                       }
+                      style={{
+                        '& .ant-pagination-item-active': {
+                          backgroundColor: '#FF8F00',
+                          borderColor: '#FF8F00',
+                        },
+                      }}
                     />
                   </div>
                 </>
@@ -275,7 +293,7 @@ const GaneshInventory = () => {
             idol={newIdol}
             setIdol={setNewIdol}
             onSave={handleAddIdol}
-            onImageUpload={handleImageUpload}
+            // REMOVED: onImageUpload prop - now handled internally
           />
 
           {/* Edit Ganesh Idol Dialog */}
@@ -285,7 +303,7 @@ const GaneshInventory = () => {
             idol={editIdol}
             onChange={handleEditChange}
             onSave={handleSaveEdit}
-            onImageUpload={handleImageUpload}
+            // REMOVED: onImageUpload prop - now handled internally
           />
 
           {/* Delete Confirmation Dialog */}

@@ -310,7 +310,7 @@ const App = () => {
       <Router>
         <SeasonProvider>
           <ScrollToTop />
-          <SSLErrorHandler />
+          {/* <SSLErrorHandler /> */}
           
           <Box sx={{
             width: '100%',

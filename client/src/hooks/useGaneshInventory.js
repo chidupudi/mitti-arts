@@ -11,7 +11,6 @@ import {
   query,
   where
 } from 'firebase/firestore';
-import { uploadToCloudinary, validateImageFile } from '../utils/cloudinary';
 
 export const useGaneshInventory = () => {
   // Data states
@@ -315,70 +314,6 @@ export const useGaneshInventory = () => {
     }
   }, [editIdol, showSnackbar]);
 
-  // Image upload handler
-  const handleImageUpload = useCallback(async (e, index, isEdit = false) => {
-    try {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      validateImageFile(file);
-
-      const updateImages = (prevImages) => {
-        const imageArray = Array.isArray(prevImages) ? [...prevImages] : Array(8).fill('');
-        imageArray[index] = 'loading';
-        return imageArray;
-      };
-
-      if (isEdit) {
-        setEditIdol(prev => ({
-          ...prev,
-          images: updateImages(prev.images)
-        }));
-      } else {
-        setNewIdol(prev => ({
-          ...prev,
-          images: updateImages(prev.images)
-        }));
-      }
-
-      const imageUrl = await uploadToCloudinary(file);
-
-      if (isEdit) {
-        setEditIdol(prev => {
-          const newImages = Array.isArray(prev.images) ? [...prev.images] : Array(8).fill('');
-          newImages[index] = imageUrl;
-          return { ...prev, images: newImages };
-        });
-      } else {
-        setNewIdol(prev => {
-          const newImages = [...prev.images];
-          newImages[index] = imageUrl;
-          return { ...prev, images: newImages };
-        });
-      }
-      
-      showSnackbar('Image uploaded successfully!', 'success');
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      
-      if (isEdit) {
-        setEditIdol(prev => {
-          const newImages = Array.isArray(prev.images) ? [...prev.images] : Array(8).fill('');
-          newImages[index] = '';
-          return { ...prev, images: newImages };
-        });
-      } else {
-        setNewIdol(prev => {
-          const newImages = [...prev.images];
-          newImages[index] = '';
-          return { ...prev, images: newImages };
-        });
-      }
-      
-      showSnackbar(error.message || 'Failed to upload image. Please try again.', 'error');
-    }
-  }, [showSnackbar]);
-
   // Filter and sort idols
   const filteredIdols = ganeshIdols
     .filter(idol => {
@@ -497,7 +432,7 @@ export const useGaneshInventory = () => {
     handleEditIdol,
     handleEditChange,
     handleSaveEdit,
-    handleImageUpload,
+    // Removed handleImageUpload since we're doing direct uploads in components
     handleChangePage,
     handleChangeRowsPerPage,
     fetchGaneshIdols,
