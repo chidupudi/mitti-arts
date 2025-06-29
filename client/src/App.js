@@ -1,3 +1,4 @@
+// client/src/App.js - Updated with Ganesh Season Routes
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react';
@@ -36,6 +37,11 @@ import Inventory from './adminpages/Inventory';
 import AdminOrders from './adminpages/adminorders';
 import AdminAuth, { ProtectedAdminRoute } from './adminpages/adminauth';
 import AdminSidebar from './adminpages/components/AdminSidebar';
+
+// Ganesh Season Components - NEW
+import GaneshInventory from './adminpages/ganeshseason/GaneshInventory';
+import GaneshLeads from './adminpages/ganeshseason/components/';
+import GaneshOrders from './adminpages/ganeshseason/GaneshOrders';
 
 // ScrollToTop component
 import ScrollToTop from './components/ScrollToTop';
@@ -183,7 +189,17 @@ const useIsAdmin = () => {
 // Check if current path is admin-specific route (dashboard, inventory, etc.)
 const useIsAdminRoute = () => {
   const location = useLocation();
-  return ['/dashboard', '/inventory', '/adminorders', '/admin', '/supercontrollogin'].includes(location.pathname);
+  return [
+    '/dashboard', 
+    '/inventory', 
+    '/adminorders', 
+    '/admin', 
+    '/supercontrollogin',
+    // NEW: Ganesh season routes
+    '/ganesh-inventory',
+    '/ganesh-leads', 
+    '/ganesh-orders'
+  ].includes(location.pathname);
 };
 
 // Admin Layout Component (for ALL pages when admin is logged in)
@@ -397,7 +413,7 @@ const App = () => {
                 <Route path="/payment-status/:orderId" element={<PaymentStatusPage />} />
                 <Route path="/supercontrollogin" element={<AdminAuth />} />
 
-                {/* 🔐 Admin Routes */}
+                {/* 🔐 Admin Routes - Regular */}
                 <Route 
                   path="/dashboard" 
                   element={
@@ -423,6 +439,34 @@ const App = () => {
                       <AdminOrders />
                     </ProtectedAdminRoute>
                   }
+                />
+
+                {/* 🕉️ Ganesh Season Routes - NEW */}
+                <Route 
+                  path="/ganesh-inventory" 
+                  element={
+                    <ProtectedAdminRoute adminOnly={true}>
+                      <GaneshInventory />
+                    </ProtectedAdminRoute>
+                  } 
+                />
+
+                <Route 
+                  path="/ganesh-leads" 
+                  element={
+                    <ProtectedAdminRoute adminOnly={true}>
+                      <GaneshLeads />
+                    </ProtectedAdminRoute>
+                  } 
+                />
+
+                <Route 
+                  path="/ganesh-orders" 
+                  element={
+                    <ProtectedAdminRoute adminOnly={true}>
+                      <GaneshOrders />
+                    </ProtectedAdminRoute>
+                  } 
                 />
 
                 {/* 🎯 Catch all route - Keep this LAST */}
