@@ -32,7 +32,8 @@ import {
   Spin,
   Empty,
   Affix,
-  Grid
+  Grid,
+  Alert
 } from 'antd';
 import {
   SearchOutlined,
@@ -55,7 +56,11 @@ import {
   MinusOutlined,
   EnvironmentOutlined,
   ThunderboltOutlined,
-  FilterOutlined
+  FilterOutlined,
+  TrophyOutlined,
+  NotificationOutlined,
+  CalendarOutlined,
+  GiftOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../Firebase/Firebase';
@@ -70,7 +75,8 @@ import {
 } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 
-// Import FIXED cart utilities
+// Import season hook and cart utilities
+import { useSeason } from '../hooks/useSeason';
 import { addToCartSafe } from '../utils/cartUtility';
 
 const { Title, Text, Paragraph } = Typography;
@@ -78,7 +84,7 @@ const { Option } = Select;
 const { Panel } = Collapse;
 const { useBreakpoint } = Grid;
 
-// Terracotta color scheme
+// Terracotta color scheme with Ganesh season additions
 const terracottaColors = {
   primary: '#D2691E',
   primaryLight: '#E8A857',
@@ -93,9 +99,10 @@ const terracottaColors = {
   success: '#8BC34A',
   warning: '#FF9800',
   error: '#F44336',
+  ganesh: '#FF8F00', // Special color for Ganesh season
 };
 
-// Custom CSS styles
+// Enhanced custom styles with Ganesh season additions
 const customStyles = `
   .products-container {
     background-color: ${terracottaColors.background};
@@ -146,6 +153,39 @@ const customStyles = `
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
   }
 
+  /* Ganesh season specific styles */
+  .ganesh-season-card {
+    background: linear-gradient(135deg, ${terracottaColors.ganesh}15 0%, #FFE0B2 100%);
+    border: 2px solid ${terracottaColors.ganesh}40;
+  }
+
+  .ganesh-season-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 16px 32px ${terracottaColors.ganesh}30;
+    border-color: ${terracottaColors.ganesh};
+  }
+
+  .pottery-unavailable-card {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, rgba(255, 224, 178, 0.2) 100%);
+    border: 2px dashed ${terracottaColors.warning};
+  }
+
+  .pottery-unavailable-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(255, 193, 7, 0.2);
+  }
+
+  .ganesh-idol-card {
+    border: 1px solid ${terracottaColors.ganesh}30;
+    transition: all 0.3s ease;
+  }
+
+  .ganesh-idol-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 28px ${terracottaColors.ganesh}25;
+    border-color: ${terracottaColors.ganesh};
+  }
+
   .product-image {
     width: 100%;
     height: 220px;
@@ -186,6 +226,10 @@ const customStyles = `
 
   .status-ribbon.out-of-stock {
     background-color: ${terracottaColors.error};
+  }
+
+  .status-ribbon.coming-soon {
+    background-color: ${terracottaColors.ganesh};
   }
 
   .featured-badge {
@@ -327,6 +371,50 @@ const useProducts = () => {
   }, []);
 
   return { products, loading, error };
+};
+
+// Hook to fetch Ganesh idols
+const useGaneshIdols = () => {
+  const [ganeshIdols, setGaneshIdols] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchGaneshIdols = async () => {
+      setLoading(true);
+      try {
+        const querySnapshot = await getDocs(collection(db, 'ganeshIdols'));
+        const idolsArr = [];
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          if (!data.hidden) { // Only show non-hidden idols
+            idolsArr.push({
+              id: doc.id,
+              ...data,
+              priceMin: Number(data.priceMin) || 7000,
+              priceMax: Number(data.priceMax) || 31000,
+              rating: Number(data.rating) || 4.5,
+              reviews: Number(data.reviews) || 28,
+              imgUrl: data.images?.[0] || '',
+              estimatedDays: Number(data.estimatedDays) || 7,
+              advancePercentage: Number(data.advancePercentage) || 25,
+              createdAt: data.createdAt || new Date().toISOString(),
+            });
+          }
+        });
+        setGaneshIdols(idolsArr);
+      } catch (error) {
+        console.error('Error fetching Ganesh idols:', error);
+        setError('Failed to load Ganesh idols');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchGaneshIdols();
+  }, []);
+
+  return { ganeshIdols, loading, error };
 };
 
 // Wishlist hook
@@ -477,7 +565,362 @@ const useProductSearch = (products, searchQuery, filters) => {
   }, [products, searchQuery, filters.priceRange, filters.sortBy, filters.hyderabadOnly]);
 };
 
-// FIXED ProductCard Component with cart utilities
+// Pottery "Coming Soon" Card Component
+const PotteryComingSoonCard = memo(({ onClick }) => {
+  const screens = useBreakpoint();
+  
+  return (
+    <Card
+      hoverable
+      className="pottery-unavailable-card"
+      onClick={onClick}
+      style={{
+        height: '100%',
+        borderRadius: '12px',
+        cursor: 'pointer',
+      }}
+    >
+      <div style={{ position: 'relative' }}>
+        <div className="status-ribbon coming-soon">
+          COMING SOON
+        </div>
+        
+        {/* Placeholder image for pottery */}
+        <div
+          style={{
+            width: '100%',
+            height: '220px',
+            background: 'linear-gradient(135deg, #FFE0B2 0%, #FFCC80 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            position: 'relative',
+            borderRadius: '8px',
+          }}
+        >
+          <div style={{ textAlign: 'center', color: terracottaColors.warning }}>
+            <TrophyOutlined style={{ fontSize: '64px', marginBottom: '16px' }} />
+            <div style={{ fontSize: '18px', fontWeight: 'bold' }}>
+              🏺 All Pottery Items
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ padding: '16px' }}>
+        <Title 
+          level={5} 
+          style={{ 
+            marginBottom: '8px',
+            color: terracottaColors.warning,
+            fontSize: '16px',
+            textAlign: 'center'
+          }}
+        >
+          🎉 Pottery Collection Coming Soon!
+        </Title>
+
+        <Text 
+          type="secondary" 
+          style={{ 
+            display: 'block', 
+            textAlign: 'center',
+            marginBottom: '16px',
+            fontSize: '14px'
+          }}
+        >
+          All pottery items will be available after Ganesh festival
+        </Text>
+
+        {/* Features of pottery */}
+        <div style={{ marginBottom: '16px' }}>
+          <Space direction="vertical" size="small" style={{ width: '100%' }}>
+            <Text style={{ fontSize: '12px', color: terracottaColors.textSecondary }}>
+              ✨ Handcrafted Clay Products
+            </Text>
+            <Text style={{ fontSize: '12px', color: terracottaColors.textSecondary }}>
+              🌿 Eco-friendly & Natural
+            </Text>
+            <Text style={{ fontSize: '12px', color: terracottaColors.textSecondary }}>
+              🏠 Traditional Cookware
+            </Text>
+          </Space>
+        </div>
+
+        <Alert
+          message="Festive Season Notice"
+          description="During Ganesh season, we focus on crafting beautiful Ganesh idols. Our pottery collection will return soon!"
+          type="info"
+          showIcon
+          style={{
+            fontSize: '12px',
+            marginBottom: '16px',
+            backgroundColor: `${terracottaColors.ganesh}10`,
+            border: `1px solid ${terracottaColors.ganesh}30`,
+          }}
+        />
+      </div>
+
+      {/* Action Button */}
+      <div style={{ 
+        padding: '16px', 
+        paddingTop: 0,
+      }}>
+        <Button
+          type="primary"
+          icon={<NotificationOutlined />}
+          block
+          style={{
+            borderRadius: '8px',
+            height: '40px',
+            fontWeight: 600,
+            fontSize: '14px',
+            background: `linear-gradient(135deg, ${terracottaColors.warning} 0%, #FFA726 100%)`,
+            borderColor: terracottaColors.warning,
+          }}
+        >
+          Click to Pre-book Pottery
+        </Button>
+        
+        <Text 
+          style={{ 
+            display: 'block',
+            textAlign: 'center',
+            marginTop: '8px',
+            fontSize: '11px',
+            color: terracottaColors.textSecondary
+          }}
+        >
+          Get notified when pottery returns!
+        </Text>
+      </div>
+    </Card>
+  );
+});
+
+// Ganesh Idol Card Component
+const GaneshIdolCard = memo(({ 
+  idol, 
+  onShowInterest,
+  onProductClick
+}) => {
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageSrc, setImageSrc] = useState(idol.imgUrl || 'https://via.placeholder.com/300x220/FF8F00/FFFFFF?text=Ganesh+Idol');
+  
+  const averagePrice = (idol.priceMin + idol.priceMax) / 2;
+  const advanceAmount = Math.round(averagePrice * (idol.advancePercentage || 25) / 100);
+
+  const handleCardClick = (e) => {
+    if (e.target.closest('.ant-btn') || 
+        e.target.closest('.ant-rate') ||
+        e.target.closest('[role="button"]')) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    
+    e.preventDefault();
+    onProductClick(idol.id);
+  };
+
+  const getCategoryIcon = (category) => {
+    switch (category) {
+      case 'traditional': return '🏛️';
+      case 'modern': return '⭐';
+      case 'premium': return '👑';
+      default: return '🕉️';
+    }
+  };
+
+  const getCategoryColor = (category) => {
+    switch (category) {
+      case 'traditional': return '#8E24AA';
+      case 'modern': return '#1976D2';
+      case 'premium': return '#D32F2F';
+      default: return terracottaColors.ganesh;
+    }
+  };
+
+  return (
+    <Card
+      hoverable
+      className="ganesh-idol-card"
+      onClick={handleCardClick}
+      style={{
+        height: '100%',
+        borderRadius: '12px',
+      }}
+    >
+      {/* Category Badge */}
+      <Tag
+        style={{
+          position: 'absolute',
+          top: '12px',
+          left: '12px',
+          zIndex: 2,
+          backgroundColor: getCategoryColor(idol.category),
+          color: 'white',
+          border: 'none',
+          fontWeight: 'bold'
+        }}
+      >
+        {getCategoryIcon(idol.category)} {idol.category}
+      </Tag>
+
+      {/* Customizable Badge */}
+      {idol.customizable && (
+        <Tag
+          style={{
+            position: 'absolute',
+            top: '12px',
+            right: '12px',
+            zIndex: 2,
+            backgroundColor: '#9C27B0',
+            color: 'white',
+            border: 'none',
+            fontWeight: 'bold'
+          }}
+        >
+          Customizable
+        </Tag>
+      )}
+
+      <div style={{ position: 'relative' }}>
+        <img
+          src={imageSrc}
+          alt={idol.name}
+          className="product-image"
+          onLoad={() => setImageLoaded(true)}
+          onError={() => setImageSrc('https://via.placeholder.com/300x220/FF8F00/FFFFFF?text=Ganesh+Idol')}
+        />
+      </div>
+
+      <div style={{ padding: '16px' }}>
+        <Title 
+          level={5} 
+          ellipsis={{ rows: 1 }}
+          style={{ 
+            marginBottom: '8px',
+            fontSize: '16px',
+            lineHeight: 1.3,
+            color: terracottaColors.text
+          }}
+        >
+          🕉️ {idol.name}
+        </Title>
+
+        {/* Description */}
+        <Text 
+          type="secondary" 
+          ellipsis={{ rows: 2 }}
+          style={{ 
+            display: 'block',
+            marginBottom: '12px',
+            fontSize: '13px',
+            height: '36px'
+          }}
+        >
+          {idol.description || 'Beautiful handcrafted Ganesh idol for your festivities'}
+        </Text>
+
+        {/* Price Range */}
+        <div style={{ marginBottom: '12px' }}>
+          <Title 
+            level={5} 
+            style={{ 
+              margin: 0,
+              color: terracottaColors.ganesh,
+              fontSize: '18px'
+            }}
+          >
+            ₹{idol.priceMin?.toLocaleString()} - ₹{idol.priceMax?.toLocaleString()}
+          </Title>
+          <Text 
+            type="secondary" 
+            style={{ fontSize: '12px' }}
+          >
+            Advance: ₹{advanceAmount.toLocaleString()} ({idol.advancePercentage || 25}%)
+          </Text>
+        </div>
+
+        {/* Specifications */}
+        <Space wrap size="small" style={{ marginBottom: '12px' }}>
+          {idol.height && (
+            <Tag size="small" style={{ fontSize: '10px', color: terracottaColors.textSecondary }}>
+              📏 {idol.height}
+            </Tag>
+          )}
+          {idol.weight && (
+            <Tag size="small" style={{ fontSize: '10px', color: terracottaColors.textSecondary }}>
+              ⚖️ {idol.weight}
+            </Tag>
+          )}
+          {idol.color && (
+            <Tag size="small" style={{ fontSize: '10px', color: terracottaColors.textSecondary }}>
+              🎨 {idol.color}
+            </Tag>
+          )}
+        </Space>
+
+        {/* Estimated Time */}
+        {idol.estimatedDays && (
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '4px',
+            marginBottom: '12px'
+          }}>
+            <CalendarOutlined style={{ fontSize: '12px', color: terracottaColors.success }} />
+            <Text style={{ fontSize: '12px', color: terracottaColors.success, fontWeight: 600 }}>
+              Ready in {idol.estimatedDays} days
+            </Text>
+          </div>
+        )}
+      </div>
+
+      {/* Card Actions */}
+      <div style={{ 
+        padding: '16px', 
+        paddingTop: 0,
+      }}>
+        <Button
+          type="primary"
+          icon={<GiftOutlined />}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onShowInterest(idol);
+          }}
+          block
+          style={{
+            borderRadius: '8px',
+            height: '40px',
+            fontWeight: 600,
+            fontSize: '14px',
+            background: `linear-gradient(135deg, ${terracottaColors.ganesh} 0%, #FFB74D 100%)`,
+            borderColor: terracottaColors.ganesh,
+          }}
+        >
+          Show Interest
+        </Button>
+        
+        <Text 
+          style={{ 
+            display: 'block',
+            textAlign: 'center',
+            marginTop: '8px',
+            fontSize: '11px',
+            color: terracottaColors.textSecondary
+          }}
+        >
+          Our team will contact you for customization
+        </Text>
+      </div>
+    </Card>
+  );
+});
+
+// Regular Product Card Component
 const ProductCard = memo(({ 
   product, 
   onAddToCart, 
@@ -907,7 +1350,7 @@ const FilterPanel = memo(({
   );
 });
 
-// FIXED QuantityModal Component
+// Quantity Modal Component
 const QuantityModal = ({ 
   open, 
   onClose, 
@@ -1249,12 +1692,15 @@ const ProductSkeleton = () => {
   );
 };
 
-// Main Products Component - FIXED with Cart Utils
+// Main Products Component - Combined Season-Aware Version
 const Products = () => {
   const navigate = useNavigate();
   const screens = useBreakpoint();
   const isMobile = !screens.md;
   const isSmallScreen = !screens.sm;
+  
+  // Season context
+  const { currentSeason, isGaneshSeason, loading: seasonLoading } = useSeason();
   
   // State
   const [user, setUser] = useState(null);
@@ -1268,6 +1714,7 @@ const Products = () => {
 
   // Use hooks
   const { products, loading: productsLoading, error: productsError } = useProducts();
+  const { ganeshIdols, loading: ganeshLoading, error: ganeshError } = useGaneshIdols();
   const { wishlist, toggleWishlistItem, isInWishlist } = useWishlist(user);
   
   // Memoize search parameters to prevent unnecessary re-renders
@@ -1315,7 +1762,29 @@ const Products = () => {
     window.location.href = `/product/${id}?code=${code}`;
   }, []);
 
-  // FIXED Add to Cart handler using cartUtils
+  // Season-specific handlers
+  const handlePotteryPrebook = useCallback(() => {
+    showMessage('Pre-booking feature coming soon!', 'info');
+    // Could redirect to a pre-booking form or contact page
+  }, [showMessage]);
+
+  const handleShowInterest = useCallback((idol) => {
+    if (!user) {
+      showMessage('Please login to show interest', 'warning');
+      setTimeout(() => navigate('/auth'), 1500);
+      return;
+    }
+    
+    // Navigate to Ganesh idol gallery with specific idol
+    navigate(`/ganesh-idols?idol=${idol.id}`);
+  }, [user, navigate, showMessage]);
+
+  const handleGaneshIdolClick = useCallback((idolId) => {
+    // Navigate to Ganesh idol details or gallery
+    navigate(`/ganesh-idols?idol=${idolId}`);
+  }, [navigate]);
+
+  // Add to Cart handler using cartUtils
   const handleAddToCart = useCallback(async (product) => {
     if (product.hidden || product.stock === 0) {
       showMessage(
@@ -1335,7 +1804,7 @@ const Products = () => {
     setModalOpen(true);
   }, [user, navigate, showMessage]);
 
-  // FIXED Buy Now handler using cartUtils
+  // Buy Now handler using cartUtils
   const handleBuyNow = useCallback(async (product) => {
     if (product.hidden || product.stock === 0) {
       showMessage(
@@ -1391,7 +1860,7 @@ const Products = () => {
     }
   }, [user, navigate, showMessage, toggleWishlistItem]);
 
-  // FIXED Confirm Add to Cart handler using cartUtils
+  // Confirm Add to Cart handler using cartUtils
   const handleConfirmAddToCart = useCallback(async (quantity) => {
     if (!selectedProduct || !user) return;
 
@@ -1430,6 +1899,15 @@ const Products = () => {
     setDrawerOpen(prev => !prev);
   }, []);
 
+  // Loading states
+  if (seasonLoading || (isGaneshSeason && ganeshLoading)) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
+        <Spin size="large" />
+      </div>
+    );
+  }
+
   return (
     <>
       {/* Inject custom styles */}
@@ -1437,7 +1915,7 @@ const Products = () => {
       
       <div className="products-container">
         <div className="products-main-wrapper">
-          {/* Header Section */}
+          {/* Header Section - Season Aware */}
           <div style={{ marginBottom: '32px' }}>
             <div style={{ marginBottom: '24px' }}>
               <Title 
@@ -1445,7 +1923,9 @@ const Products = () => {
                 className="header-title"
                 style={{ 
                   fontWeight: 700,
-                  background: `linear-gradient(135deg, ${terracottaColors.primary} 0%, ${terracottaColors.secondary} 100%)`,
+                  background: isGaneshSeason 
+                    ? `linear-gradient(135deg, ${terracottaColors.ganesh} 0%, #FFB74D 100%)`
+                    : `linear-gradient(135deg, ${terracottaColors.primary} 0%, ${terracottaColors.secondary} 100%)`,
                   backgroundClip: 'text',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
@@ -1454,8 +1934,9 @@ const Products = () => {
                   fontSize: isMobile ? '28px' : '36px'
                 }}
               >
-                Discover Our Products
+                {isGaneshSeason ? '🕉️ Ganesh Festival Collection' : 'Discover Our Products'}
               </Title>
+              
               <Paragraph 
                 className="header-description"
                 style={{ 
@@ -1465,142 +1946,165 @@ const Products = () => {
                   color: 'rgba(0, 0, 0, 0.65)'
                 }}
               >
-                Explore our curated collection of premium items
+                {isGaneshSeason 
+                  ? 'Beautiful handcrafted Ganesh idols for your festivities • Pottery collection returning soon!'
+                  : 'Explore our curated collection of premium items'
+                }
               </Paragraph>
+
+              {/* Season Alert */}
+              {isGaneshSeason && (
+                <Alert
+                  message="🎉 Ganesh Festival Season is Here!"
+                  description="We're currently focusing on crafting beautiful Ganesh idols. Our pottery collection will return after the festival. Browse our exclusive Ganesh idol collection below!"
+                  type="info"
+                  showIcon
+                  style={{
+                    marginBottom: '24px',
+                    borderRadius: '12px',
+                    backgroundColor: `${terracottaColors.ganesh}10`,
+                    border: `1px solid ${terracottaColors.ganesh}30`,
+                  }}
+                />
+              )}
               
               {/* Products Stats */}
-              <div style={{ 
-                display: 'flex', 
-                gap: '16px', 
-                flexWrap: 'wrap',
-                justifyContent: isMobile ? 'center' : 'flex-start',
-                marginBottom: '16px',
-              }}>
-                <Tag
-                  style={{
-                    backgroundColor: `${terracottaColors.primary}15`,
-                    color: terracottaColors.primaryDark,
-                    fontWeight: 600,
-                    border: 'none',
-                    padding: '4px 12px',
-                    borderRadius: '16px'
-                  }}
-                >
-                  {totalCount} Total Products
-                </Tag>
-                {hyderabadCount > 0 && (
+              {!isGaneshSeason && (
+                <div style={{ 
+                  display: 'flex', 
+                  gap: '16px', 
+                  flexWrap: 'wrap',
+                  justifyContent: isMobile ? 'center' : 'flex-start',
+                  marginBottom: '16px',
+                }}>
                   <Tag
-                    icon={<EnvironmentOutlined />}
                     style={{
-                      backgroundColor: '#9C27B015',
-                      color: '#9C27B0',
+                      backgroundColor: `${terracottaColors.primary}15`,
+                      color: terracottaColors.primaryDark,
                       fontWeight: 600,
                       border: 'none',
                       padding: '4px 12px',
                       borderRadius: '16px'
                     }}
                   >
-                    {hyderabadCount} Hyderabad Available
+                    {totalCount} Total Products
                   </Tag>
-                )}
-              </div>
+                  {hyderabadCount > 0 && (
+                    <Tag
+                      icon={<EnvironmentOutlined />}
+                      style={{
+                        backgroundColor: '#9C27B015',
+                        color: '#9C27B0',
+                        fontWeight: 600,
+                        border: 'none',
+                        padding: '4px 12px',
+                        borderRadius: '16px'
+                      }}
+                    >
+                      {hyderabadCount} Hyderabad Available
+                    </Tag>
+                  )}
+                </div>
+              )}
             </div>
 
-            {/* Search and Filter Bar */}
-            <Card
-              className="search-filter-card"
-              style={{
-                borderRadius: '12px',
-                background: `linear-gradient(135deg, rgba(255,255,255,0.9) 0%, ${terracottaColors.backgroundLight}30 100%)`,
-                backdropFilter: 'blur(10px)',
-                border: `1px solid ${terracottaColors.primary}20`,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-              }}
-              bodyStyle={{ padding: isMobile ? '16px' : '24px' }}
-            >
-              <Row gutter={[16, 16]} align="middle">
-                {/* Search */}
-                <Col xs={24} sm={24} md={12} lg={14}>
-                  <Input
-                    size="large"
-                    placeholder="Search products..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    prefix={<SearchOutlined style={{ color: terracottaColors.primary }} />}
-                    suffix={searchQuery && (
-                      <Button 
-                        type="text" 
-                        size="small" 
-                        icon={<CloseOutlined />}
-                        onClick={() => setSearchQuery('')}
-                      />
-                    )}
-                    style={{
-                      borderRadius: '8px',
-                      borderColor: `${terracottaColors.primary}30`,
-                    }}
-                  />
-                </Col>
+            {/* Search and Filter Bar - Only show for non-Ganesh season */}
+            {!isGaneshSeason && (
+              <Card
+                className="search-filter-card"
+                style={{
+                  borderRadius: '12px',
+                  background: `linear-gradient(135deg, rgba(255,255,255,0.9) 0%, ${terracottaColors.backgroundLight}30 100%)`,
+                  backdropFilter: 'blur(10px)',
+                  border: `1px solid ${terracottaColors.primary}20`,
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                }}
+                bodyStyle={{ padding: isMobile ? '16px' : '24px' }}
+              >
+                <Row gutter={[16, 16]} align="middle">
+                  {/* Search */}
+                  <Col xs={24} sm={24} md={12} lg={14}>
+                    <Input
+                      size="large"
+                      placeholder="Search products..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      prefix={<SearchOutlined style={{ color: terracottaColors.primary }} />}
+                      suffix={searchQuery && (
+                        <Button 
+                          type="text" 
+                          size="small" 
+                          icon={<CloseOutlined />}
+                          onClick={() => setSearchQuery('')}
+                        />
+                      )}
+                      style={{
+                        borderRadius: '8px',
+                        borderColor: `${terracottaColors.primary}30`,
+                      }}
+                    />
+                  </Col>
 
-                {/* Filter Controls */}
-                <Col xs={24} sm={24} md={12} lg={10}>
-                  <Space wrap style={{ width: '100%', justifyContent: isMobile ? 'center' : 'flex-end' }}>
-                    {/* Mobile Filter Button */}
-                    {isMobile && (
+                  {/* Filter Controls */}
+                  <Col xs={24} sm={24} md={12} lg={10}>
+                    <Space wrap style={{ width: '100%', justifyContent: isMobile ? 'center' : 'flex-end' }}>
+                      {/* Mobile Filter Button */}
+                      {isMobile && (
+                        <Button
+                          type="primary"
+                          icon={<FilterOutlined />}
+                          onClick={handleDrawerToggle}
+                          style={{ 
+                            borderRadius: '8px',
+                            backgroundColor: terracottaColors.primary,
+                            borderColor: terracottaColors.primary,
+                          }}
+                        >
+                          Filters
+                        </Button>
+                      )}
+
+                      {/* Hyderabad Only Quick Filter Button */}
                       <Button
-                        type="primary"
-                        icon={<FilterOutlined />}
-                        onClick={handleDrawerToggle}
+                        type={hyderabadOnly ? "primary" : "default"}
+                        icon={<EnvironmentOutlined />}
+                        onClick={() => setHyderabadOnly(!hyderabadOnly)}
                         style={{ 
                           borderRadius: '8px',
-                          backgroundColor: terracottaColors.primary,
-                          borderColor: terracottaColors.primary,
+                          borderColor: '#9C27B0',
+                          color: hyderabadOnly ? 'white' : '#9C27B0',
+                          backgroundColor: hyderabadOnly ? '#9C27B0' : 'transparent',
                         }}
                       >
-                        Filters
+                        {isSmallScreen ? 'HYD' : 'Hyderabad Only'}
                       </Button>
-                    )}
 
-                    {/* Hyderabad Only Quick Filter Button */}
-                    <Button
-                      type={hyderabadOnly ? "primary" : "default"}
-                      icon={<EnvironmentOutlined />}
-                      onClick={() => setHyderabadOnly(!hyderabadOnly)}
-                      style={{ 
-                        borderRadius: '8px',
-                        borderColor: '#9C27B0',
-                        color: hyderabadOnly ? 'white' : '#9C27B0',
-                        backgroundColor: hyderabadOnly ? '#9C27B0' : 'transparent',
-                      }}
-                    >
-                      {isSmallScreen ? 'HYD' : 'Hyderabad Only'}
-                    </Button>
-
-                    {/* Results Count */}
-                    <Tag
-                      icon={<AppstoreOutlined />}
-                      style={{
-                        backgroundColor: `${terracottaColors.primary}15`,
-                        color: terracottaColors.primaryDark,
-                        border: 'none',
-                        padding: '8px 16px',
-                        borderRadius: '8px',
-                        fontWeight: 600
-                      }}
-                    >
-                      {filteredProducts.length} Products
-                      {isSearching && ' (searching...)'}
-                    </Tag>
-                  </Space>
-                </Col>
-              </Row>
-            </Card>
+                      {/* Results Count */}
+                      <Tag
+                        icon={<AppstoreOutlined />}
+                        style={{
+                          backgroundColor: `${terracottaColors.primary}15`,
+                          color: terracottaColors.primaryDark,
+                          border: 'none',
+                          padding: '8px 16px',
+                          borderRadius: '8px',
+                          fontWeight: 600
+                        }}
+                      >
+                        {filteredProducts.length} Products
+                        {isSearching && ' (searching...)'}
+                      </Tag>
+                    </Space>
+                  </Col>
+                </Row>
+              </Card>
+            )}
           </div>
 
           {/* Main Content */}
           <Row gutter={[24, 0]}>
-            {/* Desktop Filter Panel */}
-            {!isMobile && (
+            {/* Desktop Filter Panel - Only show for non-Ganesh season */}
+            {!isMobile && !isGaneshSeason && (
               <Col span={6}>
                 <div className="products-filter-sidebar">
                   <Card
@@ -1627,11 +2131,11 @@ const Products = () => {
             )}
 
             {/* Products Grid */}
-            <Col xs={24} md={18}>
+            <Col xs={24} md={isGaneshSeason ? 24 : 18}>
               <div className="products-grid">
-                {productsLoading ? (
+                {(productsLoading || (isGaneshSeason && ganeshLoading)) ? (
                   <ProductSkeleton />
-                ) : productsError ? (
+                ) : productsError || (isGaneshSeason && ganeshError) ? (
                   <Card
                     style={{
                       borderRadius: '12px',
@@ -1644,7 +2148,7 @@ const Products = () => {
                       Error Loading Products
                     </Title>
                     <Paragraph type="secondary" style={{ marginBottom: '24px' }}>
-                      {productsError}
+                      {productsError || ganeshError}
                     </Paragraph>
                     <Button
                       type="primary"
@@ -1658,7 +2162,56 @@ const Products = () => {
                       Try Again
                     </Button>
                   </Card>
+                ) : isGaneshSeason ? (
+                  // Ganesh Season Layout
+                  <Row gutter={[16, 16]}>
+                    {/* First Card: Pottery Coming Soon */}
+                    <Col {...productGridCols}>
+                      <PotteryComingSoonCard onClick={handlePotteryPrebook} />
+                    </Col>
+
+                    {/* Ganesh Idols */}
+                    {ganeshIdols.map((idol) => (
+                      <Col {...productGridCols} key={idol.id}>
+                        <GaneshIdolCard
+                          idol={idol}
+                          onShowInterest={handleShowInterest}
+                          onProductClick={handleGaneshIdolClick}
+                        />
+                      </Col>
+                    ))}
+
+                    {/* Empty state for Ganesh idols */}
+                    {ganeshIdols.length === 0 && !ganeshLoading && (
+                      <Col span={24}>
+                        <Card
+                          style={{
+                            borderRadius: '12px',
+                            textAlign: 'center',
+                            backgroundColor: `${terracottaColors.ganesh}08`,
+                            border: `1px solid ${terracottaColors.ganesh}30`,
+                          }}
+                          bodyStyle={{ padding: '48px' }}
+                        >
+                          <TrophyOutlined 
+                            style={{ 
+                              fontSize: '64px', 
+                              color: terracottaColors.ganesh,
+                              marginBottom: '16px' 
+                            }} 
+                          />
+                          <Title level={4} style={{ color: terracottaColors.ganesh }}>
+                            Ganesh Idol Collection Coming Soon!
+                          </Title>
+                          <Text type="secondary">
+                            Our artisans are working on creating beautiful Ganesh idols. Check back soon!
+                          </Text>
+                        </Card>
+                      </Col>
+                    )}
+                  </Row>
                 ) : filteredProducts.length === 0 ? (
+                  // Empty state for regular products
                   <Card
                     style={{
                       borderRadius: '12px',
@@ -1688,6 +2241,7 @@ const Products = () => {
                     />
                   </Card>
                 ) : (
+                  // Regular products grid
                   <Row gutter={[16, 16]}>
                     {filteredProducts.map((product, index) => (
                       <Col 
@@ -1711,33 +2265,35 @@ const Products = () => {
           </Row>
         </div>
 
-        {/* Mobile Filter Drawer */}
-        <Drawer
-          title="Filters"
-          placement="left"
-          open={drawerOpen}
-          onClose={() => setDrawerOpen(false)}
-          width={isMobile ? '90vw' : 300}
-          style={{
-            maxWidth: '350px'
-          }}
-          bodyStyle={{
-            background: `linear-gradient(135deg, rgba(255,255,255,0.95) 0%, ${terracottaColors.backgroundLight}50 100%)`,
-            backdropFilter: 'blur(10px)',
-          }}
-        >
-          <FilterPanel
-            priceRange={priceRange}
-            setPriceRange={setPriceRange}
-            sortBy={sortBy}
-            setSortBy={setSortBy}
-            hyderabadOnly={hyderabadOnly}
-            setHyderabadOnly={setHyderabadOnly}
-            onResetFilters={handleResetFilters}
-          />
-        </Drawer>
+        {/* Mobile Filter Drawer - Only for non-Ganesh season */}
+        {!isGaneshSeason && (
+          <Drawer
+            title="Filters"
+            placement="left"
+            open={drawerOpen}
+            onClose={() => setDrawerOpen(false)}
+            width={isMobile ? '90vw' : 300}
+            style={{
+              maxWidth: '350px'
+            }}
+            bodyStyle={{
+              background: `linear-gradient(135deg, rgba(255,255,255,0.95) 0%, ${terracottaColors.backgroundLight}50 100%)`,
+              backdropFilter: 'blur(10px)',
+            }}
+          >
+            <FilterPanel
+              priceRange={priceRange}
+              setPriceRange={setPriceRange}
+              sortBy={sortBy}
+              setSortBy={setSortBy}
+              hyderabadOnly={hyderabadOnly}
+              setHyderabadOnly={setHyderabadOnly}
+              onResetFilters={handleResetFilters}
+            />
+          </Drawer>
+        )}
 
-        {/* FIXED Quantity Modal */}
+        {/* Quantity Modal */}
         {modalOpen && selectedProduct && (
           <QuantityModal
             open={modalOpen}
@@ -1748,7 +2304,7 @@ const Products = () => {
         )}
 
         {/* Performance Debug (Development only) */}
-        {process.env.NODE_ENV === 'development' && (
+        {process.env.NODE_ENV === 'development' && !isGaneshSeason && (
           <div
             style={{
               position: 'fixed',
@@ -1764,7 +2320,7 @@ const Products = () => {
               display: isMobile ? 'none' : 'block',
             }}
           >
-            Products: {filteredProducts.length} | Total: {totalCount}
+            Products: {filteredProducts.length} | Total: {totalCount} | Season: {isGaneshSeason ? 'Ganesh' : 'Normal'}
           </div>
         )}
       </div>
