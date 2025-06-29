@@ -49,7 +49,8 @@ const NavigationItem = memo(({
   onNavigate, 
   onToggleSubMenu, 
   openSubMenu, 
-  isGaneshSeason 
+  isGaneshSeason,
+  currentPath 
 }) => {
   const theme = useTheme();
   
@@ -160,10 +161,10 @@ const NavigationItem = memo(({
                   borderRadius: 2,
                   mb: 0.5,
                   p: '6px 16px',
-                  color: isActive && subItem.path === location.pathname 
+                  color: subItem.path === currentPath 
                     ? (isGaneshSeason ? '#FF8F00' : '#D2691E') 
                     : 'text.secondary',
-                  backgroundColor: isActive && subItem.path === location.pathname 
+                  backgroundColor: subItem.path === currentPath 
                     ? (isGaneshSeason ? 'rgba(255, 143, 0, 0.05)' : 'rgba(210, 105, 30, 0.05)') 
                     : subItem.highlight 
                       ? 'rgba(25, 118, 210, 0.05)'
@@ -173,7 +174,7 @@ const NavigationItem = memo(({
                     transform: 'translateX(5px)',
                   },
                   transition: 'all 0.2s ease',
-                  fontWeight: isActive && subItem.path === location.pathname ? 600 : 400,
+                  fontWeight: subItem.path === currentPath ? 600 : 400,
                   border: subItem.highlight ? '1px solid rgba(25, 118, 210, 0.3)' : 'none',
                 }}
               >
@@ -184,7 +185,7 @@ const NavigationItem = memo(({
                         width: 6,
                         height: 6,
                         borderRadius: '50%',
-                        bgcolor: isActive && subItem.path === location.pathname 
+                        bgcolor: subItem.path === currentPath 
                           ? (isGaneshSeason ? '#FF8F00' : '#D2691E') 
                           : 'text.disabled',
                       }}
@@ -196,7 +197,7 @@ const NavigationItem = memo(({
                   secondary={subItem.description}
                   primaryTypographyProps={{
                     variant: 'body2',
-                    fontWeight: isActive && subItem.path === location.pathname ? 600 : 400
+                    fontWeight: subItem.path === currentPath ? 600 : 400
                   }}
                   secondaryTypographyProps={{
                     variant: 'caption',
@@ -486,6 +487,7 @@ const AdminSidebar = ({ open, onToggle }) => {
             onToggleSubMenu={handleToggleSubMenu}
             openSubMenu={openSubMenu}
             isGaneshSeason={isGaneshSeason}
+            currentPath={location.pathname}
           />
         ))}
       </List>

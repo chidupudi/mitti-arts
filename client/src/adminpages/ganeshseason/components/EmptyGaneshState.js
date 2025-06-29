@@ -48,7 +48,7 @@ const EmptyGaneshState = ({ searchTerm, onAddIdol }) => {
         }}
       >
         <Empty
-          image={<TempleBuddhistOutlined style={{ fontSize: '80px', color: '#FF8F00' }} />}
+          image={<HomeOutlined style={{ fontSize: '80px', color: '#FF8F00' }} />}
           imageStyle={{ height: 100 }}
           description={
             <div>
@@ -124,7 +124,7 @@ const EmptyGaneshState = ({ searchTerm, onAddIdol }) => {
           margin: '0 auto 24px auto',
           boxShadow: '0 8px 32px rgba(255, 143, 0, 0.3)'
         }}>
-          <TempleBuddhistOutlined style={{ fontSize: '64px', color: 'white' }} />
+          <HomeOutlined style={{ fontSize: '64px', color: 'white' }} />
         </div>
 
         <Title level={2} style={{ color: '#E65100', marginBottom: '16px' }}>

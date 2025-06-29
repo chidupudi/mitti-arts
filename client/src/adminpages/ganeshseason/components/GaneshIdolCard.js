@@ -253,7 +253,7 @@ const GaneshIdolCard = ({
             {idol.height && (
               <Col span={12}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <RulerOutlined style={{ fontSize: '12px', color: '#FF8F00' }} />
+                  <ColumnHeightOutlined style={{ fontSize: '12px', color: '#FF8F00' }} />
                   <Text type="secondary" style={{ fontSize: '12px' }}>
                     {idol.height}
                   </Text>

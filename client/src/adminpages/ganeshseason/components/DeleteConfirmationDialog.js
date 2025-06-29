@@ -1,15 +1,15 @@
 // client/src/adminpages/ganeshseason/components/DeleteConfirmationDialog.js
 import React from 'react';
 import { Modal, Typography, Alert, Space, Card, Row, Col, Divider } from 'antd';
-import { 
-  ExclamationCircleOutlined, 
-  DeleteOutlined, 
+import {
+  ExclamationCircleOutlined,
+  DeleteOutlined,
   WarningOutlined,
   FireOutlined,
   DollarCircleOutlined,
   TeamOutlined,
   HistoryOutlined,
- PictureOutlined
+  PictureOutlined // Correct icon is imported here
 } from '@ant-design/icons';
 
 const { Text, Title } = Typography;
@@ -113,7 +113,8 @@ const DeleteConfirmationDialog = ({
                     color: '#FF8F00'
                   }}
                 >
-                  <ImageOutlined style={{ fontSize: '24px' }} />
+                  {/* FIXED: Replaced ImageOutlined with PictureOutlined */}
+                  <PictureOutlined style={{ fontSize: '24px' }} />
                 </div>
               )}
             </Col>
@@ -160,7 +161,8 @@ const DeleteConfirmationDialog = ({
             </div>
             
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <ImageOutlined style={{ color: '#F44336' }} />
+              {/* FIXED: Replaced ImageOutlined with PictureOutlined */}
+              <PictureOutlined style={{ color: '#F44336' }} />
               <Text>{imageCount} uploaded image{imageCount !== 1 ? 's' : ''}</Text>
             </div>
             
@@ -227,7 +229,7 @@ const DeleteConfirmationDialog = ({
               <div>
                 <Text strong style={{ 
                   color: idol.availability === 'available' ? '#4CAF50' : 
-                        idol.availability === 'custom-order' ? '#FF9800' : '#F44336' 
+                         idol.availability === 'custom-order' ? '#FF9800' : '#F44336' 
                 }}>
                   {idol.availability?.replace('-', ' ').toUpperCase()}
                 </Text>

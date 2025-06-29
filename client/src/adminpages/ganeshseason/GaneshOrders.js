@@ -288,7 +288,7 @@ const GaneshOrders = () => {
               size="small" 
               type="primary"
               style={{ background: '#52c41a' }}
-              icon={<PaymentOutlined />}
+              icon={<CreditCardOutlined />}
               onClick={() => {
                 setSelectedOrder(record);
                 setPaymentModalVisible(true);
@@ -491,7 +491,7 @@ const GaneshOrders = () => {
                     status={selectedOrder.status === 'cancelled' ? 'error' : 'process'}
                   >
                     <Step title="Advance Pending" icon={<ClockCircleOutlined />} />
-                    <Step title="Advance Paid" icon={<PaymentOutlined />} />
+                    <Step title="Advance Paid" icon={<CreditCardOutlined />} />
                     <Step title="In Production" icon={<GiftOutlined />} />
                     <Step title="Ready for Delivery" icon={<TruckOutlined />} />
                     <Step title="Delivered" icon={<CheckCircleOutlined />} />
