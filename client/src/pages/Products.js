@@ -1776,12 +1776,12 @@ const Products = () => {
     }
     
     // Navigate to Ganesh idol gallery with specific idol
-    navigate(`/ganesh-idols?idol=${idol.id}`);
+    navigate(`/ganesh-idol/${idol.id}`);
   }, [user, navigate, showMessage]);
 
   const handleGaneshIdolClick = useCallback((idolId) => {
     // Navigate to Ganesh idol details or gallery
-    navigate(`/ganesh-idols?idol=${idolId}`);
+    navigate(`/ganesh-idol/${idolId}`);
   }, [navigate]);
 
   // Add to Cart handler using cartUtils

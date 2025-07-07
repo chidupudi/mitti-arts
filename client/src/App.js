@@ -47,6 +47,7 @@ const AdminSidebar = lazy(() => import('./adminpages/components/AdminSidebar'));
 const GaneshInventory = lazy(() => import('./adminpages/ganeshseason/GaneshInventory'));
 const GaneshLeads = lazy(() => import('./adminpages/ganeshseason/GaneshLeads'));
 const GaneshOrders = lazy(() => import('./adminpages/ganeshseason/GaneshOrders'));
+//const GaneshIdolDetail = lazy(() => import('./pages/GaneshIdolDetail'));
 
 // Create responsive theme with terracotta colors
 const responsiveTheme = createTheme({
@@ -329,6 +330,10 @@ const App = () => {
                   <Route path="/about" element={<About />} />
                   <Route path="/policies" element={<Policies />} />
                   <Route path="/contactus" element={<ContactUs />} />
+                  
+                  {/* Ganesh Idol Detail Route */}
+                 {/* Ganesh Idol Detail Route */}
+<Route path="/ganesh-idol/:id" element={<ProductDetail />} />
                   
                   {/* Authentication Routes */}
                   <Route path="/auth" element={<AuthForm />} />
