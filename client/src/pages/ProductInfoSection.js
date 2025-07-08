@@ -163,24 +163,23 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
   const [expandedDescription, setExpandedDescription] = useState(false);
   const screens = useBreakpoint();
 
-  const { originalPrice, discount } = useMemo(() => {
-    if (product.isGaneshIdol) {
-      // For Ganesh idols, show the price range
-      const discountPercent = Math.round(((product.priceMax - product.priceMin) / product.priceMax) * 100);
-      return { originalPrice: product.priceMax, discount: discountPercent };
-    }
-    
-    let discountRate = 0;
-    if (product.price >= 1000) discountRate = 0.25;
-    else if (product.price >= 500) discountRate = 0.20;
-    else discountRate = 0.15;
-    
-    const original = Math.ceil(product.price / (1 - discountRate));
-    const discountPercent = Math.round(((original - product.price) / original) * 100);
-    
-    return { originalPrice: original, discount: discountPercent };
-  }, [product]);
-
+const { originalPrice, discount } = useMemo(() => {
+  if (product.isGaneshIdol) {
+    // For Ganesh idols, show the price range
+    const discountPercent = Math.round(((product.priceMax - product.priceMin) / product.priceMax) * 100);
+    return { originalPrice: product.priceMax, discount: discountPercent };
+  }
+  
+  let discountRate = 0;
+  if (product.price >= 1000) discountRate = 0.25;
+  else if (product.price >= 500) discountRate = 0.20;
+  else discountRate = 0.15;
+  
+  const original = Math.ceil(product.price / (1 - discountRate));
+  const discountPercent = Math.round(((original - product.price) / original) * 100);
+  
+  return { originalPrice: original, discount: discountPercent };
+}, [product]);
   const stockStatus = useMemo(() => {
     if (product.isGaneshIdol) {
       return { 
@@ -313,21 +312,21 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
         })
       }}>
         <Space wrap align="baseline" style={{ marginBottom: '8px' }}>
-          {product.isGaneshIdol ? (
-            // Show price range for Ganesh idols
-            <>
-              <Title level={1} style={{ 
-                margin: 0, 
-                color: colors.ganesh,
-                fontSize: screens.xs ? '24px' : '32px',
-              }}>
-                ₹{product.priceMin?.toLocaleString()} - ₹{product.priceMax?.toLocaleString()}
-              </Title>
-              <Text type="secondary" style={{ fontSize: '16px' }}>
-                Price Range
-              </Text>
-            </>
-          ) : (
+         {product.isGaneshIdol ? (
+  // Show single price for Ganesh idols
+  <>
+    <Title level={1} style={{ 
+      margin: 0, 
+      color: colors.ganesh,
+      fontSize: screens.xs ? '24px' : '32px',
+    }}>
+      ₹{product.price?.toLocaleString()}
+    </Title>
+    <Text type="secondary" style={{ fontSize: '16px' }}>
+      Fixed Price
+    </Text>
+  </>
+) : (
             // Regular product pricing
             <>
               <Title level={1} style={{ 
