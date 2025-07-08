@@ -132,20 +132,18 @@ const GaneshDashboard = () => {
   }));
 
   // Price range distribution
-  const priceRangeData = dashboardData.idols.reduce((acc, idol) => {
-    const avgPrice = (idol.priceMin + idol.priceMax) / 2;
-    if (avgPrice <= 10000) acc['₹7k-₹10k'] = (acc['₹7k-₹10k'] || 0) + 1;
-    else if (avgPrice <= 15000) acc['₹10k-₹15k'] = (acc['₹10k-₹15k'] || 0) + 1;
-    else acc['₹15k+'] = (acc['₹15k+'] || 0) + 1;
-    return acc;
-  }, {});
-
-  const barChartData = Object.entries(priceRangeData).map(([range, count]) => ({
-    range,
-    count,
-    advance: range === '₹7k-₹10k' ? 2000 : range === '₹10k-₹15k' ? 2500 : 3000
-  }));
-
+ const priceRangeData = dashboardData.idols.reduce((acc, idol) => {
+      const price = idol.price || 0;
+      if (price <= 10000) acc['₹8k-₹10k'] = (acc['₹8k-₹10k'] || 0) + 1;
+      else if (price <= 15000) acc['₹10k-₹15k'] = (acc['₹10k-₹15k'] || 0) + 1;
+      else acc['₹15k+'] = (acc['₹15k+'] || 0) + 1;
+      return acc;
+    }, {});
+   const barChartData = Object.entries(priceRangeData).map(([range, count]) => ({
+      range,
+      count,
+      advance: range === '₹8k-₹10k' ? 2000 : range === '₹10k-₹15k' ? 2500 : 3000
+    }));
   // Recent activity
   const recentActivity = [
     ...dashboardData.leads.slice(0, 3).map(lead => ({
@@ -292,7 +290,7 @@ const GaneshDashboard = () => {
                   </BarChart>
                 </ResponsiveContainer>
                 <div style={{ marginTop: '8px', fontSize: '12px', color: '#666' }}>
-                  <div>₹7k-₹10k: ₹2k advance</div>
+                  <div>₹8k-₹10k: ₹2k advance</div>
                   <div>₹10k-₹15k: ₹2.5k advance</div>
                   <div>₹15k+: ₹3k advance</div>
                 </div>
@@ -417,11 +415,11 @@ const GaneshDashboard = () => {
             <Col xs={24} lg={16}>
               <Card title="📈 Business Insights">
                 <Row gutter={[16, 16]}>
-                  <Col span={8}>
+                    <Col span={8}>
                     <Card size="small" style={{ textAlign: 'center' }}>
                       <Statistic
-                        title="Avg Order Value"
-                        value={stats.totalOrders > 0 ? Math.round(dashboardData.orders.reduce((sum, o) => sum + (o.finalPrice || 0), 0) / stats.totalOrders) : 0}
+                        title="Avg Idol Price"
+                        value={dashboardData.idols.length > 0 ? Math.round(dashboardData.idols.reduce((sum, i) => sum + (i.price || 0), 0) / dashboardData.idols.length) : 0}
                         prefix="₹"
                         valueStyle={{ fontSize: '18px', color: '#52c41a' }}
                       />

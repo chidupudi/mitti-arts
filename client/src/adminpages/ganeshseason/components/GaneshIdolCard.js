@@ -56,7 +56,13 @@ const GaneshIdolCard = ({
       default: return '#FF8F00';
     }
   };
-
+const calculateAdvanceAmount = (price) => {
+  if (!price) return 0;
+  if (price >= 8000 && price <= 10000) return 2000;
+  if (price > 10000 && price <= 15000) return 2500;
+  if (price > 15000) return 3000;
+  return 2000; // Default
+};
   const getAvailabilityColor = (availability) => {
     switch (availability) {
       case 'available': return 'success';
@@ -76,7 +82,7 @@ const GaneshIdolCard = ({
     background: idol.hidden ? 'rgba(255, 193, 7, 0.05)' : 'white',
   };
 
-  const averagePrice = (idol.priceMin + idol.priceMax) / 2;
+
 
   return (
     <Badge.Ribbon 
@@ -220,7 +226,7 @@ const GaneshIdolCard = ({
         />
 
         {/* Price Range */}
-        <div style={{ 
+                 <div style={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center', 
@@ -228,13 +234,13 @@ const GaneshIdolCard = ({
         }}>
           <div>
             <Title level={4} style={{ margin: 0, color: '#FF8F00', fontWeight: 700, fontSize: '18px' }}>
-              ₹{idol.priceMin?.toLocaleString()} - ₹{idol.priceMax?.toLocaleString()}
+              ₹{idol.price?.toLocaleString()}
             </Title>
             <Text type="secondary" style={{ fontSize: '12px' }}>
-              Avg: ₹{averagePrice.toLocaleString()}
+              Fixed Price
             </Text>
           </div>
-          <Text style={{ 
+                  <Text style={{ 
             fontSize: '11px', 
             color: '#4CAF50', 
             fontWeight: 'bold',
@@ -337,7 +343,7 @@ const GaneshIdolCard = ({
           border: '1px solid #C8E6C9'
         }}>
           <Text style={{ fontSize: '11px', color: '#2E7D32', fontWeight: 'bold' }}>
-            💰 Advance: {idol.advancePercentage || 25}% • Est. ₹{Math.round(averagePrice * (idol.advancePercentage || 25) / 100).toLocaleString()}
+            💰 Advance: ₹{calculateAdvanceAmount(idol.price).toLocaleString()}
           </Text>
         </div>
 

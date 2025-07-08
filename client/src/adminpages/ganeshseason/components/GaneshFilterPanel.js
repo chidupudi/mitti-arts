@@ -138,8 +138,8 @@ const GaneshFilterPanel = ({
             placeholder="Sort By"
           >
             <Option value="name">📝 Name A-Z</Option>
-            <Option value="priceMin">💰 Price: Low to High</Option>
-            <Option value="priceMax">💎 Price: High to Low</Option>
+            <Option value="price">💰 Price: Low to High</Option>
+            <Option value="priceDesc">💎 Price: High to Low</Option>
             <Option value="height">📏 Height</Option>
             <Option value="category">🏷️ Category</Option>
             <Option value="created">🗓️ Recently Added</Option>
@@ -320,13 +320,13 @@ const GaneshFilterPanel = ({
           </Button>
           <Button
             size="small"
-            type={sortBy === 'priceMin' ? 'primary' : 'default'}
-            onClick={() => setSortBy(sortBy === 'priceMin' ? 'name' : 'priceMin')}
+            type={sortBy === 'price' ? 'primary' : 'default'}
+            onClick={() => setSortBy(sortBy === 'price' ? 'name' : 'price')}
             style={{
               borderRadius: '16px',
               fontSize: '12px',
               height: '28px',
-              ...(sortBy === 'priceMin' ? {
+              ...(sortBy === 'price' ? {
                 background: '#FF8F00',
                 borderColor: '#FF8F00'
               } : {

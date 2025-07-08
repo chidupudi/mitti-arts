@@ -142,12 +142,13 @@ const AddGaneshIdolDialog = ({
     handleChange('features', updatedFeatures);
   };
 
-  // Calculate advance amount preview
-  const calculateAdvancePreview = () => {
-    if (!idol.priceMin || !idol.priceMax) return 0;
-    const averagePrice = (idol.priceMin + idol.priceMax) / 2;
-    return Math.round(averagePrice * (idol.advancePercentage || 25) / 100);
-  };
+const calculateAdvancePreview = () => {
+  if (!idol.price) return 0;
+  if (idol.price >= 8000 && idol.price <= 10000) return 2000;
+  if (idol.price > 10000 && idol.price <= 15000) return 2500;
+  if (idol.price > 15000) return 3000;
+  return 2000; // Default
+};
 
   // Image upload component
   const ImageUploadCard = ({ index }) => {
@@ -349,41 +350,25 @@ const AddGaneshIdolDialog = ({
           style={{ marginBottom: '16px', borderColor: '#FFE0B2' }}
         >
           <Row gutter={16}>
-            <Col span={8}>
-              <Form.Item
-                label={<Text strong>Minimum Price (₹) *</Text>}
-                name="priceMin"
-                rules={[{ required: true, message: 'Minimum price is required' }]}
-              >
-                <InputNumber
-                  style={{ width: '100%' }}
-                  value={idol.priceMin}
-                  onChange={value => handleChange('priceMin', value)}
-                  formatter={value => `₹ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                  parser={value => value.replace(/₹\s?|(,*)/g, '')}
-                  placeholder="7000"
-                  min={1000}
-                />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item
-                label={<Text strong>Maximum Price (₹) *</Text>}
-                name="priceMax"
-                rules={[{ required: true, message: 'Maximum price is required' }]}
-              >
-                <InputNumber
-                  style={{ width: '100%' }}
-                  value={idol.priceMax}
-                  onChange={value => handleChange('priceMax', value)}
-                  formatter={value => `₹ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                  parser={value => value.replace(/₹\s?|(,*)/g, '')}
-                  placeholder="31000"
-                  min={idol.priceMin || 1000}
-                />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
+  <Col span={12}>
+    <Form.Item
+      label={<Text strong>Price (₹) *</Text>}
+      name="price"
+      rules={[{ required: true, message: 'Price is required' }]}
+    >
+      <InputNumber
+        style={{ width: '100%' }}
+        value={idol.price}
+        onChange={value => handleChange('price', value)}
+        formatter={value => `₹ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+        parser={value => value.replace(/₹\s?|(,*)/g, '')}
+        placeholder="15000"
+        min={1000}
+        max={50000}
+      />
+    </Form.Item>
+  </Col>
+  <Col span={12}>
               <Form.Item label={<Text strong>Advance % *</Text>} name="advancePercentage">
                 <InputNumber
                   style={{ width: '100%' }}
@@ -400,19 +385,19 @@ const AddGaneshIdolDialog = ({
           </Row>
 
           {/* Advance Preview */}
-          {idol.priceMin && idol.priceMax && (
-            <Alert
-              message={
-                <div>
-                  <Text strong>💰 Advance Amount Preview: </Text>
-                  <Text style={{ color: '#4CAF50', fontWeight: 'bold' }}>
-                    ₹{calculateAdvancePreview().toLocaleString()} 
-                  </Text>
-                  <Text type="secondary">
-                    {' '}(based on average price of ₹{Math.round((idol.priceMin + idol.priceMax) / 2).toLocaleString()})
-                  </Text>
-                </div>
-              }
+          {idol.price && (
+  <Alert
+    message={
+      <div>
+        <Text strong>💰 Advance Amount Preview: </Text>
+        <Text style={{ color: '#4CAF50', fontWeight: 'bold' }}>
+          ₹{calculateAdvancePreview().toLocaleString()} 
+        </Text>
+        <Text type="secondary">
+          {' '}(for price of ₹{idol.price.toLocaleString()})
+        </Text>
+      </div>
+    }
               type="info"
               style={{ marginTop: '8px' }}
             />

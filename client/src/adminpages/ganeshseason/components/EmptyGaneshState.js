@@ -14,27 +14,26 @@ import {
 const { Title, Text, Paragraph } = Typography;
 
 const EmptyGaneshState = ({ searchTerm, onAddIdol }) => {
-  const suggestions = [
+   const suggestions = [
     {
       icon: <CrownOutlined style={{ color: '#8E24AA' }} />,
       title: 'Traditional Ganesha',
       description: 'Classic designs with authentic clay finish',
-      priceRange: '₹8,000 - ₹15,000'
+      priceRange: '₹8,000 - ₹12,000'
     },
     {
       icon: <StarOutlined style={{ color: '#1976D2' }} />,
       title: 'Modern Eco-Friendly',
       description: 'Contemporary designs with eco-friendly materials',
-      priceRange: '₹10,000 - ₹20,000'
+      priceRange: '₹12,000 - ₹18,000'
     },
     {
       icon: <FireOutlined style={{ color: '#D32F2F' }} />,
       title: 'Premium Collection',
       description: 'Artistic masterpieces with intricate details',
-      priceRange: '₹18,000 - ₹31,000'
+      priceRange: '₹18,000 - ₹35,000'
     }
   ];
-
   if (searchTerm) {
     // When search returns no results
     return (
@@ -241,14 +240,14 @@ const EmptyGaneshState = ({ searchTerm, onAddIdol }) => {
         <Row gutter={[16, 16]}>
           <Col xs={24} sm={8}>
             <Card size="small" style={{ background: '#E8F5E8', border: '1px solid #C8E6C9' }}>
-              <Text strong style={{ color: '#2E7D32' }}>₹8k - ₹10k Range</Text>
+              <Text strong style={{ color: '#2E7D32' }}>₹8k - ₹10k Price</Text>
               <br />
               <Text style={{ fontSize: '12px', color: '#388E3C' }}>₹2,000 Advance</Text>
             </Card>
           </Col>
-          <Col xs={24} sm={8}>
-            <Card size="small" style={{ background: '#FFF3E0', border: '1px solid #FFE0B2' }}>
-              <Text strong style={{ color: '#E65100' }}>₹10k - ₹15k Range</Text>
+                    <Col xs={24} sm={8}>
+           <Card size="small" style={{ background: '#FFF3E0', border: '1px solid #FFE0B2' }}>
+              <Text strong style={{ color: '#E65100' }}>₹10k - ₹15k Price</Text>
               <br />
               <Text style={{ fontSize: '12px', color: '#FF8F00' }}>₹2,500 Advance</Text>
             </Card>
@@ -262,8 +261,8 @@ const EmptyGaneshState = ({ searchTerm, onAddIdol }) => {
           </Col>
         </Row>
         
-        <Alert
-          message="Advance amounts are automatically calculated based on your price ranges"
+         <Alert
+          message="Advance amounts are automatically calculated based on idol prices"
           type="success"
           style={{ marginTop: '16px' }}
           showIcon

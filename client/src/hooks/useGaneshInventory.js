@@ -37,8 +37,7 @@ export const useGaneshInventory = () => {
     name: '',
     description: '',
     images: Array(8).fill(''),
-    priceMin: 7000, // Minimum ₹7k
-    priceMax: 31000, // Maximum ₹31k
+    price:15000, 
     height: '', // in inches
     weight: '', // in kg
     color: '',
@@ -133,8 +132,7 @@ export const useGaneshInventory = () => {
         name: '',
         description: '',
         images: Array(8).fill(''),
-        priceMin: 7000,
-        priceMax: 31000,
+        price: 7000,
         height: '',
         weight: '',
         color: '',
@@ -155,25 +153,11 @@ export const useGaneshInventory = () => {
   }, [newIdol, showSnackbar]);
 
   // Calculate advance amounts based on price brackets
-  const calculateAdvanceAmounts = (priceMin, priceMax) => {
-    const brackets = [];
-    
-    // ₹8k-10k bracket
-    if (priceMin <= 10000) {
-      brackets.push({ min: Math.max(priceMin, 8000), max: Math.min(priceMax, 10000), advance: 2000 });
-    }
-    
-    // ₹10k-15k bracket  
-    if (priceMin <= 15000 && priceMax > 10000) {
-      brackets.push({ min: Math.max(priceMin, 10000), max: Math.min(priceMax, 15000), advance: 2500 });
-    }
-    
-    // >₹15k bracket
-    if (priceMax > 15000) {
-      brackets.push({ min: Math.max(priceMin, 15000), max: priceMax, advance: 3000 });
-    }
-    
-    return brackets;
+  const calculateAdvanceAmounts = (price) => {
+    if (price >= 8000 && price <= 10000) return 2000;
+  if (price > 10000 && price <= 15000) return 2500;
+  if (price > 15000) return 3000;
+  return 2000; // Default
   };
 
   // Delete idol with confirmation
@@ -271,14 +255,9 @@ export const useGaneshInventory = () => {
   }, [editIdol]);
 
   const handleSaveEdit = useCallback(async () => {
-    if (!editIdol?.name || !editIdol?.priceMin || !editIdol?.priceMax) {
-      showSnackbar('Please fill in required fields', 'error');
-      return;
-    }
-
-    if (editIdol.priceMin >= editIdol.priceMax) {
-      showSnackbar('Maximum price must be greater than minimum price', 'error');
-      return;
+    if (!newIdol.name || !newIdol.price ){
+      showSnackbar('Please fill in required fields (Name, Price Range)', 'error');
+      return
     }
 
     try {
@@ -290,12 +269,11 @@ export const useGaneshInventory = () => {
       
       const updatedIdol = {
         ...updateData,
-        priceMin: Number(updateData.priceMin) || 0,
-        priceMax: Number(updateData.priceMax) || 0,
+        price: Number(newIdol.price),
         images: (updateData.images || []).filter(url => url && url !== 'loading'),
         features: Array.isArray(updateData.features) ? updateData.features : [],
         updatedAt: new Date(),
-        advanceAmounts: calculateAdvanceAmounts(updateData.priceMin, updateData.priceMax),
+        advanceAmounts: calculateAdvanceAmounts(newIdol.price),
       };
 
       const idolRef = doc(db, 'ganeshIdols', id);
@@ -335,15 +313,19 @@ export const useGaneshInventory = () => {
       return matchesSearch && matchesFilter;
     })
     .sort((a, b) => {
-      switch (sortBy) {
+       switch (sortBy) {
         case 'name':
           return a.name.localeCompare(b.name);
-        case 'priceMin':
-          return a.priceMin - b.priceMin;
-        case 'priceMax':
-          return a.priceMax - b.priceMax;
+        case 'price':
+        case 'priceMin': // Keep for backward compatibility
+        case 'priceMax': // Keep for backward compatibility
+          return (a.price || 0) - (b.price || 0);
         case 'height':
+
           return (parseFloat(a.height) || 0) - (parseFloat(b.height) || 0);
+        case 'priceDesc':
+  return (b.price || 0) - (a.price || 0);
+
         case 'created':
           return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
         case 'category':
@@ -361,13 +343,13 @@ export const useGaneshInventory = () => {
     modernIdols: ganeshIdols.filter(p => p.category === 'modern').length,
     premiumIdols: ganeshIdols.filter(p => p.category === 'premium').length,
     customizableIdols: ganeshIdols.filter(p => p.customizable).length,
-    averagePrice: ganeshIdols.length > 0 
-      ? ganeshIdols.reduce((sum, p) => sum + ((p.priceMin + p.priceMax) / 2), 0) / ganeshIdols.length 
-      : 0,
-    priceRange: {
-      min: ganeshIdols.length > 0 ? Math.min(...ganeshIdols.map(p => p.priceMin)) : 0,
-      max: ganeshIdols.length > 0 ? Math.max(...ganeshIdols.map(p => p.priceMax)) : 0,
-    }
+     averagePrice: ganeshIdols.length > 0 
+    ? ganeshIdols.reduce((sum, p) => sum + (p.price || 0), 0) / ganeshIdols.length 
+    : 0,
+  priceRange: {
+    min: ganeshIdols.length > 0 ? Math.min(...ganeshIdols.map(p => p.price || 0)) : 0,
+    max: ganeshIdols.length > 0 ? Math.max(...ganeshIdols.map(p => p.price || 0)) : 0,
+  }
   };
 
   // Pagination

@@ -17,17 +17,16 @@ const { Title, Text } = Typography;
 
 const GaneshStatisticsCards = ({ statistics }) => {
   // Extract statistics with fallbacks to prevent errors if data is not loaded
-  const { 
-    totalIdols = 0, 
-    hiddenIdols = 0, 
-    traditionalIdols = 0, 
-    modernIdols = 0, 
-    premiumIdols = 0, 
-    customizableIdols = 0, 
-    averagePrice = 0,
-    priceRange = { min: 0, max: 0 }
-  } = statistics || {}; // Ensure statistics object itself is not null/undefined
-
+ const { 
+  totalIdols = 0, 
+  hiddenIdols = 0, 
+  traditionalIdols = 0, 
+  modernIdols = 0, 
+  premiumIdols = 0, 
+  customizableIdols = 0, 
+  averagePrice = 0,
+  priceRange = { min: 0, max: 0 }
+} = statistics || {};
   // Data for the inventory statistics cards
   const statsData = [
     {
@@ -84,13 +83,13 @@ const GaneshStatisticsCards = ({ statistics }) => {
       change: `${Math.round((customizableIdols / Math.max(totalIdols, 1)) * 100)}%`,
       changeType: 'increase'
     },
-    {
+     {
       title: 'Price Range',
       value: `₹${priceRange.min.toLocaleString()}-₹${priceRange.max.toLocaleString()}`,
       subtitle: 'Min - Max pricing',
       icon: <FireOutlined style={{ fontSize: '32px' }} />,
       bgColor: 'linear-gradient(135deg, #795548 0%, #A1887F 100%)',
-      change: 'Full range',
+      change: 'Price spread',
       changeType: 'neutral'
     },
     {

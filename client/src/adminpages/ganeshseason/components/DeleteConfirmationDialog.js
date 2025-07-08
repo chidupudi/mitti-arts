@@ -14,6 +14,14 @@ import {
 
 const { Text, Title } = Typography;
 
+// ADD THIS FUNCTION:
+const calculateAdvanceAmount = (price) => {
+  if (!price) return 0;
+  if (price >= 8000 && price <= 10000) return 2000;
+  if (price > 10000 && price <= 15000) return 2500;
+  if (price > 15000) return 3000;
+  return 2000; // Default
+};
 const DeleteConfirmationDialog = ({
   open,
   onClose,
@@ -22,8 +30,8 @@ const DeleteConfirmationDialog = ({
 }) => {
   if (!idol) return null;
 
-  const averagePrice = idol.priceMin && idol.priceMax ? (idol.priceMin + idol.priceMax) / 2 : 0;
-  const advanceAmount = Math.round(averagePrice * (idol.advancePercentage || 25) / 100);
+const price = idol.price || 0;
+const advanceAmount = calculateAdvanceAmount(price);
   const imageCount = (idol.images || []).filter(img => img && img !== 'loading').length;
 
   return (
@@ -198,10 +206,10 @@ const DeleteConfirmationDialog = ({
         >
           <Row gutter={[16, 8]}>
             <Col span={12}>
-              <Text type="secondary" style={{ fontSize: '12px' }}>Average Price:</Text>
+              <Text type="secondary" style={{ fontSize: '12px' }}>Price:</Text>
               <div>
                 <Text strong style={{ color: '#4CAF50' }}>
-                  ₹{averagePrice.toLocaleString()}
+                  ₹{price.toLocaleString()}
                 </Text>
               </div>
             </Col>
@@ -246,10 +254,10 @@ const DeleteConfirmationDialog = ({
               <Text type="secondary">
                 Instead of deleting, you could:
               </Text>
-              <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
+               <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
                 <li><Text type="secondary">Hide the idol from customers (keeps data safe)</Text></li>
                 <li><Text type="secondary">Mark as "Sold Out" temporarily</Text></li>
-                <li><Text type="secondary">Update the availability status</Text></li>
+                <li><Text type="secondary">Update the price or availability status</Text></li>
               </ul>
             </div>
           }

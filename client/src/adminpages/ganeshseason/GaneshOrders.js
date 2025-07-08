@@ -210,6 +210,10 @@ const GaneshOrders = () => {
           <Text strong>{record.idolDetails?.name || 'N/A'}</Text>
           <br />
           <Text type="secondary" style={{ fontSize: '12px' }}>
+            Base Price: ₹{record.idolDetails?.price?.toLocaleString()}
+          </Text>
+          <br />
+          <Text strong style={{ fontSize: '12px', color: '#52c41a' }}>
             Final Price: ₹{record.finalPrice?.toLocaleString()}
           </Text>
           {record.idolDetails?.height && (
@@ -511,10 +515,11 @@ const GaneshOrders = () => {
                     </Descriptions>
                   </Col>
                   
-                  <Col span={12}>
+                 <Col span={12}>
                     <Title level={5}>Idol Details</Title>
                     <Descriptions column={1} size="small">
                       <Descriptions.Item label="Idol Name">{selectedOrder.idolDetails?.name}</Descriptions.Item>
+                      <Descriptions.Item label="Base Price">₹{selectedOrder.idolDetails?.price?.toLocaleString()}</Descriptions.Item>
                       <Descriptions.Item label="Category">{selectedOrder.idolDetails?.category}</Descriptions.Item>
                       <Descriptions.Item label="Height">{selectedOrder.idolDetails?.height || 'Not specified'}</Descriptions.Item>
                       <Descriptions.Item label="Material">{selectedOrder.idolDetails?.material || 'Not specified'}</Descriptions.Item>

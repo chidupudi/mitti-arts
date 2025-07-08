@@ -57,7 +57,14 @@ const GaneshIdolTable = ({
       default: return '#FF8F00';
     }
   };
-
+// ADD THIS FUNCTION:
+const calculateAdvanceAmount = (price) => {
+  if (!price) return 0;
+  if (price >= 8000 && price <= 10000) return 2000;
+  if (price > 10000 && price <= 15000) return 2500;
+  if (price > 15000) return 3000;
+  return 2000; // Default
+};
   const getAvailabilityColor = (availability) => {
     switch (availability) {
       case 'available': return 'success';
@@ -185,25 +192,24 @@ const GaneshIdolTable = ({
         </Space>
       ),
     },
-    {
-      title: 'Price Range',
+        {
+      title: 'Price',
       dataIndex: 'price',
       key: 'price',
-      width: 140,
+      width: 120,
       render: (_, record) => {
-        const averagePrice = (record.priceMin + record.priceMax) / 2;
-        const pricePercentage = ((averagePrice - 7000) / (31000 - 7000)) * 100;
+        const pricePercentage = ((record.price - 8000) / (50000 - 8000)) * 100;
         
         return (
           <div>
             <Text strong style={{ color: '#FF8F00', fontSize: '14px', display: 'block' }}>
-              ₹{record.priceMin?.toLocaleString()} - ₹{record.priceMax?.toLocaleString()}
+              ₹{record.price?.toLocaleString()}
             </Text>
             <Text type="secondary" style={{ fontSize: '11px' }}>
-              Avg: ₹{averagePrice.toLocaleString()}
+              Fixed Price
             </Text>
             <Progress 
-              percent={pricePercentage} 
+              percent={Math.max(0, Math.min(100, pricePercentage))} 
               size="small" 
               showInfo={false}
               strokeColor={{
@@ -222,9 +228,8 @@ const GaneshIdolTable = ({
       dataIndex: 'advance',
       key: 'advance',
       width: 130,
-      render: (_, record) => {
-        const averagePrice = (record.priceMin + record.priceMax) / 2;
-        const advanceAmount = Math.round(averagePrice * (record.advancePercentage || 25) / 100);
+            render: (_, record) => {
+        const advanceAmount = calculateAdvanceAmount(record.price);
         
         return (
           <Space direction="vertical" size="small">
@@ -238,7 +243,7 @@ const GaneshIdolTable = ({
                 💰 ₹{advanceAmount.toLocaleString()}
               </Text>
               <Text type="secondary" style={{ fontSize: '10px', display: 'block' }}>
-                ({record.advancePercentage || 25}% advance)
+                (advance amount)
               </Text>
             </div>
             

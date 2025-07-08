@@ -190,7 +190,7 @@ const GaneshLeads = () => {
           <Text strong>{record.idolDetails?.name || 'N/A'}</Text>
           <br />
           <Text type="secondary">
-            ₹{record.idolDetails?.priceMin?.toLocaleString()} - ₹{record.idolDetails?.priceMax?.toLocaleString()}
+            ₹{record.idolDetails?.price?.toLocaleString()}
           </Text>
           {record.idolDetails?.height && (
             <>
@@ -441,13 +441,13 @@ const GaneshLeads = () => {
                     <br />
                     <Text>{selectedLead.customerInfo?.email || 'Not provided'}</Text>
                   </Col>
-                  <Col span={24}>
+                   <Col span={24}>
                     <Text strong>Interested Idol:</Text>
                     <br />
                     <Text>{selectedLead.idolDetails?.name}</Text>
                     <br />
                     <Text type="secondary">
-                      Price Range: ₹{selectedLead.idolDetails?.priceMin?.toLocaleString()} - ₹{selectedLead.idolDetails?.priceMax?.toLocaleString()}
+                      Price: ₹{selectedLead.idolDetails?.price?.toLocaleString()}
                     </Text>
                   </Col>
                   <Col span={24}>
