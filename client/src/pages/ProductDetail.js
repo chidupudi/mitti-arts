@@ -113,24 +113,23 @@ const useProductData = (productId, code) => {
           
           if (docSnap.exists()) {
             const data = docSnap.data();
-            const idolData = {
-              id: docSnap.id,
-              ...data,
-              // Convert Ganesh idol data to product-like structure
-              price: Math.round((data.priceMin + data.priceMax) / 2), // Use average price
-              originalPrice: data.priceMax,
-              discount: Math.round(((data.priceMax - data.priceMin) / data.priceMax) * 100),
-              stock: 999, // Ganesh idols are custom made
-              rating: Number(data.rating) || 4.5,
-              reviews: Number(data.reviews) || 28,
-              images: Array.isArray(data.images) ? data.images : [],
-              hyderabadOnly: false, // Ganesh idols can be shipped anywhere
-              isGaneshIdol: true, // Flag to identify this as a Ganesh idol
-              estimatedDays: Number(data.estimatedDays) || 7,
-              advancePercentage: Number(data.advancePercentage) || 25,
-              priceMin: Number(data.priceMin) || 7000,
-              priceMax: Number(data.priceMax) || 31000,
-            };
+            // FIXED CODE:
+const idolData = {
+  id: docSnap.id,
+  ...data,
+  // Convert Ganesh idol data to product-like structure
+  price: Number(data.price) || 15000,
+  originalPrice: null, // No original price for Ganesh idols
+  discount: 0, // No discount for custom made idols
+  stock: 999, // Ganesh idols are custom made
+  rating: Number(data.rating) || 4.5,
+  reviews: Number(data.reviews) || 28,
+  images: Array.isArray(data.images) ? data.images : [],
+  hyderabadOnly: false, // Ganesh idols can be shipped anywhere
+  isGaneshIdol: true, // Flag to identify this as a Ganesh idol
+  estimatedDays: Number(data.estimatedDays) || 7,
+  advancePercentage: Number(data.advancePercentage) || 25,
+};
             setProduct(idolData);
           } else {
             setError('Ganesh idol not found');
@@ -342,15 +341,7 @@ const ProductDetail = () => {
             phone: '', // Will be collected in follow-up
             email: user.email || '',
           },
-          idolDetails: {
-            id: product.id,
-            name: product.name,
-            category: product.category,
-            priceMin: product.priceMin,
-            priceMax: product.priceMax,
-            height: product.height,
-            material: product.material,
-          },
+
           requirements: '',
           status: 'new',
           createdAt: serverTimestamp(),

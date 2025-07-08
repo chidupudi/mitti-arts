@@ -1,4 +1,4 @@
-// client/src/hooks/useGaneshInventory.js
+// client/src/hooks/useGaneshInventory.js - FIXED VERSION
 import { useState, useEffect, useCallback } from 'react';
 import { db } from '../Firebase/Firebase';
 import { 
@@ -37,7 +37,7 @@ export const useGaneshInventory = () => {
     name: '',
     description: '',
     images: Array(8).fill(''),
-    price:15000, 
+    price: 15000, // Single price field
     height: '', // in inches
     weight: '', // in kg
     color: '',
@@ -93,23 +93,24 @@ export const useGaneshInventory = () => {
     setSnackbar(prev => ({ ...prev, open: false }));
   }, []);
 
-  // Add new Ganesh idol to Firestore
+  // FIXED: Add new Ganesh idol to Firestore
   const handleAddIdol = useCallback(async () => {
-    if (!newIdol.name || !newIdol.priceMin || !newIdol.priceMax) {
-      showSnackbar('Please fill in required fields (Name, Price Range)', 'error');
+    // FIXED: Check for correct fields (price instead of priceMin/priceMax)
+    if (!newIdol.name || !newIdol.price) {
+      showSnackbar('Please fill in required fields (Name and Price)', 'error');
       return;
     }
 
-    if (newIdol.priceMin >= newIdol.priceMax) {
-      showSnackbar('Maximum price must be greater than minimum price', 'error');
+    // FIXED: Validate price is a positive number
+    if (newIdol.price <= 0) {
+      showSnackbar('Price must be greater than 0', 'error');
       return;
     }
 
     try {
       const idolData = {
         ...newIdol,
-        priceMin: Number(newIdol.priceMin),
-        priceMax: Number(newIdol.priceMax),
+        price: Number(newIdol.price), // Ensure it's a number
         images: newIdol.images.filter(url => url && url !== 'loading'),
         estimatedDays: Number(newIdol.estimatedDays) || 7,
         advancePercentage: Number(newIdol.advancePercentage) || 25,
@@ -117,8 +118,8 @@ export const useGaneshInventory = () => {
         createdAt: new Date(),
         type: 'ganesh-idol', // Identifier for season type
         season: 'ganesh',
-        // Calculate advance amounts for different price brackets
-        advanceAmounts: calculateAdvanceAmounts(newIdol.priceMin, newIdol.priceMax),
+        // Calculate advance amount for single price
+        advanceAmount: calculateAdvanceAmount(newIdol.price),
       };
 
       const docRef = await addDoc(collection(db, 'ganeshIdols'), idolData);
@@ -128,11 +129,12 @@ export const useGaneshInventory = () => {
         { ...idolData, id: docRef.id }
       ]);
 
+      // Reset form
       setNewIdol({
         name: '',
         description: '',
         images: Array(8).fill(''),
-        price: 7000,
+        price: 15000,
         height: '',
         weight: '',
         color: '',
@@ -152,12 +154,12 @@ export const useGaneshInventory = () => {
     }
   }, [newIdol, showSnackbar]);
 
-  // Calculate advance amounts based on price brackets
-  const calculateAdvanceAmounts = (price) => {
+  // FIXED: Calculate advance amount based on price brackets
+  const calculateAdvanceAmount = (price) => {
     if (price >= 8000 && price <= 10000) return 2000;
-  if (price > 10000 && price <= 15000) return 2500;
-  if (price > 15000) return 3000;
-  return 2000; // Default
+    if (price > 10000 && price <= 15000) return 2500;
+    if (price > 15000) return 3000;
+    return 2000; // Default
   };
 
   // Delete idol with confirmation
@@ -229,8 +231,7 @@ export const useGaneshInventory = () => {
         case 'images':
           processedValue = Array.isArray(value) ? value : Array(8).fill('');
           break;
-        case 'priceMin':
-        case 'priceMax':
+        case 'price': // FIXED: Handle price field correctly
         case 'estimatedDays':
         case 'advancePercentage':
           processedValue = value === '' ? 0 : Number(value);
@@ -254,10 +255,18 @@ export const useGaneshInventory = () => {
     }
   }, [editIdol]);
 
+  // FIXED: Save edited idol
   const handleSaveEdit = useCallback(async () => {
-    if (!newIdol.name || !newIdol.price ){
-      showSnackbar('Please fill in required fields (Name, Price Range)', 'error');
-      return
+    // FIXED: Check editIdol instead of newIdol, and check for price instead of priceMin/priceMax
+    if (!editIdol?.name || !editIdol?.price) {
+      showSnackbar('Please fill in required fields (Name and Price)', 'error');
+      return;
+    }
+
+    // FIXED: Validate price is a positive number
+    if (editIdol.price <= 0) {
+      showSnackbar('Price must be greater than 0', 'error');
+      return;
     }
 
     try {
@@ -269,11 +278,11 @@ export const useGaneshInventory = () => {
       
       const updatedIdol = {
         ...updateData,
-        price: Number(newIdol.price),
+        price: Number(updateData.price), // Ensure it's a number
         images: (updateData.images || []).filter(url => url && url !== 'loading'),
         features: Array.isArray(updateData.features) ? updateData.features : [],
         updatedAt: new Date(),
-        advanceAmounts: calculateAdvanceAmounts(newIdol.price),
+        advanceAmount: calculateAdvanceAmount(updateData.price), // FIXED: Use single price
       };
 
       const idolRef = doc(db, 'ganeshIdols', id);
@@ -290,7 +299,7 @@ export const useGaneshInventory = () => {
       console.error('Error updating Ganesh idol:', error);
       showSnackbar('Error updating Ganesh idol: ' + error.message, 'error');
     }
-  }, [editIdol, showSnackbar]);
+  }, [editIdol, showSnackbar]); // FIXED: Use editIdol in dependency
 
   // Filter and sort idols
   const filteredIdols = ganeshIdols
@@ -313,19 +322,15 @@ export const useGaneshInventory = () => {
       return matchesSearch && matchesFilter;
     })
     .sort((a, b) => {
-       switch (sortBy) {
+      switch (sortBy) {
         case 'name':
           return a.name.localeCompare(b.name);
         case 'price':
-        case 'priceMin': // Keep for backward compatibility
-        case 'priceMax': // Keep for backward compatibility
           return (a.price || 0) - (b.price || 0);
         case 'height':
-
           return (parseFloat(a.height) || 0) - (parseFloat(b.height) || 0);
         case 'priceDesc':
-  return (b.price || 0) - (a.price || 0);
-
+          return (b.price || 0) - (a.price || 0);
         case 'created':
           return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
         case 'category':
@@ -343,13 +348,13 @@ export const useGaneshInventory = () => {
     modernIdols: ganeshIdols.filter(p => p.category === 'modern').length,
     premiumIdols: ganeshIdols.filter(p => p.category === 'premium').length,
     customizableIdols: ganeshIdols.filter(p => p.customizable).length,
-     averagePrice: ganeshIdols.length > 0 
-    ? ganeshIdols.reduce((sum, p) => sum + (p.price || 0), 0) / ganeshIdols.length 
-    : 0,
-  priceRange: {
-    min: ganeshIdols.length > 0 ? Math.min(...ganeshIdols.map(p => p.price || 0)) : 0,
-    max: ganeshIdols.length > 0 ? Math.max(...ganeshIdols.map(p => p.price || 0)) : 0,
-  }
+    averagePrice: ganeshIdols.length > 0 
+      ? ganeshIdols.reduce((sum, p) => sum + (p.price || 0), 0) / ganeshIdols.length 
+      : 0,
+    priceRange: {
+      min: ganeshIdols.length > 0 ? Math.min(...ganeshIdols.map(p => p.price || 0)) : 0,
+      max: ganeshIdols.length > 0 ? Math.max(...ganeshIdols.map(p => p.price || 0)) : 0,
+    }
   };
 
   // Pagination
@@ -414,7 +419,6 @@ export const useGaneshInventory = () => {
     handleEditIdol,
     handleEditChange,
     handleSaveEdit,
-    // Removed handleImageUpload since we're doing direct uploads in components
     handleChangePage,
     handleChangeRowsPerPage,
     fetchGaneshIdols,

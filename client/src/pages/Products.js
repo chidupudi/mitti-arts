@@ -388,18 +388,18 @@ const useGaneshIdols = () => {
         querySnapshot.forEach((doc) => {
           const data = doc.data();
           if (!data.hidden) { // Only show non-hidden idols
-            idolsArr.push({
-              id: doc.id,
-              ...data,
-              priceMin: Number(data.priceMin) || 7000,
-              priceMax: Number(data.priceMax) || 31000,
-              rating: Number(data.rating) || 4.5,
-              reviews: Number(data.reviews) || 28,
-              imgUrl: data.images?.[0] || '',
-              estimatedDays: Number(data.estimatedDays) || 7,
-              advancePercentage: Number(data.advancePercentage) || 25,
-              createdAt: data.createdAt || new Date().toISOString(),
-            });
+            // FIXED CODE:
+idolsArr.push({
+  id: doc.id,
+  ...data,
+  price: Number(data.price) || 15000,
+  rating: Number(data.rating) || 4.5,
+  reviews: Number(data.reviews) || 28,
+  imgUrl: data.images?.[0] || '',
+  estimatedDays: Number(data.estimatedDays) || 7,
+  advancePercentage: Number(data.advancePercentage) || 25,
+  createdAt: data.createdAt || new Date().toISOString(),
+});
           }
         });
         setGaneshIdols(idolsArr);
@@ -707,8 +707,9 @@ const GaneshIdolCard = memo(({
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageSrc, setImageSrc] = useState(idol.imgUrl || 'https://via.placeholder.com/300x220/FF8F00/FFFFFF?text=Ganesh+Idol');
   
-  const averagePrice = (idol.priceMin + idol.priceMax) / 2;
-  const advanceAmount = Math.round(averagePrice * (idol.advancePercentage || 25) / 100);
+ // FIXED CODE:
+const price = idol.price || 15000;
+  const advanceAmount = Math.round(price * (idol.advancePercentage || 25) / 100);
 
   const handleCardClick = (e) => {
     if (e.target.closest('.ant-btn') || 
@@ -825,22 +826,23 @@ const GaneshIdolCard = memo(({
 
         {/* Price Range */}
         <div style={{ marginBottom: '12px' }}>
-          <Title 
-            level={5} 
-            style={{ 
-              margin: 0,
-              color: terracottaColors.ganesh,
-              fontSize: '18px'
-            }}
-          >
-            ₹{idol.priceMin?.toLocaleString()} - ₹{idol.priceMax?.toLocaleString()}
-          </Title>
-          <Text 
-            type="secondary" 
-            style={{ fontSize: '12px' }}
-          >
-            Advance: ₹{advanceAmount.toLocaleString()} ({idol.advancePercentage || 25}%)
-          </Text>
+      
+<Title 
+  level={5} 
+  style={{ 
+    margin: 0,
+    color: terracottaColors.ganesh,
+    fontSize: '18px'
+  }}
+>
+  ₹{price.toLocaleString()}
+</Title>
+<Text 
+  type="secondary" 
+  style={{ fontSize: '12px' }}
+>
+  Advance: ₹{Math.round(price * (idol.advancePercentage || 25) / 100).toLocaleString()} ({idol.advancePercentage || 25}%)
+</Text>
         </div>
 
         {/* Specifications */}
