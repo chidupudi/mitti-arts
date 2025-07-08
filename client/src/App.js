@@ -28,6 +28,7 @@ const AuthForm = lazy(() => import('./components/AuthForm'));
 const Profile = lazy(() => import('./pages/Profile'));
 const Cart = lazy(() => import('./pages/Cart'));
 const OrderSummary = lazy(() => import('./pages/OrderSummary'));
+const GaneshOrderSummary = lazy(() => import('./pages/GaneshOrderSummary'));
 const OrderConfirmation = lazy(() => import('./pages/OrderConfirmations'));
 const WishList = lazy(() => import('./pages/WishList'));
 const Order = lazy(() => import('./pages/Orders'));
@@ -344,6 +345,7 @@ const App = () => {
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/cart" element={<Cart />} />
                   <Route path="/order-summary" element={<OrderSummary />} />
+                  <Route path="/ganesh-order-summary" element={<GaneshOrderSummary />} />
                   <Route path="/order-confirmation" element={<OrderConfirmation />} />
                   <Route path="/wishlist" element={<WishList />} />
                   <Route path="/orders" element={<Order />} />

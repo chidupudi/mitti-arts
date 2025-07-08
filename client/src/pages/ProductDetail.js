@@ -1,7 +1,7 @@
 // ProductDetail.jsx - Enhanced Main Component with Ganesh Idol Support
-import React, { 
-  useEffect, 
-  useState, 
+import React, {
+  useEffect,
+  useState,
   useCallback
 } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
@@ -18,13 +18,13 @@ import {
   ArrowLeftOutlined,
 } from '@ant-design/icons';
 import { auth, db } from '../Firebase/Firebase';
-import { 
-  collection, 
-  addDoc, 
-  getDoc, 
-  getDocs, 
-  query, 
-  where, 
+import {
+  collection,
+  addDoc,
+  getDoc,
+  getDocs,
+  query,
+  where,
   doc,
   deleteDoc,
   serverTimestamp
@@ -99,37 +99,37 @@ const useProductData = (productId, code) => {
     const fetchProduct = async () => {
       setLoading(true);
       setError(null);
-      
+
       try {
         // Check if this is a Ganesh idol route
         const isGaneshIdol = window.location.pathname.includes('/ganesh-idol/');
-        
+
         let docRef, docSnap;
-        
+
         if (isGaneshIdol) {
           // Fetch from ganeshIdols collection
           docRef = doc(db, 'ganeshIdols', productId);
           docSnap = await getDoc(docRef);
-          
+
           if (docSnap.exists()) {
             const data = docSnap.data();
             // FIXED CODE:
-const idolData = {
-  id: docSnap.id,
-  ...data,
-  // Convert Ganesh idol data to product-like structure
-  price: Number(data.price) || 15000,
-  originalPrice: null, // No original price for Ganesh idols
-  discount: 0, // No discount for custom made idols
-  stock: 999, // Ganesh idols are custom made
-  rating: Number(data.rating) || 4.5,
-  reviews: Number(data.reviews) || 28,
-  images: Array.isArray(data.images) ? data.images : [],
-  hyderabadOnly: false, // Ganesh idols can be shipped anywhere
-  isGaneshIdol: true, // Flag to identify this as a Ganesh idol
-  estimatedDays: Number(data.estimatedDays) || 7,
-  advancePercentage: Number(data.advancePercentage) || 25,
-};
+            const idolData = {
+              id: docSnap.id,
+              ...data,
+              // Convert Ganesh idol data to product-like structure
+              price: Number(data.price) || 15000,
+              originalPrice: null, // No original price for Ganesh idols
+              discount: 0, // No discount for custom made idols
+              stock: 999, // Ganesh idols are custom made
+              rating: Number(data.rating) || 4.5,
+              reviews: Number(data.reviews) || 28,
+              images: Array.isArray(data.images) ? data.images : [],
+              hyderabadOnly: false, // Ganesh idols can be shipped anywhere
+              isGaneshIdol: true, // Flag to identify this as a Ganesh idol
+              estimatedDays: Number(data.estimatedDays) || 7,
+              advancePercentage: Number(data.advancePercentage) || 25,
+            };
             setProduct(idolData);
           } else {
             setError('Ganesh idol not found');
@@ -138,7 +138,7 @@ const idolData = {
           // Regular product logic (existing code)
           docRef = doc(db, 'products', productId);
           docSnap = await getDoc(docRef);
-          
+
           if (docSnap.exists()) {
             const data = docSnap.data();
             const productData = {
@@ -157,7 +157,7 @@ const idolData = {
             // Try finding by code (existing logic)
             const productsRef = collection(db, 'products');
             const querySnapshot = await getDocs(query(productsRef, where('code', '==', code)));
-            
+
             if (!querySnapshot.empty) {
               const data = querySnapshot.docs[0].data();
               const productData = {
@@ -206,19 +206,19 @@ const useWishlist = (user) => {
         setWishlist([]);
         return;
       }
-      
+
       setLoading(true);
       try {
         const wishlistRef = collection(db, 'wishlist');
         const q = query(wishlistRef, where("userId", "==", user.uid));
         const querySnapshot = await getDocs(q);
-        
+
         const items = querySnapshot.docs.map(doc => ({
           ...doc.data(),
           id: doc.data().productId,
           wishlistDocId: doc.id,
         }));
-        
+
         setWishlist(items);
       } catch (error) {
         console.error("Error fetching wishlist:", error);
@@ -239,7 +239,7 @@ const useWishlist = (user) => {
     }
 
     const isInWishlist = wishlist.some(item => item.id === product.id);
-    
+
     try {
       if (isInWishlist) {
         const itemToRemove = wishlist.find(item => item.id === product.id);
@@ -307,10 +307,10 @@ const ProductDetail = () => {
   const { search } = useLocation();
   const navigate = useNavigate();
   const screens = useBreakpoint();
-  
+
   const code = new URLSearchParams(search).get('code');
   const { product, loading, error } = useProductData(id, code);
-  
+
   const [user, setUser] = useState(null);
   const { wishlist, toggleWishlist, isInWishlist } = useWishlist(user);
 
@@ -322,44 +322,45 @@ const ProductDetail = () => {
     return unsubscribe;
   }, []);
 
-  // ENHANCED Add to Cart handler - NOW SUPPORTS GANESH IDOLS
+  // NEW: Updated handleAddToCart function
   const handleAddToCart = useCallback(async (product, quantity) => {
     if (!user) {
       navigate('/auth');
       return;
     }
 
-    // Special handling for Ganesh idols
+    // Special handling for Ganesh idols - Navigate to order summary instead
     if (product.isGaneshIdol) {
-      // Show interest form instead of adding to cart
-      try {
-        // Create lead in ganeshLeads collection
-        await addDoc(collection(db, 'ganeshLeads'), {
-          customerId: user.uid,
-          customerInfo: {
-            name: user.displayName || user.email,
-            phone: '', // Will be collected in follow-up
-            email: user.email || '',
-          },
-
-          requirements: '',
-          status: 'new',
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
-
-        message.success('🕉️ Interest recorded! Our team will contact you soon for customization details.');
-      } catch (error) {
-        console.error('Error submitting interest:', error);
-        message.error('Failed to record interest. Please try again.');
-      }
+      // Navigate to Ganesh order summary page with idol data
+      navigate('/ganesh-order-summary', {
+        state: {
+          idol: {
+            id: product.id,
+            name: product.name,
+            price: product.price,
+            category: product.category || 'traditional',
+            height: product.height || '',
+            weight: product.weight || '',
+            color: product.color || '',
+            material: product.material || 'Eco-friendly Clay',
+            estimatedDays: product.estimatedDays || 7,
+            advancePercentage: product.advancePercentage || 25,
+            images: product.images || [],
+            description: product.description || '',
+            customizable: product.customizable || true,
+            availability: product.availability || 'available',
+            features: product.features || [],
+            imgUrl: product.images?.[0] || product.imgUrl || '',
+          }
+        }
+      });
       return;
     }
 
     // Regular product add to cart logic (existing code)
     try {
       const result = await addToCartSafe(user.uid, product.id, quantity);
-      
+
       if (result.success) {
         if (result.action === 'added') {
           message.success(`${product.name} added to cart successfully!`);
@@ -375,27 +376,48 @@ const ProductDetail = () => {
     }
   }, [user, navigate]);
 
-  // ENHANCED Buy Now handler - NOW SUPPORTS GANESH IDOLS
+  // NEW: Updated handleBuyNow function
   const handleBuyNow = useCallback(async (product, quantity) => {
     if (!user) {
       navigate('/auth');
       return;
     }
 
-    // Special handling for Ganesh idols - same as Add to Cart
+    // Special handling for Ganesh idols - Navigate to order summary (same as Add to Cart)
     if (product.isGaneshIdol) {
-      // For Ganesh idols, "Buy Now" is the same as showing interest
-      await handleAddToCart(product, quantity);
+      // Navigate to Ganesh order summary page with idol data
+      navigate('/ganesh-order-summary', {
+        state: {
+          idol: {
+            id: product.id,
+            name: product.name,
+            price: product.price,
+            category: product.category || 'traditional',
+            height: product.height || '',
+            weight: product.weight || '',
+            color: product.color || '',
+            material: product.material || 'Eco-friendly Clay',
+            estimatedDays: product.estimatedDays || 7,
+            advancePercentage: product.advancePercentage || 25,
+            images: product.images || [],
+            description: product.description || '',
+            customizable: product.customizable || true,
+            availability: product.availability || 'available',
+            features: product.features || [],
+            imgUrl: product.images?.[0] || product.imgUrl || '',
+          }
+        }
+      });
       return;
     }
 
-    // Regular product buy now logic
+    // Regular product buy now logic (existing code)
     try {
       const result = await addToCartSafe(user.uid, product.id, quantity);
-      
+
       if (result.success) {
         message.success(`${product.name} added to cart!`);
-        
+
         // Navigate to cart page after a short delay
         setTimeout(() => {
           navigate('/cart');
@@ -407,7 +429,8 @@ const ProductDetail = () => {
       message.error('Failed to add to cart');
       console.error('Error in Buy Now:', error);
     }
-  }, [user, navigate, handleAddToCart]);
+  }, [user, navigate]);
+
 
   const handleToggleWishlist = useCallback(async (product) => {
     if (!user) {

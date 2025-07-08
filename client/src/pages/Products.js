@@ -1770,22 +1770,45 @@ const Products = () => {
     // Could redirect to a pre-booking form or contact page
   }, [showMessage]);
 
-  const handleShowInterest = useCallback((idol) => {
-    if (!user) {
-      showMessage('Please login to show interest', 'warning');
-      setTimeout(() => navigate('/auth'), 1500);
-      return;
+ // Replace the existing handleShowInterest function in Products.js with this updated version:
+
+const handleShowInterest = useCallback((idol) => {
+  if (!user) {
+    showMessage('Please login to show interest', 'warning');
+    setTimeout(() => navigate('/auth'), 1500);
+    return;
+  }
+  
+  // Navigate to Ganesh order summary page with idol data
+  navigate('/ganesh-order-summary', {
+    state: {
+      idol: {
+        id: idol.id,
+        name: idol.name,
+        price: idol.price,
+        category: idol.category || 'traditional',
+        height: idol.height || '',
+        weight: idol.weight || '',
+        color: idol.color || '',
+        material: idol.material || 'Eco-friendly Clay',
+        estimatedDays: idol.estimatedDays || 7,
+        advancePercentage: idol.advancePercentage || 25,
+        images: idol.images || [],
+        description: idol.description || '',
+        customizable: idol.customizable || true,
+        availability: idol.availability || 'available',
+        features: idol.features || [],
+        imgUrl: idol.images?.[0] || idol.imgUrl || '',
+      }
     }
-    
-    // Navigate to Ganesh idol gallery with specific idol
-    navigate(`/ganesh-idol/${idol.id}`);
-  }, [user, navigate, showMessage]);
+  });
+}, [user, navigate, showMessage]);
 
-  const handleGaneshIdolClick = useCallback((idolId) => {
-    // Navigate to Ganesh idol details or gallery
-    navigate(`/ganesh-idol/${idolId}`);
-  }, [navigate]);
-
+// Keep the existing handleGaneshIdolClick function unchanged for viewing idol details:
+const handleGaneshIdolClick = useCallback((idolId) => {
+  // Navigate to Ganesh idol details page (for viewing details)
+  navigate(`/ganesh-idol/${idolId}`);
+}, [navigate]);
   // Add to Cart handler using cartUtils
   const handleAddToCart = useCallback(async (product) => {
     if (product.hidden || product.stock === 0) {
