@@ -874,7 +874,7 @@ const price = idol.price || 15000;
           }}>
             <CalendarOutlined style={{ fontSize: '12px', color: terracottaColors.success }} />
             <Text style={{ fontSize: '12px', color: terracottaColors.success, fontWeight: 600 }}>
-              Ready in {idol.estimatedDays} days
+              {/* Ready in {idol.estimatedDays} days */}
             </Text>
           </div>
         )}
