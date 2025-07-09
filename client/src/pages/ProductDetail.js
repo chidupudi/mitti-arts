@@ -1,4 +1,4 @@
-// ProductDetail.jsx - Enhanced Main Component with Ganesh Idol Support
+// ProductDetail.jsx - Enhanced Main Component with Restructured Layout
 import React, {
   useEffect,
   useState,
@@ -33,7 +33,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 
 // Import helper components
 import ProductImageGallery from './ProductImageGallery';
-import ProductInfo, { MobileActions, ServiceFeatures } from './ProductInfoSection';
+import ProductInfo, { MobileActions, ServiceFeatures, ProductDescription } from './ProductInfoSection';
 import ProductTabs from './ProductTabs';
 
 // Import the FIXED cart utilities
@@ -490,18 +490,23 @@ const ProductDetail = () => {
         {product.isGaneshIdol ? 'Back to Ganesh Collection' : 'Back to Products'}
       </Button>
 
-      {/* Main Product Section */}
+      {/* Main Product Section - Evenly Balanced 50-50 Layout */}
       <Row gutter={[24, 24]}>
-        {/* Image Gallery - 60% width on desktop */}
-        <Col xs={24} lg={14}>
+        {/* Left Column: Images + Basic Description (50% width) */}
+        <Col xs={24} lg={12}>
           <ProductImageGallery
             images={product.images}
             productName={product.name}
           />
+          
+          {/* Basic Product Description - Heritage & craftsmanship info */}
+          <ProductDescription
+            product={product}
+          />
         </Col>
 
-        {/* Product Information - 40% width on desktop */}
-        <Col xs={24} lg={10}>
+        {/* Right Column: Complete Product Info + Features (50% width) */}
+        <Col xs={24} lg={12}>
           <ProductInfo
             product={product}
             onAddToCart={handleAddToCart}

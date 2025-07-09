@@ -1,4 +1,4 @@
-// ProductInfoSection.jsx - Enhanced with Ganesh Idol Support
+// ProductInfoSection.jsx - Enhanced with Ganesh Idol Support + Pooja Kit
 import React, { useState, useMemo, memo, useCallback } from 'react';
 import {
   Card,
@@ -40,6 +40,9 @@ import {
   SecurityScanOutlined,
   GiftOutlined,
   PhoneOutlined,
+  CrownOutlined,
+  FireOutlined,
+  StarOutlined,
 } from '@ant-design/icons';
 
 const { Title, Paragraph, Text } = Typography;
@@ -61,6 +64,7 @@ const colors = {
   warning: '#FF9800',
   error: '#F44336',
   ganesh: '#FF6B35', // Special color for Ganesh idols
+  eco: '#4CAF50', // Green for eco-friendly features
 };
 
 // Custom styles
@@ -121,9 +125,105 @@ const customStyles = {
     background: `linear-gradient(135deg, rgba(255,255,255,0.9) 0%, ${colors.backgroundLight}20 100%)`,
     transition: 'all 0.3s ease',
   },
+  poojaKitCard: {
+    borderRadius: '12px',
+    border: `2px solid ${colors.ganesh}30`,
+    background: `linear-gradient(135deg, ${colors.ganesh}08 0%, #FF8A6508 100%)`,
+    marginBottom: '20px',
+  },
+  ecoCard: {
+    borderRadius: '12px',
+    border: `2px solid ${colors.eco}30`,
+    background: `linear-gradient(135deg, ${colors.eco}08 0%, #81C78408 100%)`,
+    marginBottom: '20px',
+  },
 };
 
-// Quantity Selector Component
+// Enhanced Description Component (to be placed below image gallery)
+const ProductDescription = memo(({ product }) => {
+  const [expandedDescription, setExpandedDescription] = useState(false);
+
+  return (
+    <Card style={{
+      ...customStyles.productInfoCard,
+      marginTop: '20px'
+    }} bodyStyle={{ padding: '20px' }}>
+      <Title level={4} style={{ color: colors.text, marginBottom: '16px' }}>
+        {product.isGaneshIdol ? 'About This Sacred Ganesh Idol' : 'Product Description'}
+      </Title>
+      
+      <Paragraph
+        ellipsis={!expandedDescription ? { rows: 4, expandable: true, symbol: 'Show more' } : false}
+        style={{ fontSize: '16px', lineHeight: '1.6', marginBottom: '20px' }}
+      >
+        {product.description || (product.isGaneshIdol 
+          ? 'Beautifully handcrafted Ganga Clay Ganesh idol made by skilled artisans using traditional techniques. Made from sacred Ganga Clay sourced from the holy Ganges. Each idol is unique and can be customized according to your preferences for size, design, and finishing. By purchasing, you directly support local artisan communities and preserve traditional Indian heritage crafts.'
+          : 'Premium quality product crafted with attention to detail using traditional methods. Each piece is carefully made to ensure durability and aesthetic appeal. Natural variations in color and texture make each piece unique, adding character to your collection.'
+        )}
+      </Paragraph>
+
+      {/* Basic Key Features - Simplified version */}
+      <Title level={5} style={{ color: colors.text, marginBottom: '12px' }}>
+        {product.isGaneshIdol ? 'Heritage & Craftsmanship' : 'Key Highlights'}
+      </Title>
+      <List
+        size="small"
+        dataSource={product.isGaneshIdol ? [
+          'Made from sacred Ganga Clay sourced from holy Ganges',
+          'Handcrafted by expert artisans using traditional techniques',
+          'Supporting local artisan communities and heritage crafts',
+          'Each piece is unique with natural variations in clay texture',
+        ] : [
+          '100% authentic materials',
+          'Handcrafted by skilled artisans',
+          'Eco-friendly and sustainable',
+          'Premium quality guarantee',
+        ]}
+        renderItem={item => (
+          <List.Item style={{ padding: '4px 0', border: 'none' }}>
+            <CheckCircleOutlined style={{ 
+              color: product.isGaneshIdol ? colors.ganesh : colors.success, 
+              marginRight: '8px' 
+            }} />
+            <Text style={{ fontSize: '14px' }}>{item}</Text>
+          </List.Item>
+        )}
+      />
+
+      {/* Complete Package Features - For Ganesh Idols Only */}
+      {product.isGaneshIdol && (
+        <>
+          <Divider style={{ margin: '20px 0' }} />
+          <Title level={4} style={{ color: colors.ganesh, marginBottom: '16px' }}>
+            Complete Package Features
+          </Title>
+          <List
+            size="small"
+            dataSource={[
+              'Customizable height, design, and finishing options',
+              'Complete Pooja Kit with organic materials included',
+              'Eco-friendly Visarjan solution with plant sapling',
+              'Handloom Ikkath Dhoti & Kanduva for authentic draping',
+              'Farmer-sourced organic Kumkum & Haldi included',
+              'Natural Vibudhi for sacred offerings',
+              'Traditional techniques passed down through generations',
+              'Zero water pollution celebration approach',
+            ]}
+            renderItem={item => (
+              <List.Item style={{ padding: '6px 0', border: 'none' }}>
+                <CheckCircleOutlined style={{ 
+                  color: colors.ganesh, 
+                  marginRight: '8px' 
+                }} />
+                <Text style={{ fontSize: '14px' }}>{item}</Text>
+              </List.Item>
+            )}
+          />
+        </>
+      )}
+    </Card>
+  );
+});
 const QuantitySelector = memo(({ value, onChange, max, disabled }) => {
   return (
     <Space.Compact style={customStyles.quantitySelector}>
@@ -157,29 +257,125 @@ const QuantitySelector = memo(({ value, onChange, max, disabled }) => {
   );
 });
 
-// Product Info Component
+// Pooja Kit Display Component
+const PoojaKitDisplay = memo(() => {
+  const poojaKitItems = [
+    {
+      icon: <FireOutlined style={{ color: colors.ganesh }} />,
+      title: 'Organic Kumkum & Haldi',
+      description: 'Farmer-sourced, pure and vibrant, free from artificial additives',
+    },
+    {
+      icon: <StarOutlined style={{ color: colors.ganesh }} />,
+      title: 'Natural Vibudhi',
+      description: 'Genuine, unadulterated vibudhi for sacred offerings',
+    },
+    {
+      icon: <CrownOutlined style={{ color: colors.ganesh }} />,
+      title: 'Handloom Ikkath Dhoti & Kanduva',
+      description: 'Exquisite handmade fabrics celebrating India\'s weaving heritage',
+    },
+    {
+      icon: <EnvironmentOutlined style={{ color: colors.eco }} />,
+      title: 'Special Plant Sapling',
+      description: 'For a greener Visarjan - the heart of our eco-friendly vision',
+    },
+  ];
+
+  return (
+    <Card style={customStyles.poojaKitCard} bodyStyle={{ padding: '20px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
+        <GiftOutlined style={{ fontSize: '24px', color: colors.ganesh, marginRight: '8px' }} />
+        <Title level={4} style={{ margin: 0, color: colors.ganesh }}>
+          Complimentary Pooja Kit Included 🙏
+        </Title>
+      </div>
+      <Text style={{ color: colors.textSecondary, marginBottom: '16px', display: 'block' }}>
+        Every idol comes with a thoughtfully curated Pooja Kit, reflecting our commitment to natural and sustainable living:
+      </Text>
+      <Row gutter={[12, 12]}>
+        {poojaKitItems.map((item, index) => (
+          <Col xs={24} sm={12} key={index}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+              {item.icon}
+              <div style={{ flex: 1 }}>
+                <Text strong style={{ color: colors.text, fontSize: '14px', display: 'block' }}>
+                  {item.title}
+                </Text>
+                <Text style={{ color: colors.textSecondary, fontSize: '13px' }}>
+                  {item.description}
+                </Text>
+              </div>
+            </div>
+          </Col>
+        ))}
+      </Row>
+    </Card>
+  );
+});
+
+// Greener Visarjan Display Component
+const GreenerVisarjanDisplay = memo(() => {
+  const benefits = [
+    'A pure and heartfelt Pooja experience',
+    'Zero contribution to water pollution',
+    'Growth of new life - a living testament to your faith',
+    'A lasting, beautiful memory of your Ganesh Chaturthi',
+  ];
+
+  return (
+    <Card style={customStyles.ecoCard} bodyStyle={{ padding: '20px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
+        <EnvironmentOutlined style={{ fontSize: '24px', color: colors.eco, marginRight: '8px' }} />
+        <Title level={4} style={{ margin: 0, color: colors.eco }}>
+          A Greener Visarjan: Nurturing Nature 🌱
+        </Title>
+      </div>
+      <Paragraph style={{ color: colors.textSecondary, marginBottom: '16px' }}>
+        Instead of immersing your beautiful Ganga Clay Ganesha in water bodies, perform the Visarjan 
+        right within your colony or apartment complex. Our Ganga Clay idols dissolve easily, and the 
+        clay can be used to plant the complimentary sapling we provide.
+      </Paragraph>
+      <Title level={5} style={{ color: colors.eco, marginBottom: '12px' }}>
+        Benefits of Our Eco-Friendly Approach:
+      </Title>
+      <List
+        size="small"
+        dataSource={benefits}
+        renderItem={item => (
+          <List.Item style={{ padding: '4px 0', border: 'none' }}>
+            <CheckCircleOutlined style={{ color: colors.eco, marginRight: '8px' }} />
+            <Text style={{ color: colors.text }}>{item}</Text>
+          </List.Item>
+        )}
+      />
+    </Card>
+  );
+});
+
+// Product Info Component - Simplified
 const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, isInWishlist }) => {
   const [quantity, setQuantity] = useState(1);
-  const [expandedDescription, setExpandedDescription] = useState(false);
   const screens = useBreakpoint();
 
-const { originalPrice, discount } = useMemo(() => {
-  if (product.isGaneshIdol) {
-    // For Ganesh idols, show the price range
-    const discountPercent = Math.round(((product.priceMax - product.priceMin) / product.priceMax) * 100);
-    return { originalPrice: product.priceMax, discount: discountPercent };
-  }
-  
-  let discountRate = 0;
-  if (product.price >= 1000) discountRate = 0.25;
-  else if (product.price >= 500) discountRate = 0.20;
-  else discountRate = 0.15;
-  
-  const original = Math.ceil(product.price / (1 - discountRate));
-  const discountPercent = Math.round(((original - product.price) / original) * 100);
-  
-  return { originalPrice: original, discount: discountPercent };
-}, [product]);
+  const { originalPrice, discount } = useMemo(() => {
+    if (product.isGaneshIdol) {
+      // For Ganesh idols, show the price range
+      const discountPercent = Math.round(((product.priceMax - product.priceMin) / product.priceMax) * 100);
+      return { originalPrice: product.priceMax, discount: discountPercent };
+    }
+    
+    let discountRate = 0;
+    if (product.price >= 1000) discountRate = 0.25;
+    else if (product.price >= 500) discountRate = 0.20;
+    else discountRate = 0.15;
+    
+    const original = Math.ceil(product.price / (1 - discountRate));
+    const discountPercent = Math.round(((original - product.price) / original) * 100);
+    
+    return { originalPrice: original, discount: discountPercent };
+  }, [product]);
+
   const stockStatus = useMemo(() => {
     if (product.isGaneshIdol) {
       return { 
@@ -197,7 +393,7 @@ const { originalPrice, discount } = useMemo(() => {
   }, [product]);
 
   return (
-    <Card style={customStyles.productInfoCard} bodyStyle={{ padding: '24px' }}>
+    <Card style={customStyles.productInfoCard} bodyStyle={{ padding: '24px', height: 'fit-content' }}>
       {/* Breadcrumb */}
       <Breadcrumb style={{ marginBottom: '16px' }}>
         <Breadcrumb.Item href="/">
@@ -247,21 +443,37 @@ const { originalPrice, discount } = useMemo(() => {
         </Title>
         
         {product.isGaneshIdol && (
-          <Tag 
-            icon={<GiftOutlined />} 
-            color="#FF6B35"
-            style={{ 
-              fontWeight: 600, 
-              marginLeft: screens.xs ? '0' : '8px',
-              marginTop: screens.xs ? '8px' : '0',
-              padding: '4px 8px',
-              borderRadius: '4px',
-              display: 'inline-flex',
-              alignItems: 'center',
-            }}
-          >
-            Custom Made
-          </Tag>
+          <Space wrap>
+            <Tag 
+              icon={<GiftOutlined />} 
+              color="#FF6B35"
+              style={{ 
+                fontWeight: 600, 
+                marginLeft: screens.xs ? '0' : '8px',
+                marginTop: screens.xs ? '8px' : '0',
+                padding: '4px 8px',
+                borderRadius: '4px',
+                display: 'inline-flex',
+                alignItems: 'center',
+              }}
+            >
+              Custom Made
+            </Tag>
+            <Tag 
+              icon={<EnvironmentOutlined />} 
+              color="#4CAF50"
+              style={{ 
+                fontWeight: 600, 
+                marginTop: screens.xs ? '8px' : '0',
+                padding: '4px 8px',
+                borderRadius: '4px',
+                display: 'inline-flex',
+                alignItems: 'center',
+              }}
+            >
+              Eco-Friendly
+            </Tag>
+          </Space>
         )}
         
         {product.hyderabadOnly && !product.isGaneshIdol && (
@@ -312,21 +524,21 @@ const { originalPrice, discount } = useMemo(() => {
         })
       }}>
         <Space wrap align="baseline" style={{ marginBottom: '8px' }}>
-         {product.isGaneshIdol ? (
-  // Show single price for Ganesh idols
-  <>
-    <Title level={1} style={{ 
-      margin: 0, 
-      color: colors.ganesh,
-      fontSize: screens.xs ? '24px' : '32px',
-    }}>
-      ₹{product.price?.toLocaleString()}
-    </Title>
-    <Text type="secondary" style={{ fontSize: '16px' }}>
-      Fixed Price
-    </Text>
-  </>
-) : (
+          {product.isGaneshIdol ? (
+            // Show single price for Ganesh idols
+            <>
+              <Title level={1} style={{ 
+                margin: 0, 
+                color: colors.ganesh,
+                fontSize: screens.xs ? '24px' : '32px',
+              }}>
+                ₹{product.price?.toLocaleString()}
+              </Title>
+              <Text type="secondary" style={{ fontSize: '16px' }}>
+                All-Inclusive with Pooja Kit
+              </Text>
+            </>
+          ) : (
             // Regular product pricing
             <>
               <Title level={1} style={{ 
@@ -351,7 +563,7 @@ const { originalPrice, discount } = useMemo(() => {
         </Space>
         <Text type="secondary">
           {product.isGaneshIdol 
-            ? `Inclusive of all taxes • ${product.advancePercentage}% advance required • Delivered in ${product.estimatedDays} days`
+            ? `Made with Pure Ganga Clay • Supporting Local Artisans • Eco-Friendly Celebration`
             : product.hyderabadOnly 
               ? 'Inclusive of all taxes • Available for delivery in Hyderabad only' 
               : 'Inclusive of all taxes • Free shipping above ₹500'
@@ -373,11 +585,51 @@ const { originalPrice, discount } = useMemo(() => {
         }}
       />
 
+      {/* Ganesh Idol Special Features - Action buttons positioned just above Pooja Kit */}
+      {product.isGaneshIdol && (
+        <>
+          {/* Action Buttons for Ganesh Idols - Positioned just above Pooja Kit */}
+          {!screens.xs && (
+            <Space direction="vertical" size="middle" style={{ width: '100%', marginBottom: '20px' }}>
+              {/* Show Interest Button */}
+              <Button
+                type="primary"
+                size="large"
+                icon={<GiftOutlined />}
+                onClick={() => onAddToCart(product, 1)}
+                style={customStyles.ganeshButton}
+                block
+              >
+                🕉️ Show Interest
+              </Button>
+              
+              {/* Contact for Details Button */}
+              <Button
+                size="large"
+                icon={<PhoneOutlined />}
+                onClick={() => window.location.href = '/contactus'}
+                style={customStyles.ganeshButton}
+                block
+              >
+                Contact for Details
+              </Button>
+            </Space>
+          )}
+
+          <div style={{ marginBottom: '20px' }}>
+            <PoojaKitDisplay />
+          </div>
+          <div style={{ marginBottom: '20px' }}>
+            <GreenerVisarjanDisplay />
+          </div>
+        </>
+      )}
+
       {/* Ganesh Idol Special Info */}
       {product.isGaneshIdol && (
         <Alert
-          message="🕉️ Custom Ganesh Idol"
-          description={`Handcrafted to your specifications • ${product.estimatedDays || 7} days delivery • ${product.advancePercentage || 25}% advance payment • Height: ${product.height || 'Customizable'} • Material: ${product.material || 'Clay'}`}
+          message="🕉️ Custom Made to Order"
+          description={`Handcrafted with love using traditional techniques • Made with Pure Ganga Clay • Supporting Local Artisans • Height: ${product.height || 'Customizable'} • Material: ${product.material || 'Ganga Clay'}`}
           type="info"
           icon={<GiftOutlined />}
           showIcon
@@ -409,24 +661,11 @@ const { originalPrice, discount } = useMemo(() => {
         />
       )}
 
-      {/* Description */}
-      <div style={{ marginBottom: '24px' }}>
-        <Paragraph
-          ellipsis={!expandedDescription ? { rows: 3, expandable: true, symbol: 'Show more' } : false}
-          style={{ fontSize: '16px', lineHeight: '1.6' }}
-        >
-          {product.description || (product.isGaneshIdol 
-            ? 'Beautifully handcrafted Ganesh idol made by skilled artisans using traditional techniques. Each idol is unique and can be customized according to your preferences for size, design, and finishing.'
-            : 'Premium quality product crafted with attention to detail using traditional methods. Each piece is carefully made to ensure durability and aesthetic appeal.'
-          )}
-        </Paragraph>
-      </div>
-
-      {/* Desktop Actions */}
-      {!screens.xs && (
+      {/* Desktop Actions - For Regular Products Only */}
+      {!screens.xs && !product.isGaneshIdol && (
         <>
           {/* Quantity Selector - Only for regular products */}
-          {!product.isGaneshIdol && product.stock > 0 && (
+          {product.stock > 0 && (
             <div style={{ marginBottom: '20px' }}>
               <Text strong style={{ display: 'block', marginBottom: '8px', fontSize: '16px' }}>
                 Quantity
@@ -440,85 +679,51 @@ const { originalPrice, discount } = useMemo(() => {
             </div>
           )}
 
-          {/* Action Buttons */}
+          {/* Action Buttons for Regular Products */}
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-            {/* Add to Cart/Show Interest and Wishlist Row */}
+            {/* Add to Cart and Wishlist Row */}
             <Space size="middle" style={{ width: '100%' }}>
               <Button
                 type="primary"
                 size="large"
-                icon={product.isGaneshIdol ? <GiftOutlined /> : <ShoppingCartOutlined />}
+                icon={<ShoppingCartOutlined />}
                 onClick={() => onAddToCart(product, quantity)}
-                disabled={!product.isGaneshIdol && product.stock === 0}
-                style={product.isGaneshIdol ? customStyles.ganeshButton : customStyles.primaryButton}
+                disabled={product.stock === 0}
+                style={customStyles.primaryButton}
                 block
               >
-                {product.isGaneshIdol ? '🕉️ Show Interest' : (product.stock === 0 ? 'Out of Stock' : 'Add to Cart')}
+                {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
               </Button>
-              {!product.isGaneshIdol && (
-                <Tooltip title={isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}>
-                  <Button
-                    size="large"
-                    icon={isInWishlist ? <HeartFilled /> : <HeartOutlined />}
-                    onClick={() => onToggleWishlist(product)}
-                    style={{
-                      borderColor: colors.divider,
-                      color: isInWishlist ? colors.error : colors.textSecondary,
-                      width: '60px',
-                      height: '48px',
-                      borderRadius: '8px',
-                    }}
-                  />
-                </Tooltip>
-              )}
+              <Tooltip title={isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}>
+                <Button
+                  size="large"
+                  icon={isInWishlist ? <HeartFilled /> : <HeartOutlined />}
+                  onClick={() => onToggleWishlist(product)}
+                  style={{
+                    borderColor: colors.divider,
+                    color: isInWishlist ? colors.error : colors.textSecondary,
+                    width: '60px',
+                    height: '48px',
+                    borderRadius: '8px',
+                  }}
+                />
+              </Tooltip>
             </Space>
             
-            {/* Buy Now Button / Contact Us */}
+            {/* Buy Now Button */}
             <Button
               size="large"
-              icon={product.isGaneshIdol ? <PhoneOutlined /> : <ThunderboltOutlined />}
+              icon={<ThunderboltOutlined />}
               onClick={() => onBuyNow(product, quantity)}
-              disabled={!product.isGaneshIdol && product.stock === 0}
-              style={product.isGaneshIdol ? customStyles.ganeshButton : customStyles.buyNowButton}
+              disabled={product.stock === 0}
+              style={customStyles.buyNowButton}
               block
             >
-              {product.isGaneshIdol ? 'Contact for Details' : 'Buy Now'}
+              Buy Now
             </Button>
           </Space>
         </>
       )}
-
-      {/* Key Features */}
-      <Divider />
-      <Title level={4} style={{ color: colors.text }}>
-        {product.isGaneshIdol ? 'Customization Features' : 'Key Features'}
-      </Title>
-      <List
-        size="small"
-        dataSource={product.isGaneshIdol ? [
-          'Handcrafted by expert artisans',
-          'Customizable height and design',
-          'Traditional clay and eco-friendly materials',
-          'Personalized finishing options',
-          `${product.estimatedDays || 7} days delivery timeline`,
-          `${product.advancePercentage || 25}% advance payment required`,
-        ] : [
-          '100% authentic materials',
-          'Handcrafted by skilled artisans',
-          'Eco-friendly and sustainable',
-          'Premium quality guarantee',
-          ...(product.hyderabadOnly ? ['Available for delivery in Hyderabad only'] : []),
-        ]}
-        renderItem={item => (
-          <List.Item>
-            <CheckCircleOutlined style={{ 
-              color: product.isGaneshIdol ? colors.ganesh : colors.success, 
-              marginRight: '8px' 
-            }} />
-            {item}
-          </List.Item>
-        )}
-      />
     </Card>
   );
 });
@@ -570,10 +775,21 @@ const MobileActions = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, 
               color: product.isGaneshIdol ? colors.ganesh : '#9C27B0',
               marginBottom: '8px',
             }}>
-              {product.isGaneshIdol ? <GiftOutlined /> : <EnvironmentOutlined />}
-              <Text style={{ fontSize: '12px', color: product.isGaneshIdol ? colors.ganesh : '#9C27B0' }}>
-                {product.isGaneshIdol ? 'Custom Made Ganesh Idol' : 'Hyderabad Only Delivery'}
-              </Text>
+              {product.isGaneshIdol ? (
+                <>
+                  <GiftOutlined />
+                  <Text style={{ fontSize: '12px', color: colors.ganesh }}>
+                    Custom Made with Pooja Kit & Eco-Friendly Visarjan
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <EnvironmentOutlined />
+                  <Text style={{ fontSize: '12px', color: '#9C27B0' }}>
+                    Hyderabad Only Delivery
+                  </Text>
+                </>
+              )}
             </div>
           )}
           
@@ -626,7 +842,7 @@ const MobileActions = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, 
         </div>
       </Affix>
 
-      {/* Quantity Modal - Only for regular products */}
+      {/* Enhanced Modal for Ganesh Idols */}
       <Modal
         title={product.isGaneshIdol 
           ? (actionType === 'cart' ? 'Show Interest in Ganesh Idol' : 'Contact for Ganesh Idol Details')
@@ -666,14 +882,22 @@ const MobileActions = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, 
                   <Text type="secondary">Code: {product.code}</Text>
                 )}
                 {product.isGaneshIdol && (
-                  <Tag 
-                    icon={<GiftOutlined />}
-                    color="#FF6B35"
-                    size="small"
-                    style={{ marginLeft: '4px' }}
-                  >
-                    Custom Made
-                  </Tag>
+                  <Space>
+                    <Tag 
+                      icon={<GiftOutlined />}
+                      color="#FF6B35"
+                      size="small"
+                    >
+                      Custom Made
+                    </Tag>
+                    <Tag 
+                      icon={<EnvironmentOutlined />}
+                      color="#4CAF50"
+                      size="small"
+                    >
+                      Eco-Friendly
+                    </Tag>
+                  </Space>
                 )}
                 {product.hyderabadOnly && !product.isGaneshIdol && (
                   <Tag 
@@ -687,10 +911,12 @@ const MobileActions = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, 
                 )}
               </div>
               <Title level={4} style={{ margin: 0, color: product.isGaneshIdol ? colors.ganesh : colors.primary }}>
-                {product.isGaneshIdol 
-                  ? `₹${product.priceMin?.toLocaleString()} - ₹${product.priceMax?.toLocaleString()}`
-                  : `₹${product.price.toLocaleString()}`
-                }
+                ₹{product.price.toLocaleString()}
+                {product.isGaneshIdol && (
+                  <Text type="secondary" style={{ fontSize: '14px', fontWeight: 'normal' }}>
+                    {' '}(includes Pooja Kit)
+                  </Text>
+                )}
               </Title>
             </div>
           </Space>
@@ -717,7 +943,7 @@ const MobileActions = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, 
             }}>
               <GiftOutlined style={{ color: colors.ganesh }} />
               <Text type="secondary" style={{ color: colors.ganesh }}>
-                Custom made Ganesh idol. Our team will contact you for customization details and advance payment.
+                Includes complete Pooja Kit and eco-friendly Visarjan solution. Our team will contact you for customization details.
               </Text>
             </div>
           ) : product.hyderabadOnly ? (
@@ -760,18 +986,18 @@ const ServiceFeatures = memo(({ product }) => {
   const features = product.isGaneshIdol ? [
     {
       icon: <GiftOutlined style={{ fontSize: '40px', color: colors.ganesh }} />,
-      title: 'Custom Made',
-      description: 'Handcrafted according to your specifications',
+      title: 'Complete Pooja Kit',
+      description: 'Organic Kumkum, Haldi, Vibudhi & Handloom fabrics included',
     },
     {
-      icon: <PhoneOutlined style={{ fontSize: '40px', color: colors.ganesh }} />,
-      title: 'Personal Consultation',
-      description: 'Direct consultation with expert artisans',
+      icon: <EnvironmentOutlined style={{ fontSize: '40px', color: colors.eco }} />,
+      title: 'Eco-Friendly Visarjan',
+      description: 'Plant sapling included for greener, pollution-free celebration',
     },
     {
-      icon: <SecurityScanOutlined style={{ fontSize: '40px', color: colors.ganesh }} />,
-      title: 'Quality Assured',
-      description: 'Traditional techniques with modern quality standards',
+      icon: <CrownOutlined style={{ fontSize: '40px', color: colors.ganesh }} />,
+      title: 'Custom Craftsmanship',
+      description: 'Handcrafted by expert artisans with traditional techniques',
     },
   ] : [
     {
@@ -828,9 +1054,12 @@ const ServiceFeatures = memo(({ product }) => {
 
 // Set display names
 ProductInfo.displayName = 'ProductInfo';
+ProductDescription.displayName = 'ProductDescription';
 MobileActions.displayName = 'MobileActions';
 ServiceFeatures.displayName = 'ServiceFeatures';
 QuantitySelector.displayName = 'QuantitySelector';
+PoojaKitDisplay.displayName = 'PoojaKitDisplay';
+GreenerVisarjanDisplay.displayName = 'GreenerVisarjanDisplay';
 
 export default ProductInfo;
-export { MobileActions, ServiceFeatures };
+export { MobileActions, ServiceFeatures, ProductDescription };
