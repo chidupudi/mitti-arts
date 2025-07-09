@@ -1,4 +1,4 @@
-// client/src/adminpages/components/AdminSidebar.js - Updated and Optimized
+// client/src/adminpages/components/AdminSidebar.js - Updated with Enhanced Season Management
 import React, { useState, useMemo, memo } from 'react';
 import {
   Box,
@@ -17,7 +17,14 @@ import {
   Badge,
   Tooltip,
   Alert,
-  Paper
+  Paper,
+  Button,
+  Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  CircularProgress
 } from '@mui/material';
 import {
   DashboardOutlined,
@@ -36,7 +43,11 @@ import {
   GroupOutlined,
   RequestQuoteOutlined,
   CelebrationOutlined,
-  SwapHorizOutlined
+  SwapHorizOutlined,
+  CheckCircleOutlined,
+  WarningOutlined,
+  InfoOutlined,
+  RefreshOutlined
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSeason } from '../../hooks/useSeason';
@@ -216,12 +227,184 @@ const NavigationItem = memo(({
   );
 });
 
+// Season Quick Management Component
+const SeasonQuickManager = memo(({ collapsed, isGaneshSeason }) => {
+  const { 
+    currentSeason, 
+    updating, 
+    error,
+    toggleSeason, 
+    getSeasonDisplayName,
+    getSeasonIcon,
+    getSeasonColor,
+    clearError 
+  } = useSeason();
+  
+  const [showDialog, setShowDialog] = useState(false);
+  const navigate = useNavigate();
+
+  const handleQuickToggle = () => {
+    setShowDialog(true);
+  };
+
+  const confirmToggle = async () => {
+    try {
+      const result = await toggleSeason('admin');
+      if (result.success) {
+        setShowDialog(false);
+      }
+    } catch (error) {
+      console.error('Error toggling season:', error);
+    }
+  };
+
+  const handleGoToDashboard = () => {
+    navigate('/dashboard');
+  };
+
+  if (collapsed) {
+    return (
+      <Tooltip title="Season Management" placement="right">
+        <IconButton
+          onClick={handleGoToDashboard}
+          sx={{
+            color: getSeasonColor(),
+            width: '40px',
+            height: '40px',
+            mx: 'auto',
+            display: 'block',
+          }}
+        >
+          {updating ? <CircularProgress size={20} /> : getSeasonIcon()}
+        </IconButton>
+      </Tooltip>
+    );
+  }
+
+  return (
+    <>
+      <Paper
+        elevation={0}
+        sx={{
+          p: 2,
+          mb: 2,
+          background: `linear-gradient(135deg, ${getSeasonColor()}15 0%, ${getSeasonColor()}05 100%)`,
+          border: `1px solid ${getSeasonColor()}30`,
+          borderRadius: 2,
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+          <Typography variant="caption" fontWeight="bold" color={getSeasonColor()}>
+            CURRENT SEASON
+          </Typography>
+          {updating && <CircularProgress size={12} />}
+        </Box>
+        
+        <Chip
+          icon={updating ? <CircularProgress size={16} /> : undefined}
+          label={`${getSeasonIcon()} ${getSeasonDisplayName()}`}
+          sx={{
+            bgcolor: `${getSeasonColor()}20`,
+            color: getSeasonColor(),
+            fontWeight: 'bold',
+            fontSize: '11px',
+            height: '24px',
+            mb: 1,
+            width: '100%',
+            justifyContent: 'center',
+          }}
+        />
+
+        {error && (
+          <Alert 
+            severity="error" 
+            sx={{ 
+              fontSize: '10px', 
+              mb: 1,
+              '& .MuiAlert-message': { fontSize: '10px' }
+            }}
+            onClose={clearError}
+          >
+            {error}
+          </Alert>
+        )}
+
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={handleQuickToggle}
+            disabled={updating}
+            sx={{
+              fontSize: '10px',
+              padding: '2px 8px',
+              borderColor: getSeasonColor(),
+              color: getSeasonColor(),
+              flex: 1,
+              '&:hover': {
+                borderColor: getSeasonColor(),
+                bgcolor: `${getSeasonColor()}10`,
+              },
+            }}
+          >
+            Toggle
+          </Button>
+          <Button
+            size="small"
+            variant="text"
+            onClick={handleGoToDashboard}
+            sx={{
+              fontSize: '10px',
+              padding: '2px 8px',
+              color: getSeasonColor(),
+              flex: 1,
+            }}
+          >
+            Manage
+          </Button>
+        </Box>
+      </Paper>
+
+      {/* Quick Toggle Dialog */}
+      <Dialog open={showDialog} onClose={() => setShowDialog(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>
+          Quick Season Toggle
+        </DialogTitle>
+        <DialogContent>
+          <Typography gutterBottom>
+            Switch from <strong>{getSeasonDisplayName()}</strong> to{' '}
+            <strong>{isGaneshSeason ? 'Normal' : 'Ganesh'}</strong> season?
+          </Typography>
+          <Alert severity="info" sx={{ mt: 2 }}>
+            This will immediately change the customer experience. For detailed management, use the Dashboard.
+          </Alert>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowDialog(false)}>Cancel</Button>
+          <Button onClick={confirmToggle} variant="contained" disabled={updating}>
+            {updating ? 'Switching...' : 'Confirm'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
+  );
+});
+
 const AdminSidebar = ({ open, onToggle }) => {
   const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const { currentSeason, isGaneshSeason, loading: seasonLoading } = useSeason();
+  
+  // Enhanced season management
+  const { 
+    currentSeason, 
+    isGaneshSeason, 
+    loading: seasonLoading,
+    getSeasonDisplayName,
+    getSeasonIcon,
+    getSeasonColor
+  } = useSeason();
 
   const [openSubMenu, setOpenSubMenu] = useState({
     products: false,
@@ -237,7 +420,7 @@ const AdminSidebar = ({ open, onToggle }) => {
     avatar: null
   };
 
-  // Memoized navigation items that change based on season
+  // Enhanced navigation items that change based on season
   const navigationItems = useMemo(() => {
     const baseItems = [
       {
@@ -398,7 +581,7 @@ const AdminSidebar = ({ open, onToggle }) => {
       flexDirection: 'column',
       bgcolor: 'background.paper'
     }}>
-      {/* Sidebar Header */}
+      {/* Enhanced Sidebar Header */}
       <Box sx={{
         p: 2,
         display: 'flex',
@@ -416,7 +599,7 @@ const AdminSidebar = ({ open, onToggle }) => {
               MittiArts
             </Typography>
             <Typography variant="caption" sx={{ opacity: 0.9 }}>
-              {isGaneshSeason ? '🕉️ Ganesh Season' : '🏺 Normal Season'}
+              {getSeasonIcon()} {getSeasonDisplayName()}
             </Typography>
           </Box>
         )}
@@ -425,7 +608,7 @@ const AdminSidebar = ({ open, onToggle }) => {
         </IconButton>
       </Box>
 
-      {/* Season Status */}
+      {/* Enhanced Season Status */}
       {!collapsed && (
         <Box sx={{ p: 2 }}>
           <Alert 
@@ -475,6 +658,11 @@ const AdminSidebar = ({ open, onToggle }) => {
         </Box>
       )}
 
+      {/* Quick Season Manager */}
+      <Box sx={{ px: collapsed ? 1 : 2 }}>
+        <SeasonQuickManager collapsed={collapsed} isGaneshSeason={isGaneshSeason} />
+      </Box>
+
       {/* Navigation Items */}
       <List sx={{ p: 1, flexGrow: 1 }}>
         {navigationItems.map((item) => (
@@ -492,7 +680,7 @@ const AdminSidebar = ({ open, onToggle }) => {
         ))}
       </List>
 
-      {/* Quick Season Switch */}
+      {/* Enhanced Quick Actions */}
       {!collapsed && (
         <Box sx={{ p: 2 }}>
           <Divider sx={{ mb: 2 }} />
@@ -512,8 +700,8 @@ const AdminSidebar = ({ open, onToggle }) => {
               <SwapHorizOutlined />
             </ListItemIcon>
             <ListItemText
-              primary="Switch Season"
-              secondary={`Currently: ${isGaneshSeason ? 'Ganesh' : 'Normal'}`}
+              primary="Advanced Season Control"
+              secondary={`Currently: ${getSeasonDisplayName()}`}
               primaryTypographyProps={{ 
                 variant: 'body2', 
                 fontWeight: 600,
