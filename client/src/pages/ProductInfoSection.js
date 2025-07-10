@@ -526,38 +526,272 @@ const GreenerVisarjanDisplay = memo(() => {
   );
 });
 
-// Main Product Info Component - Essential Info Only
+// NEW: Pooja Kit Modal Component
+const PoojaKitModal = memo(({ open, onClose, product }) => {
+  const poojaKitContents = [
+    {
+      item: 'Farmer-Sourced Organic Kumkum',
+      description: 'Pure, vibrant kumkum sourced directly from farmers, free from artificial additives',
+      icon: <FireOutlined style={{ color: colors.ganesh }} />,
+      benefit: 'Authentic spiritual experience'
+    },
+    {
+      item: 'Farmer-Sourced Organic Haldi',
+      description: 'Premium quality turmeric powder for authentic traditional rituals',
+      icon: <StarFilled style={{ color: '#FFD700' }} />,
+      benefit: 'Pure and natural ingredients'
+    },
+    {
+      item: 'Natural Vibudhi',
+      description: 'Genuine, unadulterated sacred ash for spiritual offerings',
+      icon: <StarOutlined style={{ color: colors.textSecondary }} />,
+      benefit: 'Traditional sacred preparations'
+    },
+    {
+      item: 'Handloom Ikkath Dhoti & Kanduva',
+      description: "Exquisite handmade fabrics celebrating India's rich weaving heritage",
+      icon: <CrownOutlined style={{ color: colors.secondary }} />,
+      benefit: 'Supporting traditional crafts'
+    },
+    {
+      item: 'Special Plant Sapling',
+      description: 'A carefully chosen plant for your eco-friendly Visarjan ceremony',
+      icon: <EnvironmentOutlined style={{ color: colors.eco }} />,
+      benefit: 'Environmental stewardship'
+    },
+  ];
+
+  return (
+    <Modal
+      title={
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          color: colors.ganesh,
+          fontSize: '18px',
+          fontWeight: 600
+        }}>
+          <GiftOutlined style={{ fontSize: '20px' }} />
+          Complete Pooja Kit Included
+        </div>
+      }
+      open={open}
+      onCancel={onClose}
+      footer={[
+        <Button
+          key="close"
+          type="primary"
+          onClick={onClose}
+          style={{
+            backgroundColor: colors.ganesh,
+            borderColor: colors.ganesh,
+            borderRadius: '8px',
+            fontWeight: 600
+          }}
+        >
+          Thank You! 🙏
+        </Button>
+      ]}
+      width={800}
+      centered
+      styles={{
+        content: {
+          borderRadius: '16px',
+          maxHeight: '85vh',
+          overflow: 'hidden'
+        },
+        header: {
+          borderRadius: '16px 16px 0 0',
+          backgroundColor: `${colors.ganesh}08`,
+          borderBottom: `2px solid ${colors.ganesh}20`
+        },
+        body: {
+          maxHeight: '70vh',
+          overflowY: 'auto',
+          padding: '0'
+        }
+      }}
+    >
+      <div style={{
+        padding: '24px',
+        background: `linear-gradient(135deg, ${colors.ganesh}05 0%, rgba(255,255,255,0.8) 100%)`
+      }}>
+        {/* Header Message */}
+        <Alert
+          message="🎁 Thoughtfully Curated for Your Sacred Celebration"
+          description="Every Ganesh idol comes with a complete Pooja kit, reflecting our commitment to natural and sustainable living, ensuring your celebration is both authentic and pure."
+          type="success"
+          showIcon
+          style={{
+            marginBottom: '24px',
+            backgroundColor: `${colors.ganesh}10`,
+            border: `1px solid ${colors.ganesh}30`
+          }}
+        />
+
+        {/* Pooja Kit Items */}
+        <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
+          {poojaKitContents.map((item, index) => (
+            <Col xs={24} md={12} key={index}>
+              <Card
+                size="small"
+                style={{
+                  borderRadius: '12px',
+                  height: '100%',
+                  border: `1px solid ${colors.ganesh}20`,
+                  backgroundColor: `${colors.ganesh}03`,
+                  transition: 'all 0.3s ease',
+                }}
+                bodyStyle={{ padding: '16px' }}
+                hoverable
+              >
+                <Space align="start" style={{ width: '100%' }}>
+                  <Avatar
+                    style={{
+                      backgroundColor: 'transparent',
+                      border: 'none',
+                      flexShrink: 0
+                    }}
+                    icon={item.icon}
+                    size={32}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <Text strong style={{
+                      fontSize: '15px',
+                      color: colors.text,
+                      display: 'block',
+                      marginBottom: '4px'
+                    }}>
+                      {item.item}
+                    </Text>
+                    <Text style={{
+                      fontSize: '13px',
+                      color: colors.textSecondary,
+                      display: 'block',
+                      lineHeight: '1.4',
+                      marginBottom: '8px'
+                    }}>
+                      {item.description}
+                    </Text>
+                    <Tag
+                      size="small"
+                      style={{
+                        backgroundColor: `${colors.ganesh}15`,
+                        color: colors.ganesh,
+                        border: 'none',
+                        borderRadius: '12px',
+                        fontSize: '10px'
+                      }}
+                    >
+                      ✨ {item.benefit}
+                    </Tag>
+                  </div>
+                </Space>
+              </Card>
+            </Col>
+          ))}
+        </Row>
+
+        {/* Special Highlight */}
+        <Card
+          style={{
+            borderRadius: '12px',
+            backgroundColor: `${colors.eco}08`,
+            border: `2px solid ${colors.eco}30`,
+            marginBottom: '20px'
+          }}
+          bodyStyle={{ padding: '20px' }}
+        >
+          <div style={{ textAlign: 'center' }}>
+            <EnvironmentOutlined style={{
+              fontSize: '32px',
+              color: colors.eco,
+              marginBottom: '12px',
+              display: 'block'
+            }} />
+            <Title level={4} style={{
+              color: colors.eco,
+              marginBottom: '12px',
+              fontSize: '18px'
+            }}>
+              🌱 Eco-Friendly Visarjan Solution
+            </Title>
+            <Text style={{
+              fontSize: '14px',
+              color: colors.textSecondary,
+              lineHeight: '1.5',
+              display: 'block'
+            }}>
+              Our plant sapling enables you to perform an environmentally conscious Visarjan ceremony at home. 
+              Transform your celebration into an act of environmental stewardship while maintaining all spiritual significance.
+            </Text>
+          </div>
+        </Card>
+
+        {/* Value Proposition */}
+        <div style={{
+          padding: '16px',
+          borderRadius: '8px',
+          backgroundColor: `${colors.ganesh}08`,
+          border: `1px solid ${colors.ganesh}20`,
+          textAlign: 'center'
+        }}>
+          <Text strong style={{
+            display: 'block',
+            marginBottom: '8px',
+            color: colors.text,
+            fontSize: '16px'
+          }}>
+            🙏 Complete Spiritual Experience Included
+          </Text>
+          <Text style={{
+            color: colors.textSecondary,
+            fontSize: '14px',
+            lineHeight: '1.5'
+          }}>
+            No need to source materials separately - everything you need for an authentic, 
+            eco-friendly Ganesh Chaturthi celebration is thoughtfully included with your idol.
+          </Text>
+        </div>
+      </div>
+    </Modal>
+  );
+});
+
+// Main Product Info Component - UPDATED WITH ANIMATED GIFT ICON
 const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, isInWishlist }) => {
   const [quantity, setQuantity] = useState(1);
   const [termsModalOpen, setTermsModalOpen] = useState(false);
+  const [poojaKitModalOpen, setPoojaKitModalOpen] = useState(false); // NEW STATE
   const screens = useBreakpoint();
 
   const { originalPrice, discount } = useMemo(() => {
     if (product.isGaneshIdol) {
       return { originalPrice: null, discount: 0 };
     }
-    
+
     let discountRate = 0;
     if (product.price >= 1000) discountRate = 0.25;
     else if (product.price >= 500) discountRate = 0.20;
     else discountRate = 0.15;
-    
+
     const original = Math.ceil(product.price / (1 - discountRate));
     const discountPercent = Math.round(((original - product.price) / original) * 100);
-    
+
     return { originalPrice: original, discount: discountPercent };
   }, [product]);
 
   const stockStatus = useMemo(() => {
     if (product.isGaneshIdol) {
-      return { 
-        status: 'success', 
-        icon: <CheckCircleOutlined />, 
-        text: 'Custom Made to Order', 
-        color: colors.ganesh 
+      return {
+        status: 'success',
+        icon: <CheckCircleOutlined />,
+        text: 'Custom Made to Order',
+        color: colors.ganesh
       };
     }
-    
+
     if (product.stock === 0) return { status: 'error', icon: <WarningOutlined />, text: 'Out of Stock', color: colors.error };
     if (product.stock <= 5) return { status: 'error', icon: <WarningOutlined />, text: `Only ${product.stock} left!`, color: colors.error };
     if (product.stock <= 10) return { status: 'warning', icon: <InfoCircleOutlined />, text: 'Few items left', color: colors.warning };
@@ -566,6 +800,63 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
 
   return (
     <>
+      {/* CSS for Gift Animation */}
+      <style>
+        {`
+          @keyframes giftPulse {
+            0% { 
+              transform: scale(1) rotate(0deg); 
+              filter: hue-rotate(0deg);
+            }
+            25% { 
+              transform: scale(1.1) rotate(-5deg); 
+              filter: hue-rotate(10deg);
+            }
+            50% { 
+              transform: scale(1.2) rotate(0deg); 
+              filter: hue-rotate(20deg);
+            }
+            75% { 
+              transform: scale(1.1) rotate(5deg); 
+              filter: hue-rotate(10deg);
+            }
+            100% { 
+              transform: scale(1) rotate(0deg); 
+              filter: hue-rotate(0deg);
+            }
+          }
+
+          @keyframes giftOpen {
+            0% { 
+              transform: scale(1); 
+              filter: brightness(1);
+            }
+            50% { 
+              transform: scale(1.3) rotateY(15deg); 
+              filter: brightness(1.2) drop-shadow(0 0 10px ${colors.ganesh}50);
+            }
+            100% { 
+              transform: scale(1); 
+              filter: brightness(1);
+            }
+          }
+
+          .gift-icon-animated {
+            animation: giftPulse 2s ease-in-out infinite;
+            transition: all 0.3s ease;
+          }
+
+          .gift-icon-animated:hover {
+            animation: giftOpen 0.6s ease-in-out;
+            color: ${colors.ganesh} !important;
+          }
+
+          .gift-icon-animated:active {
+            transform: scale(0.9);
+          }
+        `}
+      </style>
+
       <Card style={customStyles.productInfoCard} bodyStyle={{ padding: '24px', height: 'fit-content' }}>
         {/* Breadcrumb */}
         <Breadcrumb style={{ marginBottom: '16px' }}>
@@ -675,9 +966,9 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
           )}
         </Space>
 
-        {/* Price Section with T&C Icon */}
+        {/* Price Section with T&C and Gift Icons */}
         <div style={{
-          ...customStyles.priceContainer, 
+          ...customStyles.priceContainer,
           marginBottom: '20px',
           ...(product.isGaneshIdol && {
             background: `linear-gradient(135deg, ${colors.ganesh}12 0%, #FF8A6512 100%)`,
@@ -711,35 +1002,73 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
               )}
             </Space>
 
-            {/* T&C Icon */}
-            <Tooltip title={`Important ${product.isGaneshIdol ? 'Ganesh Idol' : ''} Terms`}>
-              <Button
-                type="text"
-                icon={<WarningOutlined />}
-                onClick={() => setTermsModalOpen(true)}
-                style={{
-                  color: product.isGaneshIdol ? colors.ganesh : colors.primary,
-                  fontSize: '18px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '8px',
-                  border: `1px solid ${product.isGaneshIdol ? colors.ganesh : colors.primary}30`,
-                  backgroundColor: `${product.isGaneshIdol ? colors.ganesh : colors.primary}08`,
-                  transition: 'all 0.3s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = `${product.isGaneshIdol ? colors.ganesh : colors.primary}15`;
-                  e.target.style.borderColor = `${product.isGaneshIdol ? colors.ganesh : colors.primary}60`;
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.backgroundColor = `${product.isGaneshIdol ? colors.ganesh : colors.primary}08`;
-                  e.target.style.borderColor = `${product.isGaneshIdol ? colors.ganesh : colors.primary}30`;
-                }}
-              />
-            </Tooltip>
+            {/* Icons Row - T&C and Gift */}
+            <Space size="small">
+              {/* NEW: Animated Gift Icon - Only for Ganesh Idols */}
+              {product.isGaneshIdol && (
+                <Tooltip title="Complete Pooja Kit Included! Click to see what's inside 🎁">
+                  <Button
+                    type="text"
+                    className="gift-icon-animated"
+                    icon={<GiftOutlined />}
+                    onClick={() => setPoojaKitModalOpen(true)}
+                    style={{
+                      color: colors.ganesh,
+                      fontSize: '20px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '44px',
+                      height: '44px',
+                      borderRadius: '8px',
+                      border: `1px solid ${colors.ganesh}30`,
+                      backgroundColor: `${colors.ganesh}08`,
+                      transition: 'all 0.3s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.backgroundColor = `${colors.ganesh}15`;
+                      e.target.style.borderColor = `${colors.ganesh}60`;
+                      e.target.style.transform = 'scale(1.05)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.backgroundColor = `${colors.ganesh}08`;
+                      e.target.style.borderColor = `${colors.ganesh}30`;
+                      e.target.style.transform = 'scale(1)';
+                    }}
+                  />
+                </Tooltip>
+              )}
+
+              {/* T&C Icon */}
+              <Tooltip title={`Important ${product.isGaneshIdol ? 'Ganesh Idol' : ''} Terms`}>
+                <Button
+                  type="text"
+                  icon={<WarningOutlined />}
+                  onClick={() => setTermsModalOpen(true)}
+                  style={{
+                    color: product.isGaneshIdol ? colors.ganesh : colors.primary,
+                    fontSize: '18px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '8px',
+                    border: `1px solid ${product.isGaneshIdol ? colors.ganesh : colors.primary}30`,
+                    backgroundColor: `${product.isGaneshIdol ? colors.ganesh : colors.primary}08`,
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = `${product.isGaneshIdol ? colors.ganesh : colors.primary}15`;
+                    e.target.style.borderColor = `${product.isGaneshIdol ? colors.ganesh : colors.primary}60`;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = `${product.isGaneshIdol ? colors.ganesh : colors.primary}08`;
+                    e.target.style.borderColor = `${product.isGaneshIdol ? colors.ganesh : colors.primary}30`;
+                  }}
+                />
+              </Tooltip>
+            </Space>
           </div>
           <Text type="secondary">
             {product.isGaneshIdol 
@@ -959,6 +1288,13 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
       <TermsModal 
         open={termsModalOpen}
         onClose={() => setTermsModalOpen(false)}
+        product={product}
+      />
+
+      {/* NEW: Pooja Kit Modal */}
+      <PoojaKitModal
+        open={poojaKitModalOpen}
+        onClose={() => setPoojaKitModalOpen(false)}
         product={product}
       />
     </>
@@ -1572,7 +1908,7 @@ const ServiceFeatures = memo(({ product }) => {
                       border: 'none',
                       borderRadius: '12px',
                       padding: '4px 8px',
-                      fontSize: '11px',
+                      fontSize: '10px',
                       fontWeight: 600,
                     }}
                   >
@@ -1642,13 +1978,9 @@ const ServiceFeatures = memo(({ product }) => {
 
 // Set display names
 ProductInfo.displayName = 'ProductInfo';
-ProductDescription.displayName = 'ProductDescription';
-MobileActions.displayName = 'MobileActions';
-ServiceFeatures.displayName = 'ServiceFeatures';
 QuantitySelector.displayName = 'QuantitySelector';
-PoojaKitDisplay.displayName = 'PoojaKitDisplay';
-GreenerVisarjanDisplay.displayName = 'GreenerVisarjanDisplay';
 TermsModal.displayName = 'TermsModal';
+PoojaKitModal.displayName = 'PoojaKitModal';
 
 export default ProductInfo;
 export { MobileActions, ServiceFeatures, ProductDescription };
