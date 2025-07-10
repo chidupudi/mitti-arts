@@ -354,7 +354,7 @@ const App = () => {
 
                   {/* Admin Routes */}
                   <Route path="/supercontrollogin" element={<AdminAuth />} />
-                  <Route 
+                  <Route []
                     path="/dashboard" 
                     element={
                       <ProtectedAdminRoute adminOnly={true}>
