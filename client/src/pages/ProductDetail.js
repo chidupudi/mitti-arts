@@ -89,7 +89,7 @@ const customStyles = {
   },
 };
 
-// Helper function to process video data
+// UPDATED: Enhanced video data processing function
 const processVideoData = (videos) => {
   if (!videos || !Array.isArray(videos)) return [];
   
@@ -104,7 +104,7 @@ const processVideoData = (videos) => {
         type: 'video',
         captions: []
       };
-    } else if (typeof video === 'object') {
+    } else if (typeof video === 'object' && video !== null) {
       // Full video object
       return {
         id: video.id || `video_${index}`,
@@ -121,7 +121,56 @@ const processVideoData = (videos) => {
   }).filter(Boolean);
 };
 
-// ENHANCED Custom hook for product data - NOW SUPPORTS VIDEOS
+// UPDATED: Enhanced media processing for mixed images and videos
+const processAllMedia = (images = []) => {
+  const processedMedia = [];
+  
+  images.forEach((item, index) => {
+    if (typeof item === 'string') {
+      // Check if it's a video URL by extension or contains video indicators
+      const isVideoUrl = /\.(mp4|webm|ogg|avi|mov|wmv|flv|3gp)(\?|$)/i.test(item) ||
+                         item.includes('video') ||
+                         (item.includes('res.cloudinary.com') && item.includes('video'));
+      
+      if (isVideoUrl) {
+        processedMedia.push({
+          id: `video_${index}`,
+          type: 'video',
+          src: item,
+          thumbnail: `${item}#t=1`,
+          title: `Product Video ${processedMedia.filter(m => m.type === 'video').length + 1}`,
+          index: index
+        });
+      } else {
+        processedMedia.push({
+          id: `image_${index}`,
+          type: 'image',
+          src: item,
+          thumbnail: item,
+          title: `Product Image ${processedMedia.filter(m => m.type === 'image').length + 1}`,
+          index: index
+        });
+      }
+    } else if (typeof item === 'object' && item !== null) {
+      // Object with type specified
+      processedMedia.push({
+        id: item.id || `${item.type || 'media'}_${index}`,
+        type: item.type || 'image',
+        src: item.src || item.url || item,
+        thumbnail: item.thumbnail || item.poster || item.src || item.url || item,
+        title: item.title || `Product ${item.type || 'Media'} ${index + 1}`,
+        poster: item.poster,
+        captions: item.captions || [],
+        duration: item.duration,
+        index: index
+      });
+    }
+  });
+  
+  return processedMedia;
+};
+
+// UPDATED: Enhanced product data hook with better video processing
 const useProductData = (productId, code) => {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -145,21 +194,27 @@ const useProductData = (productId, code) => {
 
           if (docSnap.exists()) {
             const data = docSnap.data();
-            // Process Ganesh idol data
+            
+            // ENHANCED: Process all media (images + videos) together
+            const allMedia = processAllMedia(data.images || []);
+            const imageMedia = allMedia.filter(item => item.type === 'image');
+            const videoMedia = allMedia.filter(item => item.type === 'video');
+            
+            // Convert Ganesh idol data to product-like structure
             const idolData = {
               id: docSnap.id,
               ...data,
-              // Convert Ganesh idol data to product-like structure
               price: Number(data.price) || 15000,
-              originalPrice: null, // No original price for Ganesh idols
-              discount: 0, // No discount for custom made idols
-              stock: 999, // Ganesh idols are custom made
+              originalPrice: null,
+              discount: 0,
+              stock: 999,
               rating: Number(data.rating) || 4.5,
               reviews: Number(data.reviews) || 28,
-              images: Array.isArray(data.images) ? data.images : [],
-              videos: processVideoData(data.videos), // ENHANCED: Process videos
-              hyderabadOnly: false, // Ganesh idols can be shipped anywhere
-              isGaneshIdol: true, // Flag to identify this as a Ganesh idol
+              images: imageMedia.map(item => item.src), // Keep images as strings for compatibility
+              videos: videoMedia, // Processed video objects
+              allMedia: allMedia, // All media combined
+              hyderabadOnly: false,
+              isGaneshIdol: true,
               estimatedDays: Number(data.estimatedDays) || 7,
               advancePercentage: Number(data.advancePercentage) || 25,
             };
@@ -168,12 +223,19 @@ const useProductData = (productId, code) => {
             setError('Ganesh idol not found');
           }
         } else {
-          // Regular product logic (ENHANCED with video support)
+          // Regular product logic
           docRef = doc(db, 'products', productId);
           docSnap = await getDoc(docRef);
 
           if (docSnap.exists()) {
             const data = docSnap.data();
+            
+            // ENHANCED: Process all media for regular products too
+            const productImages = data.images || (data.imgUrl ? [data.imgUrl] : []);
+            const allMedia = processAllMedia(productImages);
+            const imageMedia = allMedia.filter(item => item.type === 'image');
+            const videoMedia = allMedia.filter(item => item.type === 'video');
+            
             const productData = {
               id: docSnap.id,
               ...data,
@@ -181,19 +243,27 @@ const useProductData = (productId, code) => {
               stock: Number(data.stock) || 0,
               rating: Number(data.rating) || 4.2,
               reviews: Number(data.reviews) || 156,
-              images: Array.isArray(data.images) ? data.images : data.imgUrl ? [data.imgUrl] : [],
-              videos: processVideoData(data.videos), // ENHANCED: Process videos
+              images: imageMedia.map(item => item.src), // Keep backward compatibility
+              videos: videoMedia, // Processed video objects
+              allMedia: allMedia, // All media combined
               hyderabadOnly: data.hyderabadOnly || false,
               isGaneshIdol: false,
             };
             setProduct(productData);
           } else if (code) {
-            // Try finding by code (existing logic with video support)
+            // Try finding by code
             const productsRef = collection(db, 'products');
             const querySnapshot = await getDocs(query(productsRef, where('code', '==', code)));
 
             if (!querySnapshot.empty) {
               const data = querySnapshot.docs[0].data();
+              
+              // Process media for code-based lookup too
+              const productImages = data.images || (data.imgUrl ? [data.imgUrl] : []);
+              const allMedia = processAllMedia(productImages);
+              const imageMedia = allMedia.filter(item => item.type === 'image');
+              const videoMedia = allMedia.filter(item => item.type === 'video');
+              
               const productData = {
                 id: querySnapshot.docs[0].id,
                 ...data,
@@ -201,8 +271,9 @@ const useProductData = (productId, code) => {
                 stock: Number(data.stock) || 0,
                 rating: Number(data.rating) || 4.2,
                 reviews: Number(data.reviews) || 156,
-                images: Array.isArray(data.images) ? data.images : data.imgUrl ? [data.imgUrl] : [],
-                videos: processVideoData(data.videos), // ENHANCED: Process videos
+                images: imageMedia.map(item => item.src),
+                videos: videoMedia,
+                allMedia: allMedia,
                 hyderabadOnly: data.hyderabadOnly || false,
                 isGaneshIdol: false,
               };

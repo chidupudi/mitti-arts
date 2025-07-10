@@ -60,7 +60,8 @@ import {
   TrophyOutlined,
   NotificationOutlined,
   CalendarOutlined,
-  GiftOutlined
+  GiftOutlined,
+  PlayCircleOutlined, // <-- Add this import for the play icon overlay
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../Firebase/Firebase';
@@ -932,8 +933,15 @@ const ProductCard = memo(({
   isInWishlist
 }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
-  const [imageSrc, setImageSrc] = useState(product.imgUrl || 'https://via.placeholder.com/300x220/D2691E/FFFFFF?text=Product');
-  
+  const [isHovered, setIsHovered] = useState(false);
+
+  // ENHANCED: Check if primary media is video
+  const primaryMedia = product.images?.[0] || product.imgUrl || 'https://via.placeholder.com/300x220/D2691E/FFFFFF?text=Product';
+  const isVideo = typeof primaryMedia === 'object' && primaryMedia.type === 'video';
+  const videoSrc = isVideo ? primaryMedia.src : null;
+  const videoThumbnail = isVideo ? primaryMedia.thumbnail : null;
+  const imageSrc = isVideo ? (videoThumbnail || primaryMedia.src) : primaryMedia;
+
   const isOutOfStock = product.stock === 0;
   const isHidden = product.hidden;
   const isUnavailable = isHidden || isOutOfStock;
@@ -946,7 +954,6 @@ const ProductCard = memo(({
       e.stopPropagation();
       return;
     }
-    
     e.preventDefault();
     onProductClick(product.id, product.code);
   };
@@ -959,7 +966,6 @@ const ProductCard = memo(({
         </Tag>
       );
     }
-
     if (isOutOfStock) {
       return (
         <Tag icon={<WarningOutlined />} color="error">
@@ -967,7 +973,6 @@ const ProductCard = memo(({
         </Tag>
       );
     }
-
     if (product.hyderabadOnly) {
       return (
         <Tag icon={<EnvironmentOutlined />} color="purple">
@@ -975,7 +980,6 @@ const ProductCard = memo(({
         </Tag>
       );
     }
-
     if (product.stock < 10) {
       return (
         <Tag icon={<WarningOutlined />} color="error">
@@ -983,7 +987,6 @@ const ProductCard = memo(({
         </Tag>
       );
     }
-
     if (product.stock < 20) {
       return (
         <Tag icon={<InfoCircleOutlined />} color="warning">
@@ -991,7 +994,6 @@ const ProductCard = memo(({
         </Tag>
       );
     }
-
     return (
       <Tag icon={<EnvironmentOutlined />} color="green">
         Pan India Delivery
@@ -1005,6 +1007,8 @@ const ProductCard = memo(({
       className={`product-card ${isUnavailable ? 'unavailable' : ''}`}
       bodyStyle={{ padding: 0 }}
       onClick={handleCardClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       {/* Status Ribbons */}
       {isHidden && (
@@ -1035,14 +1039,72 @@ const ProductCard = memo(({
         </Tag>
       )}
 
+      {/* ENHANCED: Media Display with Video Support */}
       <div style={{ position: 'relative' }}>
-        <img
-          src={imageSrc}
-          alt={product.name}
-          className="product-image"
-          onLoad={() => setImageLoaded(true)}
-          onError={() => setImageSrc('https://via.placeholder.com/300x220/D2691E/FFFFFF?text=Product')}
-        />
+        {isVideo && isHovered ? (
+          // Show video on hover
+          <video
+            src={videoSrc}
+            className="product-image"
+            style={{
+              width: '100%',
+              height: '220px',
+              objectFit: 'cover',
+            }}
+            autoPlay
+            muted
+            loop
+            playsInline
+            onError={() => {
+              // Fallback to thumbnail if video fails
+              // Optionally handle error
+            }}
+          />
+        ) : (
+          // Show image or video thumbnail
+          <img
+            src={imageSrc}
+            alt={product.name}
+            className="product-image"
+            onLoad={() => setImageLoaded(true)}
+            onError={(e) => {
+              e.target.src = 'https://via.placeholder.com/300x220/D2691E/FFFFFF?text=Product';
+            }}
+          />
+        )}
+
+        {/* Video Play Icon Overlay */}
+        {isVideo && !isHovered && (
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            color: 'white',
+            fontSize: '32px',
+            textShadow: '0 2px 8px rgba(0,0,0,0.6)',
+            pointerEvents: 'none',
+          }}>
+            <PlayCircleOutlined />
+          </div>
+        )}
+
+        {/* Video Badge */}
+        {isVideo && (
+          <div style={{
+            position: 'absolute',
+            bottom: '8px',
+            right: '8px',
+            background: 'rgba(0,0,0,0.7)',
+            color: 'white',
+            padding: '4px 8px',
+            borderRadius: '4px',
+            fontSize: '12px',
+            fontWeight: 'bold',
+          }}>
+            📹 VIDEO
+          </div>
+        )}
       </div>
 
       <div style={{ padding: '16px' }}>
@@ -2297,6 +2359,7 @@ const handleGaneshIdolClick = useCallback((idolId) => {
             placement="left"
             open={drawerOpen}
             onClose={() => setDrawerOpen(false)}
+           
             width={isMobile ? '90vw' : 300}
             style={{
               maxWidth: '350px'

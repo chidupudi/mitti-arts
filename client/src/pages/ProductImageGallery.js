@@ -318,17 +318,44 @@ const ProductImageGallery = memo(({
         justifyContent: 'center',
       }}>
         {selectedMedia && selectedMedia.type === 'video' && isVideoPlayerVisible ? (
-          <VideoPlayer
-            src={selectedMedia.src}
-            poster={selectedMedia.poster}
-            title={selectedMedia.title}
-            captions={selectedMedia.captions}
-            style={{ width: '100%', height: '100%' }}
-            onPlay={() => console.log('Video started playing')}
-            onPause={() => console.log('Video paused')}
-            onEnded={() => console.log('Video ended')}
-          />
+          // Enhanced video player with better error handling
+          <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+            <VideoPlayer
+              src={selectedMedia.src}
+              poster={selectedMedia.poster || selectedMedia.thumbnail}
+              title={selectedMedia.title}
+              captions={selectedMedia.captions}
+              style={{ width: '100%', height: '100%' }}
+              autoPlay={false}
+              muted={true}
+              onPlay={() => console.log('Video started playing:', selectedMedia.title)}
+              onPause={() => console.log('Video paused:', selectedMedia.title)}
+              onEnded={() => console.log('Video ended:', selectedMedia.title)}
+              onError={() => {
+                console.error('Video player error for:', selectedMedia.src);
+                // Fallback to thumbnail view
+                setIsVideoPlayerVisible(false);
+              }}
+            />
+            
+            {/* Video Info Overlay */}
+            <div style={{
+              position: 'absolute',
+              bottom: '16px',
+              left: '16px',
+              background: 'rgba(0,0,0,0.7)',
+              color: 'white',
+              padding: '8px 12px',
+              borderRadius: '8px',
+              fontSize: '12px',
+              backdropFilter: 'blur(4px)',
+            }}>
+              📹 {selectedMedia.title}
+              {selectedMedia.duration && ` • ${selectedMedia.duration}`}
+            </div>
+          </div>
         ) : selectedMedia && selectedMedia.type === 'image' ? (
+          // Image display (unchanged)
           <>
             <Image
               src={selectedMedia.src}
@@ -358,6 +385,7 @@ const ProductImageGallery = memo(({
             />
           </>
         ) : selectedMedia && selectedMedia.type === 'video' && !isVideoPlayerVisible ? (
+          // Video thumbnail with enhanced play button
           <div 
             style={{ 
               position: 'relative', 
@@ -367,9 +395,14 @@ const ProductImageGallery = memo(({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              background: '#000',
             }}
-            onClick={() => setIsVideoPlayerVisible(true)}
+            onClick={() => {
+              console.log('Video thumbnail clicked, starting player for:', selectedMedia.src);
+              setIsVideoPlayerVisible(true);
+            }}
           >
+            {/* Video Thumbnail */}
             <img
               src={selectedMedia.thumbnail}
               alt={selectedMedia.title}
@@ -379,15 +412,79 @@ const ProductImageGallery = memo(({
                 objectFit: 'contain',
                 borderRadius: '8px',
               }}
+              onError={(e) => {
+                console.error('Video thumbnail failed to load:', selectedMedia.thumbnail);
+                // Create a fallback thumbnail
+                e.target.style.display = 'none';
+                e.target.nextSibling.style.display = 'flex';
+              }}
             />
+            
+            {/* Fallback for failed thumbnail */}
+            <div
+              style={{
+                display: 'none',
+                width: '100%',
+                height: '100%',
+                backgroundColor: '#333',
+                color: 'white',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexDirection: 'column',
+                borderRadius: '8px',
+              }}
+            >
+              <VideoCameraOutlined style={{ fontSize: '64px', marginBottom: '16px' }} />
+              <Text style={{ color: 'white', fontSize: '16px' }}>Video Preview</Text>
+            </div>
+
+            {/* Enhanced Play Button Overlay */}
             <div style={{
-              ...customStyles.playOverlay,
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              color: 'white',
               fontSize: '64px',
+              textShadow: '0 4px 16px rgba(0,0,0,0.8)',
+              transition: 'all 0.3s ease',
+              animation: 'pulse 2s infinite',
             }}>
               <PlayCircleOutlined />
             </div>
+
+            {/* Video Info */}
+            <div style={{
+              position: 'absolute',
+              bottom: '16px',
+              left: '16px',
+              right: '16px',
+              background: 'rgba(0,0,0,0.8)',
+              color: 'white',
+              padding: '12px',
+              borderRadius: '8px',
+              backdropFilter: 'blur(8px)',
+            }}>
+              <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+                📹 {selectedMedia.title}
+              </div>
+              {selectedMedia.duration && (
+                <div style={{ fontSize: '12px', opacity: 0.9 }}>
+                  Duration: {selectedMedia.duration}
+                </div>
+              )}
+              <div style={{ fontSize: '11px', opacity: 0.8, marginTop: '4px' }}>
+                Click to play video
+              </div>
+            </div>
           </div>
-        ) : null}
+        ) : (
+          // No media fallback
+          <div style={{ textAlign: 'center', color: '#999' }}>
+            <PictureOutlined style={{ fontSize: '64px', marginBottom: '16px' }} />
+            <div>No media available</div>
+          </div>
+        )}
       </div>
 
       {/* Media Navigation Tabs */}
@@ -499,6 +596,17 @@ const ProductImageGallery = memo(({
           }}
         />
       )}
+
+      {/* Add CSS animation for pulse effect */}
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          @keyframes pulse {
+            0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            50% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.8; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+          }
+        `
+      }} />
     </Card>
   );
 });
