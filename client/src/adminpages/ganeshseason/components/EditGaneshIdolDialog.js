@@ -41,20 +41,24 @@ const { TextArea } = Input;
 const { Option } = Select;
 
 // Import Cloudinary utilities with try-catch for safety
-let uploadToCloudinary, validateImageFile;
+let uploadToCloudinary, validateMediaFile, isVideoUrl, validateUploadConstraints;
 try {
   const cloudinaryUtils = require('../../../utils/cloudinary');
   uploadToCloudinary = cloudinaryUtils.uploadToCloudinary;
-  validateImageFile = cloudinaryUtils.validateImageFile;
+  validateMediaFile = cloudinaryUtils.validateMediaFile;
+  isVideoUrl = cloudinaryUtils.isVideoUrl;
+  validateUploadConstraints = cloudinaryUtils.validateUploadConstraints;
 } catch (error) {
   console.warn('Cloudinary utils not found, using fallback');
   // Fallback functions
   uploadToCloudinary = async (file) => {
     throw new Error('Cloudinary not configured');
   };
-  validateImageFile = (file) => {
+  validateMediaFile = (file) => {
     return true;
   };
+  isVideoUrl = () => false;
+  validateUploadConstraints = () => ({ canUpload: true, message: '' });
 }
 
 const EditGaneshIdolDialog = ({
@@ -96,15 +100,25 @@ const EditGaneshIdolDialog = ({
     onChange('features', updatedFeatures);
   };
 
-  // Handle image upload with direct Cloudinary integration
+  // Updated handleImageChange function
   const handleImageChange = async (e, index) => {
     try {
       const file = e.target.files[0];
       if (!file) return;
 
+      // Check upload constraints first
+      const constraint = validateUploadConstraints(idol.images || [], 
+        file.type.startsWith('video/') ? 'video' : 'image'
+      );
+      
+      if (!constraint.canUpload) {
+        message.error(constraint.message);
+        return;
+      }
+
       // Validate file before upload
-      if (validateImageFile) {
-        validateImageFile(file);
+      if (validateMediaFile) {
+        validateMediaFile(file, idol.images || [], index);
       }
 
       // Set loading state for this specific index
@@ -113,29 +127,29 @@ const EditGaneshIdolDialog = ({
       newImages[index] = 'loading';
       onChange('images', newImages);
 
-      // Upload to cloudinary
-      let imageUrl;
+      // Upload to cloudinary with auto resource type detection
+      let mediaUrl;
       if (uploadToCloudinary) {
-        imageUrl = await uploadToCloudinary(file);
+        mediaUrl = await uploadToCloudinary(file, 'auto');
       } else {
         throw new Error('Upload service not available');
       }
 
       // Update with actual URL
       const updatedImages = [...(idol.images || Array(8).fill(''))];
-      updatedImages[index] = imageUrl;
+      updatedImages[index] = mediaUrl;
       onChange('images', updatedImages);
 
-      message.success('Image uploaded successfully!');
+      message.success(`${file.type.startsWith('video/') ? 'Video' : 'Image'} uploaded successfully!`);
     } catch (error) {
-      console.error('Error uploading image:', error);
+      console.error('Error uploading media:', error);
       
       // Reset loading state on error
       const resetImages = [...(idol.images || Array(8).fill(''))];
       resetImages[index] = '';
       onChange('images', resetImages);
       
-      message.error(error.message || 'Failed to upload image');
+      message.error(error.message || 'Failed to upload file');
     } finally {
       setUploadingIndex(null);
     }
@@ -166,8 +180,9 @@ const calculateAdvancePreview = () => {
 };
   // Image upload component
   const ImageUploadCard = ({ index }) => {
-    const imageUrl = idol.images?.[index];
-    const isLoading = uploadingIndex === index || imageUrl === 'loading';
+    const mediaUrl = idol.images?.[index];
+    const isLoading = uploadingIndex === index || mediaUrl === 'loading';
+    const isVideo = mediaUrl && isVideoUrl(mediaUrl);
 
     return (
       <Card
@@ -176,7 +191,7 @@ const calculateAdvancePreview = () => {
           border: '2px dashed #FFB74D',
           borderRadius: '8px',
           position: 'relative',
-          cursor: !imageUrl ? 'pointer' : 'default',
+          cursor: !mediaUrl ? 'pointer' : 'default',
         }}
         bodyStyle={{ 
           padding: 0, 
@@ -186,7 +201,7 @@ const calculateAdvancePreview = () => {
           justifyContent: 'center' 
         }}
         onClick={() => {
-          if (!imageUrl && !isLoading) {
+          if (!mediaUrl && !isLoading) {
             document.getElementById(`edit-image-upload-${index}`).click();
           }
         }}
@@ -198,18 +213,35 @@ const calculateAdvancePreview = () => {
               Uploading...
             </div>
           </div>
-        ) : imageUrl ? (
+        ) : mediaUrl ? (
           <>
-            <img
-              src={imageUrl}
-              alt={`Ganesh Idol ${index + 1}`}
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                borderRadius: '6px',
-              }}
-            />
+            {isVideo ? (
+              <video
+                src={mediaUrl}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  borderRadius: '6px',
+                }}
+                controls={false}
+                muted
+                loop
+                onMouseEnter={(e) => e.target.play()}
+                onMouseLeave={(e) => e.target.pause()}
+              />
+            ) : (
+              <img
+                src={mediaUrl}
+                alt={`Ganesh Idol ${index + 1}`}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  borderRadius: '6px',
+                }}
+              />
+            )}
             <div style={{ position: 'absolute', top: '4px', right: '4px', display: 'flex', gap: '4px' }}>
               <Button
                 type="primary"
@@ -220,7 +252,7 @@ const calculateAdvancePreview = () => {
                   e.stopPropagation();
                   deleteImage(index);
                 }}
-                title="Delete image permanently"
+                title="Delete media permanently"
               />
             </div>
             {index === 0 && (
@@ -238,11 +270,26 @@ const calculateAdvancePreview = () => {
                 PRIMARY
               </div>
             )}
+            {isVideo && (
+              <div style={{
+                position: 'absolute',
+                top: '4px',
+                left: '4px',
+                background: 'rgba(231, 76, 60, 0.9)',
+                color: 'white',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                fontSize: '10px',
+                fontWeight: 'bold'
+              }}>
+                VIDEO
+              </div>
+            )}
           </>
         ) : (
           <div style={{ textAlign: 'center' }}>
             <CloudUploadOutlined style={{ fontSize: '32px', color: '#FF8F00' }} />
-            <div style={{ marginTop: 8, color: '#FF6F00' }}>Upload Image</div>
+            <div style={{ marginTop: 8, color: '#FF6F00' }}>Upload Image/Video</div>
           </div>
         )}
         
@@ -250,7 +297,7 @@ const calculateAdvancePreview = () => {
           type="file"
           id={`edit-image-upload-${index}`}
           style={{ display: 'none' }}
-          accept="image/jpeg,image/png,image/gif,image/webp"
+          accept="image/jpeg,image/png,image/gif,image/webp,image/bmp,video/mp4,video/webm,video/mov,video/avi"
           onChange={(e) => handleImageChange(e, index)}
         />
       </Card>
@@ -600,11 +647,11 @@ const calculateAdvancePreview = () => {
               <Space>
                 <CameraOutlined style={{ color: '#9C27B0' }} />
                 <span style={{ color: '#E65100' }}>
-                  Ganesh Idol Images ({(idol.images || []).filter(img => img && img !== 'loading').length}/8)
+                  Ganesh Idol Media ({(idol.images || []).filter(img => img && img !== 'loading').length}/8)
                 </span>
               </Space>
               
-              {/* Add Image Button */}
+              {/* Add Media Button */}
               {(idol.images || []).length < 8 && (
                 <Button 
                   type="dashed" 
@@ -613,7 +660,7 @@ const calculateAdvancePreview = () => {
                   size="small"
                   style={{ color: '#FF8F00', borderColor: '#FF8F00' }}
                 >
-                  Add Image Slot
+                  Add Media Slot
                 </Button>
               )}
             </div>
@@ -621,34 +668,35 @@ const calculateAdvancePreview = () => {
           style={{ marginBottom: '16px', borderColor: '#FFE0B2' }}
         >
           <Alert
-            message="Image Management"
-            description="Upload high-quality images showing different angles. First image will be the primary display image. Supported formats: JPEG, PNG, GIF, WebP (Max 5MB each)"
+            message="Media Management"
+            description="Upload high-quality images and videos. First media will be the primary display. Images (max 10MB), Videos (max 100MB). Supported: JPEG, PNG, GIF, WebP, BMP, MP4, WebM, MOV, AVI. Maximum 2 videos allowed."
             type="info"
             style={{ marginBottom: '16px' }}
             icon={<InfoCircleOutlined />}
           />
           
           <Row gutter={[16, 16]}>
-            {(idol.images || []).map((imageUrl, index) => (
+            {(idol.images || []).map((mediaUrl, index) => (
               <Col span={6} key={index}>
                 <ImageUploadCard index={index} />
                 {index === 0 && (
                   <Text type="secondary" style={{ fontSize: '10px', textAlign: 'center', display: 'block', marginTop: '4px' }}>
-                    Primary Image
+                    Primary Media
                   </Text>
                 )}
               </Col>
             ))}
           </Row>
           
-          {/* Image management instructions */}
+          {/* Media management instructions */}
           {(idol.images || []).length > 0 && (
             <Card style={{ marginTop: '16px', backgroundColor: '#f5f5f5' }}>
               <Text type="secondary">
-                • Click on empty slots to upload new images<br />
-                • Use the delete button (trash icon) to remove images permanently<br />
-                • Images are automatically saved when you upload them<br />
-                • First image is always the primary display image
+                • Click on empty slots to upload new images or videos<br />
+                • Use the delete button (trash icon) to remove media permanently<br />
+                • Media files are automatically saved when you upload them<br />
+                • First media is always the primary display media<br />
+                • Maximum 2 videos allowed (6 images + 2 videos OR 7 images + 1 video OR 8 images)
               </Text>
             </Card>
           )}

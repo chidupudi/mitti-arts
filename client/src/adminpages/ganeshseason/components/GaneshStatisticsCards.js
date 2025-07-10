@@ -11,23 +11,69 @@ import {
   TrophyOutlined,
   FireOutlined,
   StarOutlined,
+  PictureOutlined,
+  WarningOutlined,
 } from '@ant-design/icons';
+import { countVideos, countImages } from '../../../utils/cloudinary';
 
 const { Title, Text } = Typography;
 
 const GaneshStatisticsCards = ({ statistics }) => {
   // Extract statistics with fallbacks to prevent errors if data is not loaded
- const { 
-  totalIdols = 0, 
-  hiddenIdols = 0, 
-  traditionalIdols = 0, 
-  modernIdols = 0, 
-  premiumIdols = 0, 
-  customizableIdols = 0, 
-  averagePrice = 0,
-  priceRange = { min: 0, max: 0 }
-} = statistics || {};
-  // Data for the inventory statistics cards
+  const { 
+    totalIdols = 0, 
+    hiddenIdols = 0, 
+    traditionalIdols = 0, 
+    modernIdols = 0, 
+    premiumIdols = 0, 
+    customizableIdols = 0, 
+    averagePrice = 0,
+    priceRange = { min: 0, max: 0 },
+    // Add media statistics
+    totalImages = 0,
+    totalVideos = 0,
+    idolsWithVideos = 0,
+    idolsWithoutMedia = 0
+  } = statistics || {};
+
+  // Calculate media statistics if not provided
+  const mediaStats = React.useMemo(() => {
+    if (statistics?.ganeshIdols) {
+      const idols = statistics.ganeshIdols;
+      let totalImgs = 0;
+      let totalVids = 0;
+      let idolsWithVids = 0;
+      let idolsWithoutMed = 0;
+
+      idols.forEach(idol => {
+        const images = idol.images || [];
+        const imageCount = countImages(images);
+        const videoCount = countVideos(images);
+        
+        totalImgs += imageCount;
+        totalVids += videoCount;
+        
+        if (videoCount > 0) idolsWithVids++;
+        if (images.filter(img => img && img !== 'loading').length === 0) idolsWithoutMed++;
+      });
+
+      return {
+        totalImages: totalImgs,
+        totalVideos: totalVids,
+        idolsWithVideos: idolsWithVids,
+        idolsWithoutMedia: idolsWithoutMed
+      };
+    }
+    
+    return {
+      totalImages,
+      totalVideos,
+      idolsWithVideos,
+      idolsWithoutMedia
+    };
+  }, [statistics, totalImages, totalVideos, idolsWithVideos, idolsWithoutMedia]);
+
+  // Updated statsData array with media statistics
   const statsData = [
     {
       title: 'Total Ganesh Idols',
@@ -35,8 +81,26 @@ const GaneshStatisticsCards = ({ statistics }) => {
       subtitle: 'In inventory',
       icon: <ShopOutlined style={{ fontSize: '32px' }} />,
       bgColor: 'linear-gradient(135deg, #FF8F00 0%, #FFB74D 100%)',
-      change: totalIdols > 0 ? '+12%' : '0%', // Example change data
+      change: totalIdols > 0 ? '+12%' : '0%',
       changeType: 'increase'
+    },
+    {
+      title: 'Total Images',
+      value: mediaStats.totalImages,
+      subtitle: `Across ${totalIdols} idols`,
+      icon: <PictureOutlined style={{ fontSize: '32px' }} />,
+      bgColor: 'linear-gradient(135deg, #1976D2 0%, #42A5F5 100%)',
+      change: `${mediaStats.totalImages > 0 ? Math.round(mediaStats.totalImages / Math.max(totalIdols, 1) * 10) / 10 : 0} avg/idol`,
+      changeType: 'neutral'
+    },
+    {
+      title: 'Total Videos',
+      value: mediaStats.totalVideos,
+      subtitle: `${mediaStats.idolsWithVideos} idols have videos`,
+      icon: <FireOutlined style={{ fontSize: '32px' }} />,
+      bgColor: 'linear-gradient(135deg, #D32F2F 0%, #EF5350 100%)',
+      change: `${Math.round((mediaStats.idolsWithVideos / Math.max(totalIdols, 1)) * 100)}% with videos`,
+      changeType: mediaStats.totalVideos > 0 ? 'increase' : 'neutral'
     },
     {
       title: 'Average Price',
@@ -83,27 +147,49 @@ const GaneshStatisticsCards = ({ statistics }) => {
       change: `${Math.round((customizableIdols / Math.max(totalIdols, 1)) * 100)}%`,
       changeType: 'increase'
     },
-     {
-      title: 'Price Range',
-      value: `₹${priceRange.min.toLocaleString()}-₹${priceRange.max.toLocaleString()}`,
-      subtitle: 'Min - Max pricing',
+  ];
+
+  // Add new media-specific statistics section
+  const mediaStatistics = [
+    {
+      title: 'Media Coverage',
+      value: `${totalIdols - mediaStats.idolsWithoutMedia}/${totalIdols}`,
+      subtitle: 'Idols with media',
+      icon: <PictureOutlined style={{ fontSize: '32px' }} />,
+      bgColor: 'linear-gradient(135deg, #4CAF50 0%, #81C784 100%)',
+      change: `${Math.round(((totalIdols - mediaStats.idolsWithoutMedia) / Math.max(totalIdols, 1)) * 100)}% coverage`,
+      changeType: 'increase'
+    },
+    {
+      title: 'Video Enhanced',
+      value: mediaStats.idolsWithVideos,
+      subtitle: 'Idols with videos',
       icon: <FireOutlined style={{ fontSize: '32px' }} />,
-      bgColor: 'linear-gradient(135deg, #795548 0%, #A1887F 100%)',
-      change: 'Price spread',
+      bgColor: 'linear-gradient(135deg, #E91E63 0%, #F06292 100%)',
+      change: `${Math.round((mediaStats.idolsWithVideos / Math.max(totalIdols, 1)) * 100)}% enhanced`,
+      changeType: mediaStats.idolsWithVideos > 0 ? 'increase' : 'neutral'
+    },
+    {
+      title: 'Avg Media/Idol',
+      value: `${totalIdols > 0 ? Math.round(((mediaStats.totalImages + mediaStats.totalVideos) / totalIdols) * 10) / 10 : 0}`,
+      subtitle: 'Images + Videos',
+      icon: <StarOutlined style={{ fontSize: '32px' }} />,
+      bgColor: 'linear-gradient(135deg, #9C27B0 0%, #CE93D8 100%)',
+      change: `Max 8 per idol`,
       changeType: 'neutral'
     },
     {
-      title: 'Hidden Idols',
-      value: hiddenIdols,
-      subtitle: 'Not visible to customers',
-      icon: <EyeInvisibleOutlined style={{ fontSize: '32px' }} />,
-      bgColor: 'linear-gradient(135deg, #616161 0%, #9E9E9E 100%)',
-      change: hiddenIdols > 0 ? 'Review visibility' : 'All visible',
-      changeType: hiddenIdols > 0 ? 'decrease' : 'neutral'
-    },
+      title: 'Missing Media',
+      value: mediaStats.idolsWithoutMedia,
+      subtitle: 'Need media upload',
+      icon: <WarningOutlined style={{ fontSize: '32px' }} />,
+      bgColor: 'linear-gradient(135deg, #FF9800 0%, #FFB74D 100%)',
+      change: mediaStats.idolsWithoutMedia > 0 ? 'Needs attention' : 'All covered',
+      changeType: mediaStats.idolsWithoutMedia > 0 ? 'decrease' : 'increase'
+    }
   ];
 
-  // Hardcoded statistics for leads and orders (these would typically come from an API)
+  // FIXED: Added the missing ganeshBusinessStats array
   const ganeshBusinessStats = [
     {
       title: 'Active Leads',
@@ -233,6 +319,20 @@ const GaneshStatisticsCards = ({ statistics }) => {
         <Row gutter={[24, 24]}>
           {statsData.map((stat, index) => (
             <Col xs={24} sm={12} md={8} lg={6} xl={6} key={index}>
+              <StatCard stat={stat} />
+            </Col>
+          ))}
+        </Row>
+      </div>
+
+      {/* NEW: Media Statistics Section */}
+      <div style={{ marginBottom: '32px' }}>
+        <Title level={4} style={{ marginBottom: '16px', color: '#E91E63', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <PictureOutlined /> Media & Content Statistics
+        </Title>
+        <Row gutter={[24, 24]}>
+          {mediaStatistics.map((stat, index) => (
+            <Col xs={24} sm={12} md={12} lg={6} xl={6} key={index}>
               <StatCard stat={stat} />
             </Col>
           ))}

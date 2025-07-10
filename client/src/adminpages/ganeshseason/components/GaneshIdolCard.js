@@ -29,6 +29,7 @@ import {
   DashboardOutlined,
   BgColorsOutlined,
 } from '@ant-design/icons';
+import { isVideoUrl } from '../../../utils/cloudinary';
 
 const { Text, Title } = Typography;
 const { Meta } = Card;
@@ -96,16 +97,38 @@ const calculateAdvanceAmount = (price) => {
         cover={
           <div style={{ position: 'relative', height: '220px' }}>
             {idol.images && idol.images.length > 0 && idol.images[0] ? (
-              <Image
-                src={idol.images[0]}
-                alt={idol.name}
-                style={{ 
-                  width: '100%', 
-                  height: '220px', 
-                  objectFit: 'cover' 
-                }}
-                preview={false}
-              />
+              (() => {
+                const primaryMedia = idol.images[0];
+                const isVideo = isVideoUrl(primaryMedia);
+                
+                return isVideo ? (
+                  <video
+                    src={primaryMedia}
+                    style={{ 
+                      width: '100%', 
+                      height: '220px', 
+                      objectFit: 'cover' 
+                    }}
+                    controls={false}
+                    muted
+                    loop
+                    onMouseEnter={(e) => e.target.play()}
+                    onMouseLeave={(e) => e.target.pause()}
+                    poster={primaryMedia} // Fallback for video poster
+                  />
+                ) : (
+                  <Image
+                    src={primaryMedia}
+                    alt={idol.name}
+                    style={{ 
+                      width: '100%', 
+                      height: '220px', 
+                      objectFit: 'cover' 
+                    }}
+                    preview={false}
+                  />
+                );
+              })()
             ) : (
               <div
                 style={{
@@ -119,8 +142,28 @@ const calculateAdvanceAmount = (price) => {
               >
                 <div style={{ textAlign: 'center' }}>
                   <PictureOutlined style={{ fontSize: '48px', marginBottom: '8px' }} />
-                  <div>🕉️ No Image</div>
+                  <div>🕉️ No Media</div>
                 </div>
+              </div>
+            )}
+            
+            {/* Video indicator for primary media */}
+            {idol.images?.[0] && isVideoUrl(idol.images[0]) && (
+              <div style={{
+                position: 'absolute',
+                top: '8px',
+                left: '8px',
+                background: 'rgba(231, 76, 60, 0.9)',
+                color: 'white',
+                padding: '4px 8px',
+                borderRadius: '6px',
+                fontSize: '11px',
+                fontWeight: 'bold',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}>
+                ▶️ VIDEO
               </div>
             )}
             
@@ -131,7 +174,7 @@ const calculateAdvanceAmount = (price) => {
               style={{
                 position: 'absolute',
                 top: '12px',
-                left: '12px',
+                right: '12px',
                 fontWeight: 600,
                 borderRadius: '8px',
                 border: '2px solid white',
@@ -148,7 +191,7 @@ const calculateAdvanceAmount = (price) => {
                 color="purple"
                 style={{
                   position: 'absolute',
-                  top: '12px',
+                  top: '52px',
                   right: '12px',
                   fontWeight: 600,
                   borderRadius: '8px',
@@ -330,6 +373,54 @@ const calculateAdvanceAmount = (price) => {
                   +{idol.features.length - 3} more
                 </Tag>
               )}
+            </Space>
+          </div>
+        )}
+
+        {/* Media Count Display */}
+        {idol.images && idol.images.length > 0 && (
+          <div style={{ marginTop: '12px' }}>
+            <Text strong style={{ fontSize: '12px', color: '#E65100', marginBottom: '6px', display: 'block' }}>
+              Media:
+            </Text>
+            <Space wrap size="small">
+              {(() => {
+                const imageCount = (idol.images || []).filter(img => img && !isVideoUrl(img)).length;
+                const videoCount = (idol.images || []).filter(img => img && isVideoUrl(img)).length;
+                
+                return (
+                  <>
+                    {imageCount > 0 && (
+                      <Tag 
+                        size="small"
+                        style={{ 
+                          fontSize: '10px',
+                          background: '#E3F2FD',
+                          color: '#1976D2',
+                          border: '1px solid #90CAF9',
+                          borderRadius: '4px'
+                        }}
+                      >
+                        📷 {imageCount} image{imageCount !== 1 ? 's' : ''}
+                      </Tag>
+                    )}
+                    {videoCount > 0 && (
+                      <Tag 
+                        size="small"
+                        style={{ 
+                          fontSize: '10px',
+                          background: '#FFEBEE',
+                          color: '#D32F2F',
+                          border: '1px solid #FFCDD2',
+                          borderRadius: '4px'
+                        }}
+                      >
+                        ▶️ {videoCount} video{videoCount !== 1 ? 's' : ''}
+                      </Tag>
+                    )}
+                  </>
+                );
+              })()}
             </Space>
           </div>
         )}

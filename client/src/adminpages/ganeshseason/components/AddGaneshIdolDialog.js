@@ -39,20 +39,24 @@ const { TextArea } = Input;
 const { Option } = Select;
 
 // Import Cloudinary utilities with try-catch for safety
-let uploadToCloudinary, validateImageFile;
+let uploadToCloudinary, validateMediaFile, isVideoUrl, validateUploadConstraints;
 try {
   const cloudinaryUtils = require('../../../utils/cloudinary');
   uploadToCloudinary = cloudinaryUtils.uploadToCloudinary;
-  validateImageFile = cloudinaryUtils.validateImageFile;
+  validateMediaFile = cloudinaryUtils.validateMediaFile;
+  isVideoUrl = cloudinaryUtils.isVideoUrl;
+  validateUploadConstraints = cloudinaryUtils.validateUploadConstraints;
 } catch (error) {
   console.warn('Cloudinary utils not found, using fallback');
   // Fallback functions
   uploadToCloudinary = async (file) => {
     throw new Error('Cloudinary not configured');
   };
-  validateImageFile = (file) => {
+  validateMediaFile = (file) => {
     return true;
   };
+  isVideoUrl = () => false;
+  validateUploadConstraints = () => ({ canUpload: true, message: '' });
 }
 
 const AddGaneshIdolDialog = ({
@@ -73,15 +77,25 @@ const AddGaneshIdolDialog = ({
     form.setFieldsValue({ [field]: value });
   };
 
-  // Handle image upload with direct Cloudinary integration
+  // Updated handleImageChange function
   const handleImageChange = async (e, index) => {
     try {
       const file = e.target.files[0];
       if (!file) return;
 
+      // Check upload constraints first
+      const constraint = validateUploadConstraints(idol.images || [], 
+        file.type.startsWith('video/') ? 'video' : 'image'
+      );
+      
+      if (!constraint.canUpload) {
+        message.error(constraint.message);
+        return;
+      }
+
       // Validate file before upload
-      if (validateImageFile) {
-        validateImageFile(file);
+      if (validateMediaFile) {
+        validateMediaFile(file, idol.images || [], index);
       }
 
       // Set loading state for this specific index
@@ -90,29 +104,29 @@ const AddGaneshIdolDialog = ({
       newImages[index] = 'loading';
       handleChange('images', newImages);
 
-      // Upload to cloudinary
-      let imageUrl;
+      // Upload to cloudinary with auto resource type detection
+      let mediaUrl;
       if (uploadToCloudinary) {
-        imageUrl = await uploadToCloudinary(file);
+        mediaUrl = await uploadToCloudinary(file, 'auto');
       } else {
         throw new Error('Upload service not available');
       }
 
       // Update with actual URL
       const updatedImages = [...(idol.images || Array(8).fill(''))];
-      updatedImages[index] = imageUrl;
+      updatedImages[index] = mediaUrl;
       handleChange('images', updatedImages);
 
-      message.success('Image uploaded successfully!');
+      message.success(`${file.type.startsWith('video/') ? 'Video' : 'Image'} uploaded successfully!`);
     } catch (error) {
-      console.error('Error uploading image:', error);
+      console.error('Error uploading media:', error);
       
       // Reset loading state on error
       const resetImages = [...(idol.images || Array(8).fill(''))];
       resetImages[index] = '';
       handleChange('images', resetImages);
       
-      message.error(error.message || 'Failed to upload image');
+      message.error(error.message || 'Failed to upload file');
     } finally {
       setUploadingIndex(null);
     }
@@ -152,8 +166,9 @@ const calculateAdvancePreview = () => {
 
   // Image upload component
   const ImageUploadCard = ({ index }) => {
-    const imageUrl = idol.images?.[index];
-    const isLoading = uploadingIndex === index || imageUrl === 'loading';
+    const mediaUrl = idol.images?.[index];
+    const isLoading = uploadingIndex === index || mediaUrl === 'loading';
+    const isVideo = mediaUrl && isVideoUrl(mediaUrl);
 
     return (
       <Card
@@ -162,7 +177,7 @@ const calculateAdvancePreview = () => {
           border: '2px dashed #FFB74D',
           borderRadius: '8px',
           position: 'relative',
-          cursor: !imageUrl ? 'pointer' : 'default',
+          cursor: !mediaUrl ? 'pointer' : 'default',
         }}
         bodyStyle={{ 
           padding: 0, 
@@ -172,7 +187,7 @@ const calculateAdvancePreview = () => {
           justifyContent: 'center' 
         }}
         onClick={() => {
-          if (!imageUrl && !isLoading) {
+          if (!mediaUrl && !isLoading) {
             document.getElementById(`image-upload-${index}`).click();
           }
         }}
@@ -184,18 +199,35 @@ const calculateAdvancePreview = () => {
               Uploading...
             </div>
           </div>
-        ) : imageUrl ? (
+        ) : mediaUrl ? (
           <>
-            <img
-              src={imageUrl}
-              alt={`Ganesh Idol ${index + 1}`}
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                borderRadius: '6px',
-              }}
-            />
+            {isVideo ? (
+              <video
+                src={mediaUrl}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  borderRadius: '6px',
+                }}
+                controls={false}
+                muted
+                loop
+                onMouseEnter={(e) => e.target.play()}
+                onMouseLeave={(e) => e.target.pause()}
+              />
+            ) : (
+              <img
+                src={mediaUrl}
+                alt={`Ganesh Idol ${index + 1}`}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  borderRadius: '6px',
+                }}
+              />
+            )}
             <Button
               type="primary"
               danger
@@ -226,11 +258,26 @@ const calculateAdvancePreview = () => {
                 PRIMARY
               </div>
             )}
+            {isVideo && (
+              <div style={{
+                position: 'absolute',
+                top: '4px',
+                left: '4px',
+                background: 'rgba(231, 76, 60, 0.9)',
+                color: 'white',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                fontSize: '10px',
+                fontWeight: 'bold'
+              }}>
+                VIDEO
+              </div>
+            )}
           </>
         ) : (
           <div style={{ textAlign: 'center' }}>
             <CloudUploadOutlined style={{ fontSize: '32px', color: '#FF8F00' }} />
-            <div style={{ marginTop: 8, color: '#FF6F00' }}>Upload Image</div>
+            <div style={{ marginTop: 8, color: '#FF6F00' }}>Upload Image/Video</div>
           </div>
         )}
         
@@ -238,7 +285,7 @@ const calculateAdvancePreview = () => {
           type="file"
           id={`image-upload-${index}`}
           style={{ display: 'none' }}
-          accept="image/jpeg,image/png,image/gif,image/webp"
+          accept="image/jpeg,image/png,image/gif,image/webp,image/bmp,video/mp4,video/webm,video/mov,video/avi"
           onChange={(e) => handleImageChange(e, index)}
         />
       </Card>
