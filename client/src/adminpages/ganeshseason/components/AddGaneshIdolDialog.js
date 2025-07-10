@@ -1,4 +1,4 @@
-// client/src/adminpages/ganeshseason/components/AddGaneshIdolDialog.js
+// Enhanced AddGaneshIdolDialog.js - Now supports both images and videos
 import React, { useState } from 'react';
 import {
   Modal,
@@ -17,6 +17,9 @@ import {
   Tag,
   Alert,
   message,
+  Tabs,
+  Progress,
+  Tooltip,
 } from 'antd';
 import {
   PlusOutlined,
@@ -32,32 +35,25 @@ import {
   ClockCircleOutlined,
   DollarOutlined,
   LoadingOutlined,
+  VideoCameraOutlined,
+  PlayCircleOutlined,
+  PictureOutlined,
 } from '@ant-design/icons';
+
+// Import enhanced Cloudinary utilities with video support
+import { 
+  uploadToCloudinary, 
+  validateImageFile,
+  uploadVideoToCloudinary,
+  validateVideoFile,
+  getVideoMetadata,
+  formatDuration
+} from '../../../utils/cloudinary';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
 const { Option } = Select;
-
-// Import Cloudinary utilities with try-catch for safety
-let uploadToCloudinary, validateMediaFile, isVideoUrl, validateUploadConstraints;
-try {
-  const cloudinaryUtils = require('../../../utils/cloudinary');
-  uploadToCloudinary = cloudinaryUtils.uploadToCloudinary;
-  validateMediaFile = cloudinaryUtils.validateMediaFile;
-  isVideoUrl = cloudinaryUtils.isVideoUrl;
-  validateUploadConstraints = cloudinaryUtils.validateUploadConstraints;
-} catch (error) {
-  console.warn('Cloudinary utils not found, using fallback');
-  // Fallback functions
-  uploadToCloudinary = async (file) => {
-    throw new Error('Cloudinary not configured');
-  };
-  validateMediaFile = (file) => {
-    return true;
-  };
-  isVideoUrl = () => false;
-  validateUploadConstraints = () => ({ canUpload: true, message: '' });
-}
+const { TabPane } = Tabs;
 
 const AddGaneshIdolDialog = ({
   open,
@@ -70,32 +66,27 @@ const AddGaneshIdolDialog = ({
   const [features, setFeatures] = useState(idol.features || []);
   const [newFeature, setNewFeature] = useState('');
   const [uploadingIndex, setUploadingIndex] = useState(null);
-
+  const [uploadingVideoIndex, setUploadingVideoIndex] = useState(null);
+  
+  // NEW: Video-related states
+  const [videoMetadata, setVideoMetadata] = useState({});
+  const [videoUploadProgress, setVideoUploadProgress] = useState({});
+  
   // Function to handle form field changes
   const handleChange = (field, value) => {
     setIdol({ ...idol, [field]: value });
     form.setFieldsValue({ [field]: value });
   };
 
-  // Updated handleImageChange function
+  // ENHANCED: Handle image upload (existing functionality)
   const handleImageChange = async (e, index) => {
     try {
       const file = e.target.files[0];
       if (!file) return;
 
-      // Check upload constraints first
-      const constraint = validateUploadConstraints(idol.images || [], 
-        file.type.startsWith('video/') ? 'video' : 'image'
-      );
-      
-      if (!constraint.canUpload) {
-        message.error(constraint.message);
-        return;
-      }
-
       // Validate file before upload
-      if (validateMediaFile) {
-        validateMediaFile(file, idol.images || [], index);
+      if (validateImageFile) {
+        validateImageFile(file);
       }
 
       // Set loading state for this specific index
@@ -104,42 +95,124 @@ const AddGaneshIdolDialog = ({
       newImages[index] = 'loading';
       handleChange('images', newImages);
 
-      // Upload to cloudinary with auto resource type detection
-      let mediaUrl;
+      // Upload to cloudinary
+      let imageUrl;
       if (uploadToCloudinary) {
-        mediaUrl = await uploadToCloudinary(file, 'auto');
+        imageUrl = await uploadToCloudinary(file);
       } else {
         throw new Error('Upload service not available');
       }
 
       // Update with actual URL
       const updatedImages = [...(idol.images || Array(8).fill(''))];
-      updatedImages[index] = mediaUrl;
+      updatedImages[index] = imageUrl;
       handleChange('images', updatedImages);
 
-      message.success(`${file.type.startsWith('video/') ? 'Video' : 'Image'} uploaded successfully!`);
+      message.success('Image uploaded successfully!');
     } catch (error) {
-      console.error('Error uploading media:', error);
+      console.error('Error uploading image:', error);
       
       // Reset loading state on error
       const resetImages = [...(idol.images || Array(8).fill(''))];
       resetImages[index] = '';
       handleChange('images', resetImages);
       
-      message.error(error.message || 'Failed to upload file');
+      message.error(error.message || 'Failed to upload image');
     } finally {
       setUploadingIndex(null);
     }
   };
 
-  // Remove image
+  // NEW: Handle video upload
+  const handleVideoChange = async (e, index) => {
+    try {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      // Validate video file
+      validateVideoFile(file);
+
+      // Get video metadata
+      const metadata = await getVideoMetadata(file);
+      console.log('Video metadata:', metadata);
+      
+      // Set loading state
+      setUploadingVideoIndex(index);
+      const newVideos = [...(idol.videos || Array(5).fill(null))];
+      newVideos[index] = { 
+        loading: true, 
+        progress: 0,
+        filename: file.name,
+        size: file.size 
+      };
+      handleChange('videos', newVideos);
+
+      // Upload video to Cloudinary
+      const videoData = await uploadVideoToCloudinary(file, {
+        quality: 'auto',
+        thumbnailTime: 2 // Generate thumbnail at 2 seconds
+      });
+
+      // Update with video data
+      const updatedVideos = [...(idol.videos || Array(5).fill(null))];
+      updatedVideos[index] = {
+        id: videoData.id,
+        src: videoData.src,
+        thumbnail: videoData.thumbnail,
+        title: `${idol.name || 'Ganesh Idol'} - Video ${index + 1}`,
+        duration: videoData.duration,
+        format: videoData.format,
+        size: videoData.size,
+        width: videoData.width,
+        height: videoData.height,
+        qualities: videoData.qualities,
+        uploadedAt: new Date().toISOString()
+      };
+      handleChange('videos', updatedVideos);
+
+      // Store metadata for display
+      setVideoMetadata(prev => ({
+        ...prev,
+        [index]: metadata
+      }));
+
+      message.success('Video uploaded successfully!');
+    } catch (error) {
+      console.error('Error uploading video:', error);
+      
+      // Reset loading state on error
+      const resetVideos = [...(idol.videos || Array(5).fill(null))];
+      resetVideos[index] = null;
+      handleChange('videos', resetVideos);
+      
+      message.error(error.message || 'Failed to upload video');
+    } finally {
+      setUploadingVideoIndex(null);
+    }
+  };
+
+  // Remove image (existing)
   const removeImage = (index) => {
     const newImages = [...(idol.images || Array(8).fill(''))];
     newImages[index] = '';
     handleChange('images', newImages);
   };
 
-  // Add feature
+  // NEW: Remove video
+  const removeVideo = (index) => {
+    const newVideos = [...(idol.videos || Array(5).fill(null))];
+    newVideos[index] = null;
+    handleChange('videos', newVideos);
+    
+    // Remove metadata
+    setVideoMetadata(prev => {
+      const updated = { ...prev };
+      delete updated[index];
+      return updated;
+    });
+  };
+
+  // Add feature (existing)
   const addFeature = () => {
     if (newFeature.trim() && !features.includes(newFeature.trim())) {
       const updatedFeatures = [...features, newFeature.trim()];
@@ -149,35 +222,35 @@ const AddGaneshIdolDialog = ({
     }
   };
 
-  // Remove feature
+  // Remove feature (existing)
   const removeFeature = (featureToRemove) => {
     const updatedFeatures = features.filter(feature => feature !== featureToRemove);
     setFeatures(updatedFeatures);
     handleChange('features', updatedFeatures);
   };
 
-const calculateAdvancePreview = () => {
-  if (!idol.price) return 0;
-  if (idol.price >= 8000 && idol.price <= 10000) return 2000;
-  if (idol.price > 10000 && idol.price <= 15000) return 2500;
-  if (idol.price > 15000) return 3000;
-  return 2000; // Default
-};
+  // Calculate advance preview (existing)
+  const calculateAdvancePreview = () => {
+    if (!idol.price) return 0;
+    if (idol.price >= 8000 && idol.price <= 10000) return 2000;
+    if (idol.price > 10000 && idol.price <= 15000) return 2500;
+    if (idol.price > 15000) return 3000;
+    return 2000; // Default
+  };
 
-  // Image upload component
-  const ImageUploadCard = ({ index }) => {
-    const mediaUrl = idol.images?.[index];
-    const isLoading = uploadingIndex === index || mediaUrl === 'loading';
-    const isVideo = mediaUrl && isVideoUrl(mediaUrl);
+  // NEW: Video upload card component
+  const VideoUploadCard = ({ index }) => {
+    const videoData = idol.videos?.[index];
+    const isLoading = uploadingVideoIndex === index || videoData?.loading;
 
     return (
       <Card
         style={{
-          height: '140px',
-          border: '2px dashed #FFB74D',
+          height: '160px',
+          border: '2px dashed #FF8F00',
           borderRadius: '8px',
           position: 'relative',
-          cursor: !mediaUrl ? 'pointer' : 'default',
+          cursor: !videoData ? 'pointer' : 'default',
         }}
         bodyStyle={{ 
           padding: 0, 
@@ -187,7 +260,151 @@ const calculateAdvancePreview = () => {
           justifyContent: 'center' 
         }}
         onClick={() => {
-          if (!mediaUrl && !isLoading) {
+          if (!videoData && !isLoading) {
+            document.getElementById(`video-upload-${index}`).click();
+          }
+        }}
+      >
+        {isLoading ? (
+          <div style={{ textAlign: 'center', padding: '16px' }}>
+            <LoadingOutlined style={{ fontSize: '32px', color: '#FF8F00' }} />
+            <div style={{ marginTop: '8px', color: '#FF8F00', fontSize: '12px' }}>
+              Uploading video...
+            </div>
+            {videoData?.filename && (
+              <div style={{ marginTop: '4px', fontSize: '10px', color: '#666' }}>
+                {videoData.filename}
+              </div>
+            )}
+          </div>
+        ) : videoData ? (
+          <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+            {/* Video Thumbnail */}
+            <img
+              src={videoData.thumbnail}
+              alt={videoData.title || `Video ${index + 1}`}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                borderRadius: '6px',
+              }}
+              onError={(e) => {
+                e.target.style.backgroundColor = '#f0f0f0';
+                e.target.style.display = 'flex';
+                e.target.style.alignItems = 'center';
+                e.target.style.justifyContent = 'center';
+                e.target.innerHTML = '🎥';
+              }}
+            />
+            
+            {/* Play Icon Overlay */}
+            <div style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              color: 'white',
+              fontSize: '32px',
+              textShadow: '0 2px 8px rgba(0,0,0,0.6)',
+            }}>
+              <PlayCircleOutlined />
+            </div>
+
+            {/* Video Info */}
+            <div style={{
+              position: 'absolute',
+              bottom: '4px',
+              left: '4px',
+              right: '4px',
+              background: 'rgba(0,0,0,0.7)',
+              color: 'white',
+              padding: '4px 8px',
+              borderRadius: '4px',
+              fontSize: '10px',
+            }}>
+              <div>{videoData.duration || 'Video'}</div>
+              <div>{videoData.format?.toUpperCase() || 'MP4'}</div>
+            </div>
+
+            {/* Primary Video Badge */}
+            {index === 0 && (
+              <div style={{
+                position: 'absolute',
+                top: '4px',
+                left: '4px',
+                background: 'rgba(255, 143, 0, 0.9)',
+                color: 'white',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                fontSize: '10px',
+                fontWeight: 'bold'
+              }}>
+                PRIMARY
+              </div>
+            )}
+
+            {/* Delete Button */}
+            <Button
+              type="primary"
+              danger
+              size="small"
+              icon={<DeleteOutlined />}
+              style={{
+                position: 'absolute',
+                top: '4px',
+                right: '4px',
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                removeVideo(index);
+              }}
+            />
+          </div>
+        ) : (
+          <div style={{ textAlign: 'center' }}>
+            <VideoCameraOutlined style={{ fontSize: '32px', color: '#FF8F00' }} />
+            <div style={{ marginTop: 8, color: '#FF8F00' }}>Upload Video</div>
+            <div style={{ marginTop: 4, fontSize: '10px', color: '#999' }}>
+              MP4, WebM, MOV (Max 100MB)
+            </div>
+          </div>
+        )}
+        
+        <input
+          type="file"
+          id={`video-upload-${index}`}
+          style={{ display: 'none' }}
+          accept="video/*"
+          onChange={(e) => handleVideoChange(e, index)}
+        />
+      </Card>
+    );
+  };
+
+  // Image upload component (existing with minor enhancements)
+  const ImageUploadCard = ({ index }) => {
+    const imageUrl = idol.images?.[index];
+    const isLoading = uploadingIndex === index || imageUrl === 'loading';
+
+    return (
+      <Card
+        style={{
+          height: '140px',
+          border: '2px dashed #FFB74D',
+          borderRadius: '8px',
+          position: 'relative',
+          cursor: !imageUrl ? 'pointer' : 'default',
+        }}
+        bodyStyle={{ 
+          padding: 0, 
+          height: '100%', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center' 
+        }}
+        onClick={() => {
+          if (!imageUrl && !isLoading) {
             document.getElementById(`image-upload-${index}`).click();
           }
         }}
@@ -199,35 +416,18 @@ const calculateAdvancePreview = () => {
               Uploading...
             </div>
           </div>
-        ) : mediaUrl ? (
+        ) : imageUrl ? (
           <>
-            {isVideo ? (
-              <video
-                src={mediaUrl}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  borderRadius: '6px',
-                }}
-                controls={false}
-                muted
-                loop
-                onMouseEnter={(e) => e.target.play()}
-                onMouseLeave={(e) => e.target.pause()}
-              />
-            ) : (
-              <img
-                src={mediaUrl}
-                alt={`Ganesh Idol ${index + 1}`}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  borderRadius: '6px',
-                }}
-              />
-            )}
+            <img
+              src={imageUrl}
+              alt={`Ganesh Idol ${index + 1}`}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                borderRadius: '6px',
+              }}
+            />
             <Button
               type="primary"
               danger
@@ -258,26 +458,11 @@ const calculateAdvancePreview = () => {
                 PRIMARY
               </div>
             )}
-            {isVideo && (
-              <div style={{
-                position: 'absolute',
-                top: '4px',
-                left: '4px',
-                background: 'rgba(231, 76, 60, 0.9)',
-                color: 'white',
-                padding: '2px 6px',
-                borderRadius: '4px',
-                fontSize: '10px',
-                fontWeight: 'bold'
-              }}>
-                VIDEO
-              </div>
-            )}
           </>
         ) : (
           <div style={{ textAlign: 'center' }}>
             <CloudUploadOutlined style={{ fontSize: '32px', color: '#FF8F00' }} />
-            <div style={{ marginTop: 8, color: '#FF6F00' }}>Upload Image/Video</div>
+            <div style={{ marginTop: 8, color: '#FF6F00' }}>Upload Image</div>
           </div>
         )}
         
@@ -285,7 +470,7 @@ const calculateAdvancePreview = () => {
           type="file"
           id={`image-upload-${index}`}
           style={{ display: 'none' }}
-          accept="image/jpeg,image/png,image/gif,image/webp,image/bmp,video/mp4,video/webm,video/mov,video/avi"
+          accept="image/jpeg,image/png,image/gif,image/webp"
           onChange={(e) => handleImageChange(e, index)}
         />
       </Card>
@@ -302,7 +487,7 @@ const calculateAdvancePreview = () => {
       }
       open={open}
       onCancel={onClose}
-      width={900}
+      width={1000} // Increased width for video support
       footer={[
         <Button key="cancel" onClick={onClose} size="large">
           Cancel
@@ -330,7 +515,7 @@ const calculateAdvancePreview = () => {
       }}
     >
       <Form form={form} layout="vertical" style={{ marginTop: '16px' }}>
-        {/* Basic Information */}
+        {/* Basic Information - Same as before */}
         <Card 
           title={
             <Space>
@@ -386,7 +571,7 @@ const calculateAdvancePreview = () => {
           </Form.Item>
         </Card>
 
-        {/* Pricing & Business */}
+        {/* Pricing & Business - Same as before */}
         <Card 
           title={
             <Space>
@@ -397,25 +582,25 @@ const calculateAdvancePreview = () => {
           style={{ marginBottom: '16px', borderColor: '#FFE0B2' }}
         >
           <Row gutter={16}>
-  <Col span={12}>
-    <Form.Item
-      label={<Text strong>Price (₹) *</Text>}
-      name="price"
-      rules={[{ required: true, message: 'Price is required' }]}
-    >
-      <InputNumber
-        style={{ width: '100%' }}
-        value={idol.price}
-        onChange={value => handleChange('price', value)}
-        formatter={value => `₹ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-        parser={value => value.replace(/₹\s?|(,*)/g, '')}
-        placeholder="15000"
-        min={1000}
-        max={50000}
-      />
-    </Form.Item>
-  </Col>
-  <Col span={12}>
+            <Col span={12}>
+              <Form.Item
+                label={<Text strong>Price (₹) *</Text>}
+                name="price"
+                rules={[{ required: true, message: 'Price is required' }]}
+              >
+                <InputNumber
+                  style={{ width: '100%' }}
+                  value={idol.price}
+                  onChange={value => handleChange('price', value)}
+                  formatter={value => `₹ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                  parser={value => value.replace(/₹\s?|(,*)/g, '')}
+                  placeholder="15000"
+                  min={1000}
+                  max={50000}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
               <Form.Item label={<Text strong>Advance % *</Text>} name="advancePercentage">
                 <InputNumber
                   style={{ width: '100%' }}
@@ -433,18 +618,18 @@ const calculateAdvancePreview = () => {
 
           {/* Advance Preview */}
           {idol.price && (
-  <Alert
-    message={
-      <div>
-        <Text strong>💰 Advance Amount Preview: </Text>
-        <Text style={{ color: '#4CAF50', fontWeight: 'bold' }}>
-          ₹{calculateAdvancePreview().toLocaleString()} 
-        </Text>
-        <Text type="secondary">
-          {' '}(for price of ₹{idol.price.toLocaleString()})
-        </Text>
-      </div>
-    }
+            <Alert
+              message={
+                <div>
+                  <Text strong>💰 Advance Amount Preview: </Text>
+                  <Text style={{ color: '#4CAF50', fontWeight: 'bold' }}>
+                    ₹{calculateAdvancePreview().toLocaleString()} 
+                  </Text>
+                  <Text type="secondary">
+                    {' '}(for price of ₹{idol.price.toLocaleString()})
+                  </Text>
+                </div>
+              }
               type="info"
               style={{ marginTop: '8px' }}
             />
@@ -479,7 +664,7 @@ const calculateAdvancePreview = () => {
           </Row>
         </Card>
 
-        {/* Physical Specifications */}
+        {/* Physical Specifications - Same as before */}
         <Card 
           title={
             <Space>
@@ -548,7 +733,7 @@ const calculateAdvancePreview = () => {
           </Row>
         </Card>
 
-        {/* Features */}
+        {/* Features - Same as before */}
         <Card 
           title={
             <Space>
@@ -599,36 +784,85 @@ const calculateAdvancePreview = () => {
           )}
         </Card>
 
-        {/* Image Upload Section */}
+        {/* ENHANCED: Media Upload Section with Tabs */}
         <Card 
           title={
             <Space>
               <CameraOutlined style={{ color: '#9C27B0' }} />
-              <span style={{ color: '#E65100' }}>Ganesh Idol Images (Upload up to 8 images)</span>
+              <span style={{ color: '#E65100' }}>Media Gallery (Images & Videos)</span>
             </Space>
           }
           style={{ marginBottom: '16px', borderColor: '#FFE0B2' }}
         >
           <Alert
-            message="Image Guidelines"
-            description="Upload high-quality images showing different angles of the Ganesh idol. First image will be the primary display image. Supported formats: JPEG, PNG, GIF, WebP (Max 5MB each)"
+            message="Media Guidelines"
+            description="Upload high-quality images and videos showcasing different angles and details of the Ganesh idol. First image will be the primary display image."
             type="info"
             style={{ marginBottom: '16px' }}
             icon={<InfoCircleOutlined />}
           />
-          
-          <Row gutter={[16, 16]}>
-            {Array.from({ length: 8 }).map((_, index) => (
-              <Col span={6} key={index}>
-                <ImageUploadCard index={index} />
-                {index === 0 && (
-                  <Text type="secondary" style={{ fontSize: '10px', textAlign: 'center', display: 'block', marginTop: '4px' }}>
-                    Primary Image
-                  </Text>
-                )}
-              </Col>
-            ))}
-          </Row>
+
+          <Tabs defaultActiveKey="images" type="card">
+            {/* Images Tab */}
+            <TabPane 
+              tab={
+                <Space>
+                  <PictureOutlined />
+                  Images (0-8)
+                </Space>
+              } 
+              key="images"
+            >
+              <div style={{ marginBottom: '12px' }}>
+                <Text type="secondary">
+                  Supported formats: JPEG, PNG, GIF, WebP (Max 10MB each)
+                </Text>
+              </div>
+              
+              <Row gutter={[16, 16]}>
+                {Array.from({ length: 8 }).map((_, index) => (
+                  <Col span={6} key={index}>
+                    <ImageUploadCard index={index} />
+                    {index === 0 && (
+                      <Text type="secondary" style={{ fontSize: '10px', textAlign: 'center', display: 'block', marginTop: '4px' }}>
+                        Primary Image
+                      </Text>
+                    )}
+                  </Col>
+                ))}
+              </Row>
+            </TabPane>
+
+            {/* Videos Tab */}
+            <TabPane 
+              tab={
+                <Space>
+                  <VideoCameraOutlined />
+                  Videos (0-5)
+                </Space>
+              } 
+              key="videos"
+            >
+              <div style={{ marginBottom: '12px' }}>
+                <Text type="secondary">
+                  Supported formats: MP4, WebM, MOV, AVI (Max 100MB each, 5 minutes duration)
+                </Text>
+              </div>
+              
+              <Row gutter={[16, 16]}>
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <Col span={8} key={index}>
+                    <VideoUploadCard index={index} />
+                    {index === 0 && (
+                      <Text type="secondary" style={{ fontSize: '10px', textAlign: 'center', display: 'block', marginTop: '4px' }}>
+                        Primary Video
+                      </Text>
+                    )}
+                  </Col>
+                ))}
+              </Row>
+            </TabPane>
+          </Tabs>
         </Card>
       </Form>
     </Modal>

@@ -1,7 +1,18 @@
-// ProductImageGallery.jsx
+// Enhanced ProductImageGallery.jsx - Supports both images and videos
 import React, { useState, useMemo, useEffect, memo } from 'react';
-import { Card, Image, Button } from 'antd';
-import { ZoomInOutlined } from '@ant-design/icons';
+import { Card, Image, Button, Tabs, Badge, Typography, Grid, Space, Tooltip } from 'antd';
+import { 
+  ZoomInOutlined, 
+  PlayCircleOutlined, 
+  PictureOutlined, 
+  VideoCameraOutlined,
+  FullscreenOutlined 
+} from '@ant-design/icons';
+import VideoPlayer from './VideoPlayer'; // Import our custom video player
+
+const { Text } = Typography;
+const { TabPane } = Tabs;
+const { useBreakpoint } = Grid;
 
 // Terracotta theme colors
 const colors = {
@@ -20,7 +31,7 @@ const colors = {
   error: '#F44336',
 };
 
-// Custom styles for the image gallery
+// Custom styles for the enhanced gallery
 const customStyles = {
   imageCard: {
     borderRadius: '16px',
@@ -29,66 +40,399 @@ const customStyles = {
     background: `linear-gradient(135deg, rgba(255,255,255,0.9) 0%, ${colors.backgroundLight}30 100%)`,
     boxShadow: `0 8px 32px ${colors.primary}15`,
   },
+  videoThumbnail: {
+    position: 'relative',
+    borderRadius: '8px',
+    overflow: 'hidden',
+    cursor: 'pointer',
+    transition: 'transform 0.3s ease',
+  },
+  playOverlay: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    color: 'white',
+    fontSize: '32px',
+    textShadow: '0 2px 8px rgba(0,0,0,0.6)',
+    transition: 'all 0.3s ease',
+  },
+  mediaThumbnail: {
+    width: '80px',
+    height: '80px',
+    borderRadius: '8px',
+    overflow: 'hidden',
+    cursor: 'pointer',
+    transition: 'all 0.3s ease',
+    flexShrink: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: '#f8f9fa',
+    position: 'relative',
+  },
 };
 
-// Image Gallery Component
-const ProductImageGallery = memo(({ images, productName }) => {
-  const [selectedImage, setSelectedImage] = useState(0);
+// Enhanced Media Gallery Component
+const ProductImageGallery = memo(({ 
+  images = [], 
+  videos = [], 
+  productName,
+  defaultMediaType = 'mixed' // 'images', 'videos', 'mixed'
+}) => {
+  const screens = useBreakpoint();
+  const isMobile = !screens.md;
+
+  const [selectedMediaIndex, setSelectedMediaIndex] = useState(0);
+  const [selectedMediaType, setSelectedMediaType] = useState('image'); // 'image' or 'video'
   const [previewVisible, setPreviewVisible] = useState(false);
+  const [activeTab, setActiveTab] = useState('all');
+  const [isVideoPlayerVisible, setIsVideoPlayerVisible] = useState(false);
 
-  const imageList = useMemo(() => {
-    if (!images || images.length === 0) {
-      return [`https://via.placeholder.com/500x500/${colors.primary.slice(1)}/FFFFFF?text=${encodeURIComponent(productName || 'Product')}`];
-    }
-    return images;
-  }, [images, productName]);
+  // Process and combine media items
+  const mediaItems = useMemo(() => {
+    const processedImages = (images || []).map((image, index) => ({
+      id: `image_${index}`,
+      type: 'image',
+      src: image,
+      thumbnail: image,
+      title: `${productName} - Image ${index + 1}`,
+      index: index,
+    }));
 
+    const processedVideos = (videos || []).map((video, index) => ({
+      id: `video_${index}`,
+      type: 'video',
+      src: video.src || video,
+      thumbnail: video.thumbnail || video.poster || `${video.src}#t=1`, // Get thumbnail from video at 1 second
+      title: video.title || `${productName} - Video ${index + 1}`,
+      poster: video.poster,
+      captions: video.captions || [],
+      duration: video.duration,
+      index: index,
+    }));
+
+    // Combine all media items
+    const allItems = [...processedImages, ...processedVideos];
+    
+    return {
+      all: allItems,
+      images: processedImages,
+      videos: processedVideos,
+    };
+  }, [images, videos, productName]);
+
+  // Set default selection
   useEffect(() => {
-    setSelectedImage(0);
-  }, [imageList]);
+    if (mediaItems.all.length > 0) {
+      const firstItem = mediaItems.all[0];
+      setSelectedMediaIndex(0);
+      setSelectedMediaType(firstItem.type);
+    }
+  }, [mediaItems.all]);
+
+  // Get current media lists based on active tab
+  const getCurrentMediaList = () => {
+    switch (activeTab) {
+      case 'images':
+        return mediaItems.images;
+      case 'videos':
+        return mediaItems.videos;
+      case 'all':
+      default:
+        return mediaItems.all;
+    }
+  };
+
+  const currentMediaList = getCurrentMediaList();
+  const selectedMedia = currentMediaList[selectedMediaIndex];
+
+  // Handle media selection
+  const handleMediaSelect = (index, mediaType) => {
+    setSelectedMediaIndex(index);
+    setSelectedMediaType(mediaType);
+    setIsVideoPlayerVisible(mediaType === 'video');
+  };
+
+  // Handle tab change
+  const handleTabChange = (key) => {
+    setActiveTab(key);
+    setSelectedMediaIndex(0);
+    
+    // Set media type based on tab
+    const newMediaList = key === 'images' ? mediaItems.images : 
+                         key === 'videos' ? mediaItems.videos : 
+                         mediaItems.all;
+    
+    if (newMediaList.length > 0) {
+      setSelectedMediaType(newMediaList[0].type);
+      setIsVideoPlayerVisible(newMediaList[0].type === 'video');
+    }
+  };
+
+  // Video thumbnail component
+  const VideoThumbnailCard = ({ video, index, isSelected }) => (
+    <div
+      style={{
+        ...customStyles.mediaThumbnail,
+        border: isSelected 
+          ? `3px solid ${colors.primary}` 
+          : `2px solid ${colors.divider}`,
+      }}
+      onClick={() => handleMediaSelect(index, 'video')}
+    >
+      <img
+        src={video.thumbnail}
+        alt={video.title}
+        style={{ 
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+        }}
+        onError={(e) => {
+          // Fallback for video thumbnail
+          e.target.style.display = 'none';
+          e.target.nextSibling.style.display = 'flex';
+        }}
+      />
+      <div
+        style={{
+          display: 'none',
+          width: '100%',
+          height: '100%',
+          backgroundColor: colors.primaryLight,
+          color: 'white',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexDirection: 'column',
+        }}
+      >
+        <VideoCameraOutlined style={{ fontSize: '24px', marginBottom: '4px' }} />
+        <Text style={{ color: 'white', fontSize: '10px' }}>Video</Text>
+      </div>
+      
+      {/* Play Icon Overlay */}
+      <div style={customStyles.playOverlay}>
+        <PlayCircleOutlined />
+      </div>
+      
+      {/* Duration Badge */}
+      {video.duration && (
+        <div style={{
+          position: 'absolute',
+          bottom: '4px',
+          right: '4px',
+          background: 'rgba(0,0,0,0.7)',
+          color: 'white',
+          padding: '2px 4px',
+          borderRadius: '4px',
+          fontSize: '10px',
+        }}>
+          {video.duration}
+        </div>
+      )}
+    </div>
+  );
+
+  // Image thumbnail component
+  const ImageThumbnailCard = ({ image, index, isSelected }) => (
+    <div
+      style={{
+        ...customStyles.mediaThumbnail,
+        border: isSelected 
+          ? `3px solid ${colors.primary}` 
+          : `2px solid ${colors.divider}`,
+      }}
+      onClick={() => handleMediaSelect(index, 'image')}
+    >
+      <Image
+        src={image.src}
+        alt={image.title}
+        style={{ 
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+        }}
+        preview={false}
+      />
+      
+      {/* Primary Image Badge */}
+      {index === 0 && activeTab === 'images' && (
+        <div style={{
+          position: 'absolute',
+          bottom: '4px',
+          left: '4px',
+          background: 'rgba(255, 143, 0, 0.9)',
+          color: 'white',
+          padding: '2px 6px',
+          borderRadius: '4px',
+          fontSize: '10px',
+          fontWeight: 'bold'
+        }}>
+          PRIMARY
+        </div>
+      )}
+    </div>
+  );
+
+  // Mixed thumbnail component for 'all' tab
+  const MixedThumbnailCard = ({ media, index, isSelected }) => {
+    if (media.type === 'video') {
+      return <VideoThumbnailCard video={media} index={index} isSelected={isSelected} />;
+    } else {
+      return <ImageThumbnailCard image={media} index={index} isSelected={isSelected} />;
+    }
+  };
+
+  // No media fallback
+  if (mediaItems.all.length === 0) {
+    return (
+      <Card style={customStyles.imageCard} bodyStyle={{ padding: '16px' }}>
+        <div style={{ 
+          height: '400px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexDirection: 'column',
+          color: colors.textSecondary 
+        }}>
+          <PictureOutlined style={{ fontSize: '64px', marginBottom: '16px' }} />
+          <Text type="secondary">No media available</Text>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card style={customStyles.imageCard} bodyStyle={{ padding: '16px' }}>
-      {/* Main Image */}
+      {/* Main Media Display */}
       <div style={{ 
         position: 'relative',
         marginBottom: '16px',
         borderRadius: '12px',
         overflow: 'hidden',
         background: '#f8f9fa',
-        height: '500px',
+        height: isMobile ? '300px' : '500px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        cursor: 'pointer',
       }}>
-        <Image
-          src={imageList[selectedImage]}
-          alt={productName}
-          style={{ 
-            maxWidth: '100%',
-            maxHeight: '100%',
-            objectFit: 'contain',
-            padding: '10px',
-          }}
-          preview={false}
-          onClick={() => setPreviewVisible(true)}
-        />
-        <Button
-          type="primary"
-          shape="circle"
-          icon={<ZoomInOutlined />}
-          style={{
-            position: 'absolute',
-            top: '16px',
-            right: '16px',
-            backgroundColor: 'rgba(255,255,255,0.9)',
-            color: colors.primary,
-            border: 'none',
-          }}
-          onClick={() => setPreviewVisible(true)}
-        />
+        {selectedMedia && selectedMedia.type === 'video' && isVideoPlayerVisible ? (
+          <VideoPlayer
+            src={selectedMedia.src}
+            poster={selectedMedia.poster}
+            title={selectedMedia.title}
+            captions={selectedMedia.captions}
+            style={{ width: '100%', height: '100%' }}
+            onPlay={() => console.log('Video started playing')}
+            onPause={() => console.log('Video paused')}
+            onEnded={() => console.log('Video ended')}
+          />
+        ) : selectedMedia && selectedMedia.type === 'image' ? (
+          <>
+            <Image
+              src={selectedMedia.src}
+              alt={selectedMedia.title}
+              style={{ 
+                maxWidth: '100%',
+                maxHeight: '100%',
+                objectFit: 'contain',
+                borderRadius: '8px',
+              }}
+              preview={false}
+              onClick={() => setPreviewVisible(true)}
+            />
+            <Button
+              type="primary"
+              shape="circle"
+              icon={<ZoomInOutlined />}
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                backgroundColor: 'rgba(255,255,255,0.9)',
+                color: colors.primary,
+                border: 'none',
+              }}
+              onClick={() => setPreviewVisible(true)}
+            />
+          </>
+        ) : selectedMedia && selectedMedia.type === 'video' && !isVideoPlayerVisible ? (
+          <div 
+            style={{ 
+              position: 'relative', 
+              width: '100%', 
+              height: '100%',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            onClick={() => setIsVideoPlayerVisible(true)}
+          >
+            <img
+              src={selectedMedia.thumbnail}
+              alt={selectedMedia.title}
+              style={{ 
+                maxWidth: '100%',
+                maxHeight: '100%',
+                objectFit: 'contain',
+                borderRadius: '8px',
+              }}
+            />
+            <div style={{
+              ...customStyles.playOverlay,
+              fontSize: '64px',
+            }}>
+              <PlayCircleOutlined />
+            </div>
+          </div>
+        ) : null}
       </div>
+
+      {/* Media Navigation Tabs */}
+      {(mediaItems.images.length > 0 && mediaItems.videos.length > 0) && (
+        <Tabs 
+          activeKey={activeTab} 
+          onChange={handleTabChange}
+          style={{ marginBottom: '16px' }}
+          size={isMobile ? 'small' : 'default'}
+        >
+          <TabPane 
+            tab={
+              <Badge count={mediaItems.all.length} size="small" offset={[8, -2]}>
+                <Space>
+                  <PictureOutlined />
+                  All Media
+                </Space>
+              </Badge>
+            } 
+            key="all" 
+          />
+          <TabPane 
+            tab={
+              <Badge count={mediaItems.images.length} size="small" offset={[8, -2]}>
+                <Space>
+                  <PictureOutlined />
+                  Images
+                </Space>
+              </Badge>
+            } 
+            key="images" 
+          />
+          <TabPane 
+            tab={
+              <Badge count={mediaItems.videos.length} size="small" offset={[8, -2]}>
+                <Space>
+                  <VideoCameraOutlined />
+                  Videos
+                </Space>
+              </Badge>
+            } 
+            key="videos" 
+          />
+        </Tabs>
+      )}
 
       {/* Thumbnail Strip */}
       <div style={{ 
@@ -96,52 +440,65 @@ const ProductImageGallery = memo(({ images, productName }) => {
         gap: '8px',
         overflowX: 'auto',
         padding: '8px 0',
+        scrollbarWidth: 'thin',
       }}>
-        {imageList.map((image, index) => (
-          <div
-            key={index}
-            style={{
-              width: '80px',
-              height: '80px',
-              borderRadius: '8px',
-              overflow: 'hidden',
-              cursor: 'pointer',
-              border: selectedImage === index 
-                ? `3px solid ${colors.primary}` 
-                : `2px solid ${colors.divider}`,
-              transition: 'all 0.3s ease',
-              flexShrink: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: '#f8f9fa',
-            }}
-            onClick={() => setSelectedImage(index)}
-          >
-            <Image
-              src={image}
-              alt={`${productName} ${index + 1}`}
-              style={{ 
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-              }}
-              preview={false}
-            />
-          </div>
-        ))}
+        {currentMediaList.map((media, index) => {
+          const isSelected = index === selectedMediaIndex;
+          
+          return (
+            <div key={media.id}>
+              {activeTab === 'all' ? (
+                <MixedThumbnailCard 
+                  media={media} 
+                  index={index} 
+                  isSelected={isSelected}
+                />
+              ) : media.type === 'video' ? (
+                <VideoThumbnailCard 
+                  video={media} 
+                  index={index} 
+                  isSelected={isSelected}
+                />
+              ) : (
+                <ImageThumbnailCard 
+                  image={media} 
+                  index={index} 
+                  isSelected={isSelected}
+                />
+              )}
+            </div>
+          );
+        })}
       </div>
 
+      {/* Media Info */}
+      {selectedMedia && (
+        <div style={{ marginTop: '12px', textAlign: 'center' }}>
+          <Text type="secondary" style={{ fontSize: '12px' }}>
+            {selectedMedia.title} • {selectedMedia.type === 'video' ? 'Video' : 'Image'}
+            {activeTab === 'all' && ` • ${selectedMediaIndex + 1} of ${currentMediaList.length}`}
+          </Text>
+        </div>
+      )}
+
       {/* Image Preview Modal */}
-      <Image
-        style={{ display: 'none' }}
-        src={imageList[selectedImage]}
-        preview={{
-          visible: previewVisible,
-          onVisibleChange: setPreviewVisible,
-          src: imageList[selectedImage],
-        }}
-      />
+      {selectedMedia && selectedMedia.type === 'image' && (
+        <Image
+          style={{ display: 'none' }}
+          src={selectedMedia.src}
+          preview={{
+            visible: previewVisible,
+            onVisibleChange: setPreviewVisible,
+            src: selectedMedia.src,
+            mask: (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <FullscreenOutlined />
+                <span>View Full Size</span>
+              </div>
+            ),
+          }}
+        />
+      )}
     </Card>
   );
 });

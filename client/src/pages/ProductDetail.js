@@ -1,4 +1,4 @@
-// ProductDetail.jsx - Enhanced Main Component with Proper Mobile/Desktop Layout
+// Updated ProductDetail.jsx - Enhanced with Video Support
 import React, {
   useEffect,
   useState,
@@ -32,8 +32,8 @@ import {
 import { onAuthStateChanged } from 'firebase/auth';
 
 // Import helper components
-import ProductImageGallery from './ProductImageGallery';
-import ProductInfo, { MobileActions, ServiceFeatures, ProductDescription } from './ProductInfoSection';
+import ProductImageGallery from './ProductImageGallery'; // Enhanced with video support
+import ProductInfo, { MobileActions, ServiceFeatures } from './ProductInfoSection';
 import ProductTabs from './ProductTabs';
 
 // Import the FIXED cart utilities
@@ -89,7 +89,39 @@ const customStyles = {
   },
 };
 
-// ENHANCED Custom hook for product data - NOW SUPPORTS GANESH IDOLS
+// Helper function to process video data
+const processVideoData = (videos) => {
+  if (!videos || !Array.isArray(videos)) return [];
+  
+  return videos.map((video, index) => {
+    if (typeof video === 'string') {
+      // Simple video URL
+      return {
+        id: `video_${index}`,
+        src: video,
+        thumbnail: `${video}#t=1`, // Generate thumbnail from video at 1 second
+        title: `Product Video ${index + 1}`,
+        type: 'video',
+        captions: []
+      };
+    } else if (typeof video === 'object') {
+      // Full video object
+      return {
+        id: video.id || `video_${index}`,
+        src: video.src || video.url,
+        thumbnail: video.thumbnail || video.poster || `${video.src || video.url}#t=1`,
+        title: video.title || `Product Video ${index + 1}`,
+        poster: video.poster,
+        captions: video.captions || [],
+        duration: video.duration,
+        type: 'video'
+      };
+    }
+    return null;
+  }).filter(Boolean);
+};
+
+// ENHANCED Custom hook for product data - NOW SUPPORTS VIDEOS
 const useProductData = (productId, code) => {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -113,7 +145,7 @@ const useProductData = (productId, code) => {
 
           if (docSnap.exists()) {
             const data = docSnap.data();
-            // FIXED CODE:
+            // Process Ganesh idol data
             const idolData = {
               id: docSnap.id,
               ...data,
@@ -125,6 +157,7 @@ const useProductData = (productId, code) => {
               rating: Number(data.rating) || 4.5,
               reviews: Number(data.reviews) || 28,
               images: Array.isArray(data.images) ? data.images : [],
+              videos: processVideoData(data.videos), // ENHANCED: Process videos
               hyderabadOnly: false, // Ganesh idols can be shipped anywhere
               isGaneshIdol: true, // Flag to identify this as a Ganesh idol
               estimatedDays: Number(data.estimatedDays) || 7,
@@ -135,7 +168,7 @@ const useProductData = (productId, code) => {
             setError('Ganesh idol not found');
           }
         } else {
-          // Regular product logic (existing code)
+          // Regular product logic (ENHANCED with video support)
           docRef = doc(db, 'products', productId);
           docSnap = await getDoc(docRef);
 
@@ -149,12 +182,13 @@ const useProductData = (productId, code) => {
               rating: Number(data.rating) || 4.2,
               reviews: Number(data.reviews) || 156,
               images: Array.isArray(data.images) ? data.images : data.imgUrl ? [data.imgUrl] : [],
+              videos: processVideoData(data.videos), // ENHANCED: Process videos
               hyderabadOnly: data.hyderabadOnly || false,
               isGaneshIdol: false,
             };
             setProduct(productData);
           } else if (code) {
-            // Try finding by code (existing logic)
+            // Try finding by code (existing logic with video support)
             const productsRef = collection(db, 'products');
             const querySnapshot = await getDocs(query(productsRef, where('code', '==', code)));
 
@@ -168,6 +202,7 @@ const useProductData = (productId, code) => {
                 rating: Number(data.rating) || 4.2,
                 reviews: Number(data.reviews) || 156,
                 images: Array.isArray(data.images) ? data.images : data.imgUrl ? [data.imgUrl] : [],
+                videos: processVideoData(data.videos), // ENHANCED: Process videos
                 hyderabadOnly: data.hyderabadOnly || false,
                 isGaneshIdol: false,
               };
@@ -195,7 +230,7 @@ const useProductData = (productId, code) => {
   return { product, loading, error };
 };
 
-// Custom hook for wishlist
+// Custom hook for wishlist (unchanged)
 const useWishlist = (user) => {
   const [wishlist, setWishlist] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -277,12 +312,12 @@ const useWishlist = (user) => {
   return { wishlist, toggleWishlist, isInWishlist, loading };
 };
 
-// Loading Skeleton Component
+// Loading Skeleton Component (unchanged)
 const ProductDetailSkeleton = () => (
   <div style={customStyles.container}>
     <Skeleton.Button size="large" style={{ marginBottom: '24px' }} />
     <Row gutter={[24, 24]}>
-      <Col xs={24} lg={12}>
+      <Col xs={24} lg={14}>
         <div style={customStyles.imageCard}>
           <Skeleton.Image style={{ width: '100%', height: '500px' }} />
           <div style={{ display: 'flex', gap: '8px', marginTop: '16px', padding: '16px' }}>
@@ -292,7 +327,7 @@ const ProductDetailSkeleton = () => (
           </div>
         </div>
       </Col>
-      <Col xs={24} lg={12}>
+      <Col xs={24} lg={10}>
         <div style={customStyles.productInfoCard}>
           <Skeleton active paragraph={{ rows: 8 }} style={{ padding: '24px' }} />
         </div>
@@ -301,7 +336,7 @@ const ProductDetailSkeleton = () => (
   </div>
 );
 
-// Main ProductDetail Component
+// Main ProductDetail Component - ENHANCED
 const ProductDetail = () => {
   const { id } = useParams();
   const { search } = useLocation();
@@ -322,16 +357,15 @@ const ProductDetail = () => {
     return unsubscribe;
   }, []);
 
-  // NEW: Updated handleAddToCart function
+  // Existing handlers (unchanged)
   const handleAddToCart = useCallback(async (product, quantity) => {
     if (!user) {
       navigate('/auth');
       return;
     }
 
-    // Special handling for Ganesh idols - Navigate to order summary instead
+    // Special handling for Ganesh idols
     if (product.isGaneshIdol) {
-      // Navigate to Ganesh order summary page with idol data
       navigate('/ganesh-order-summary', {
         state: {
           idol: {
@@ -346,6 +380,7 @@ const ProductDetail = () => {
             estimatedDays: product.estimatedDays || 7,
             advancePercentage: product.advancePercentage || 25,
             images: product.images || [],
+            videos: product.videos || [], // ENHANCED: Include videos
             description: product.description || '',
             customizable: product.customizable || true,
             availability: product.availability || 'available',
@@ -357,7 +392,7 @@ const ProductDetail = () => {
       return;
     }
 
-    // Regular product add to cart logic (existing code)
+    // Regular product add to cart logic
     try {
       const result = await addToCartSafe(user.uid, product.id, quantity);
 
@@ -376,16 +411,14 @@ const ProductDetail = () => {
     }
   }, [user, navigate]);
 
-  // NEW: Updated handleBuyNow function
   const handleBuyNow = useCallback(async (product, quantity) => {
     if (!user) {
       navigate('/auth');
       return;
     }
 
-    // Special handling for Ganesh idols - Navigate to order summary (same as Add to Cart)
+    // Special handling for Ganesh idols
     if (product.isGaneshIdol) {
-      // Navigate to Ganesh order summary page with idol data
       navigate('/ganesh-order-summary', {
         state: {
           idol: {
@@ -400,6 +433,7 @@ const ProductDetail = () => {
             estimatedDays: product.estimatedDays || 7,
             advancePercentage: product.advancePercentage || 25,
             images: product.images || [],
+            videos: product.videos || [], // ENHANCED: Include videos
             description: product.description || '',
             customizable: product.customizable || true,
             availability: product.availability || 'available',
@@ -411,14 +445,12 @@ const ProductDetail = () => {
       return;
     }
 
-    // Regular product buy now logic (existing code)
+    // Regular product buy now logic
     try {
       const result = await addToCartSafe(user.uid, product.id, quantity);
 
       if (result.success) {
         message.success(`${product.name} added to cart!`);
-
-        // Navigate to cart page after a short delay
         setTimeout(() => {
           navigate('/cart');
         }, 1000);
@@ -471,6 +503,10 @@ const ProductDetail = () => {
     );
   }
 
+  // ENHANCED: Log video data for debugging
+  console.log('Product videos:', product.videos);
+  console.log('Product images:', product.images);
+
   return (
     <div style={customStyles.container}>
       {/* Back Button */}
@@ -489,18 +525,20 @@ const ProductDetail = () => {
         {product.isGaneshIdol ? 'Back to Ganesh Collection' : 'Back to Products'}
       </Button>
 
-      {/* MAIN PRODUCT SECTION - IMAGES + PRODUCT INFO */}
-      <Row gutter={[24, 24]} style={{ marginBottom: '48px' }}>
-        {/* LEFT: Product Images */}
-        <Col xs={24} lg={12}>
+      {/* Main Product Section */}
+      <Row gutter={[24, 24]}>
+        {/* ENHANCED: Image Gallery with Video Support - 60% width on desktop */}
+        <Col xs={24} lg={14}>
           <ProductImageGallery
             images={product.images}
+            videos={product.videos} // ENHANCED: Pass videos to gallery
             productName={product.name}
+            defaultMediaType="mixed" // ENHANCED: Show mixed media by default
           />
         </Col>
 
-        {/* RIGHT: Product Info (Title, Price, Description, Contact/Actions) */}
-        <Col xs={24} lg={12}>
+        {/* Product Information - 40% width on desktop */}
+        <Col xs={24} lg={10}>
           <ProductInfo
             product={product}
             onAddToCart={handleAddToCart}
@@ -511,17 +549,14 @@ const ProductDetail = () => {
         </Col>
       </Row>
 
-      {/* BELOW BOTH: Additional Product Information */}
-      <div style={{ marginTop: '48px' }}>
-        {/* Product Description (Heritage & craftsmanship info) */}
-        <ProductDescription product={product} />
+      {/* Service Features */}
+      <ServiceFeatures product={product} />
 
-        {/* Service Features */}
-        <ServiceFeatures product={product} />
-
-        {/* Product Details Tabs */}
-        <ProductTabs product={product} />
-      </div>
+      {/* ENHANCED: Product Details Tabs with Video Information */}
+      <ProductTabs 
+        product={product}
+        hasVideos={product.videos && product.videos.length > 0} // ENHANCED: Pass video flag
+      />
 
       {/* Mobile Actions Bar */}
       {screens.xs && (
