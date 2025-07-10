@@ -1,3 +1,4 @@
+// Updated Orders.js - Unified Orders with Ganesh Support
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   Card,
@@ -46,7 +47,11 @@ import {
   HourglassOutlined,
   ArrowRightOutlined,
   CarOutlined,
-  ExclamationCircleOutlined
+  ExclamationCircleOutlined,
+  MessageOutlined,
+  UserOutlined,
+  ToolOutlined,
+  FireOutlined
 } from '@ant-design/icons';
 import { auth, db } from '../Firebase/Firebase';
 import { collection, query, where, onSnapshot, orderBy, getDocs } from 'firebase/firestore';
@@ -67,187 +72,307 @@ const terracottaTheme = {
   success: '#6B7821',
   warning: '#FF8F00',
   error: '#C62828',
+  ganesh: '#FF8F00',
   text: {
     primary: '#3D405B',
     secondary: '#797B8E'
   }
 };
 
-// Inline CSS Styles with Terracotta Theme
-const styles = {
-  pageContainer: {
-    minHeight: '100vh',
-    background: `linear-gradient(135deg, ${terracottaTheme.primary} 0%, ${terracottaTheme.secondary} 50%, ${terracottaTheme.accent} 100%)`,
-    padding: '20px 0'
-  },
-  
-  contentWrapper: {
-    maxWidth: '1200px',
-    margin: '0 auto',
-    padding: '0 20px'
-  },
+// Enhanced hook to fetch both regular and Ganesh orders
+const useUnifiedOrders = (user) => {
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  headerCard: {
-    borderRadius: '20px',
-    marginBottom: '24px',
-    background: 'rgba(255,255,255,0.95)',
-    backdropFilter: 'blur(10px)',
-    border: 'none',
-    boxShadow: `0 8px 32px rgba(210, 105, 30, 0.15)`
-  },
+  const fetchOrders = useCallback(async (userId) => {
+    try {
+      setLoading(true);
+      setError(null);
 
-  orderCard: {
-    borderRadius: '16px',
-    marginBottom: '24px',
-    border: `2px solid ${terracottaTheme.light}`,
-    boxShadow: `0 4px 12px rgba(210, 105, 30, 0.1)`,
-    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-    background: 'rgba(255, 255, 255, 0.95)',
-    backdropFilter: 'blur(10px)',
-    cursor: 'pointer'
-  },
+      const allOrders = [];
 
-  orderCardHover: {
-    transform: 'translateY(-8px)',
-    boxShadow: `0 12px 48px rgba(210, 105, 30, 0.25)`,
-    borderColor: terracottaTheme.primary
-  },
+      // Fetch regular orders
+      try {
+        const regularOrdersQuery = query(
+          collection(db, 'orders'), 
+          where('userId', '==', userId),
+          orderBy('createdAt', 'desc')
+        );
+        
+        const regularOrdersSnapshot = await getDocs(regularOrdersQuery);
+        regularOrdersSnapshot.forEach((doc) => {
+          const data = doc.data();
+          allOrders.push({
+            id: doc.id,
+            ...data,
+            orderType: 'regular',
+            orderDate: data.createdAt?.toDate?.() || new Date(data.createdAt || Date.now()),
+            displayStatus: normalizeStatus(data.status || 'PENDING'),
+            originalStatus: data.status || 'PENDING',
+            paymentStatus: data.paymentStatus || 'INITIATED'
+          });
+        });
+      } catch (err) {
+        console.warn('Error fetching regular orders, trying without orderBy:', err);
+        // Fallback without orderBy
+        const regularOrdersQuery = query(
+          collection(db, 'orders'), 
+          where('userId', '==', userId)
+        );
+        
+        const regularOrdersSnapshot = await getDocs(regularOrdersQuery);
+        regularOrdersSnapshot.forEach((doc) => {
+          const data = doc.data();
+          allOrders.push({
+            id: doc.id,
+            ...data,
+            orderType: 'regular',
+            orderDate: data.createdAt?.toDate?.() || new Date(data.createdAt || Date.now()),
+            displayStatus: normalizeStatus(data.status || 'PENDING'),
+            originalStatus: data.status || 'PENDING',
+            paymentStatus: data.paymentStatus || 'INITIATED'
+          });
+        });
+      }
 
-  primaryButton: {
-    background: `linear-gradient(135deg, ${terracottaTheme.primary} 0%, ${terracottaTheme.accent} 100%)`,
-    border: 'none',
-    boxShadow: `0 4px 12px rgba(210, 105, 30, 0.3)`,
-    borderRadius: '12px',
-    transition: 'all 0.3s ease',
-    color: 'white'
-  },
+      // Fetch Ganesh orders (converted from leads)
+      try {
+        const ganeshOrdersQuery = query(
+          collection(db, 'ganeshOrders'), 
+          where('customerId', '==', userId),
+          orderBy('createdAt', 'desc')
+        );
+        
+        const ganeshOrdersSnapshot = await getDocs(ganeshOrdersQuery);
+        ganeshOrdersSnapshot.forEach((doc) => {
+          const data = doc.data();
+          allOrders.push({
+            id: doc.id,
+            ...data,
+            orderType: 'ganesh',
+            orderDate: data.createdAt?.toDate?.() || new Date(data.createdAt || Date.now()),
+            displayStatus: normalizeGaneshStatus(data.status || 'pending_advance'),
+            originalStatus: data.status || 'pending_advance',
+            paymentStatus: data.paymentStatus || 'pending',
+            // Transform Ganesh order structure to match regular orders for display
+            orderDetails: {
+              totalAmount: data.finalPrice || data.advanceAmount || 0,
+              items: [{
+                name: data.idolDetails?.name || 'Ganesh Idol',
+                quantity: 1,
+                price: data.finalPrice || data.advanceAmount || 0,
+                id: data.idolDetails?.id || 'ganesh-idol'
+              }],
+              personalInfo: {
+                fullName: data.customerInfo?.name || 'Customer',
+                phone: data.customerInfo?.phone || '',
+                email: data.customerInfo?.email || ''
+              },
+              deliveryAddress: {
+                addressLine1: data.customerInfo?.address || 'Address not provided'
+              }
+            }
+          });
+        });
+      } catch (err) {
+        console.warn('Error fetching Ganesh orders, trying without orderBy:', err);
+        // Fallback without orderBy
+        const ganeshOrdersQuery = query(
+          collection(db, 'ganeshOrders'), 
+          where('customerId', '==', userId)
+        );
+        
+        const ganeshOrdersSnapshot = await getDocs(ganeshOrdersQuery);
+        ganeshOrdersSnapshot.forEach((doc) => {
+          const data = doc.data();
+          allOrders.push({
+            id: doc.id,
+            ...data,
+            orderType: 'ganesh',
+            orderDate: data.createdAt?.toDate?.() || new Date(data.createdAt || Date.now()),
+            displayStatus: normalizeGaneshStatus(data.status || 'pending_advance'),
+            originalStatus: data.status || 'pending_advance',
+            paymentStatus: data.paymentStatus || 'pending',
+            // Transform Ganesh order structure to match regular orders for display
+            orderDetails: {
+              totalAmount: data.finalPrice || data.advanceAmount || 0,
+              items: [{
+                name: data.idolDetails?.name || 'Ganesh Idol',
+                quantity: 1,
+                price: data.finalPrice || data.advanceAmount || 0,
+                id: data.idolDetails?.id || 'ganesh-idol'
+              }],
+              personalInfo: {
+                fullName: data.customerInfo?.name || 'Customer',
+                phone: data.customerInfo?.phone || '',
+                email: data.customerInfo?.email || ''
+              },
+              deliveryAddress: {
+                addressLine1: data.customerInfo?.address || 'Address not provided'
+              }
+            }
+          });
+        });
+      }
 
-  secondaryButton: {
-    borderColor: terracottaTheme.primary,
-    color: terracottaTheme.primary,
-    borderRadius: '8px',
-    transition: 'all 0.3s ease'
-  },
+      // Sort all orders by date (newest first)
+      allOrders.sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate));
 
-  gradientText: {
-    background: `linear-gradient(135deg, ${terracottaTheme.primary} 0%, ${terracottaTheme.secondary} 100%)`,
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-    backgroundClip: 'text',
-    fontWeight: 600
-  },
+      setOrders(allOrders);
+      setLoading(false);
+    } catch (err) {
+      console.error('Error fetching unified orders:', err);
+      setError(err.message || 'Failed to load orders');
+      setLoading(false);
+    }
+  }, []);
 
-  loadingContainer: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    height: '100vh',
-    background: `linear-gradient(135deg, ${terracottaTheme.primary} 0%, ${terracottaTheme.secondary} 100%)`
-  },
+  useEffect(() => {
+    if (user?.uid) {
+      fetchOrders(user.uid);
+    }
+  }, [user?.uid, fetchOrders]);
 
-  loadingCard: {
-    textAlign: 'center',
-    borderRadius: '16px',
-    padding: '40px',
-    background: 'rgba(255, 255, 255, 0.95)',
-    backdropFilter: 'blur(10px)',
-    border: 'none',
-    boxShadow: `0 8px 32px rgba(210, 105, 30, 0.15)`
-  },
-
-  emptyStateCard: {
-    borderRadius: '20px',
-    textAlign: 'center',
-    padding: '60px 40px',
-    background: 'rgba(255,255,255,0.95)',
-    backdropFilter: 'blur(10px)',
-    border: 'none'
-  },
-
-  errorCard: {
-    borderRadius: '20px',
-    background: 'rgba(255,255,255,0.95)',
-    backdropFilter: 'blur(10px)',
-    border: `2px solid ${terracottaTheme.error}`,
-    boxShadow: `0 8px 32px rgba(198, 40, 40, 0.15)`
-  },
-
-  modalHeader: {
-    background: `linear-gradient(135deg, ${terracottaTheme.primary} 0%, ${terracottaTheme.secondary} 100%)`,
-    borderRadius: '8px 8px 0 0'
-  },
-
-  quickActionButton: {
-    borderRadius: '8px',
-    fontSize: '12px',
-    height: '32px',
-    borderColor: terracottaTheme.primary,
-    color: terracottaTheme.primary
-  },
-
-  statusBadge: {
-    borderRadius: '16px',
-    fontWeight: 500,
-    padding: '4px 12px',
-    border: 'none',
-    boxShadow: `0 2px 4px rgba(210, 105, 30, 0.15)`
-  }
+  return { orders, loading, error, refetch: () => fetchOrders(user?.uid) };
 };
 
-// Order Status Component
-const OrderStatusBadge = ({ status, paymentStatus }) => {
+// Helper function to normalize regular order status
+const normalizeStatus = (status) => {
+  const statusMap = {
+    'PENDING': 'Order Placed',
+    'PROCESSING': 'Processing',
+    'CONFIRMED': 'Confirmed',
+    'CHECKED_IN': 'Checked In',
+    'IN_TRANSIT': 'In Transit',
+    'DELIVERED': 'Delivered',
+    'CANCELLED': 'Cancelled'
+  };
+  return statusMap[status?.toUpperCase()] || status || 'Order Placed';
+};
+
+// Helper function to normalize Ganesh order status
+const normalizeGaneshStatus = (status) => {
+  const statusMap = {
+    'pending_advance': 'Waiting for Advance',
+    'advance_paid': 'Advance Paid',
+    'in_production': 'In Production',
+    'ready_for_delivery': 'Ready for Delivery',
+    'delivered': 'Delivered',
+    'cancelled': 'Cancelled'
+  };
+  return statusMap[status] || status || 'Waiting for Advance';
+};
+
+// Enhanced Order Status Badge Component
+const OrderStatusBadge = ({ order }) => {
   const getStatusConfig = () => {
-    switch (status?.toUpperCase()) {
-      case 'DELIVERED':
-        return { 
-          color: terracottaTheme.success, 
-          text: 'Delivered', 
-          icon: <CheckCircleOutlined />,
-          bgColor: 'rgba(107, 120, 33, 0.1)'
-        };
-      case 'IN_TRANSIT':
-        return { 
-          color: terracottaTheme.primary, 
-          text: 'In Transit', 
-          icon: <CarOutlined />,
-          bgColor: 'rgba(210, 105, 30, 0.1)'
-        };
-      case 'CHECKED_IN':
-        return { 
-          color: '#7B1FA2', 
-          text: 'Checked In', 
-          icon: <ArrowRightOutlined />,
-          bgColor: 'rgba(123, 31, 162, 0.1)'
-        };
-      case 'PROCESSING':
-      case 'CONFIRMED':
-        return { 
-          color: terracottaTheme.warning, 
-          text: 'Processing', 
-          icon: <HourglassOutlined />,
-          bgColor: 'rgba(255, 143, 0, 0.1)'
-        };
-      case 'PENDING':
-        return { 
-          color: terracottaTheme.secondary, 
-          text: 'Pending', 
-          icon: <ClockCircleOutlined />,
-          bgColor: 'rgba(205, 133, 63, 0.1)'
-        };
-      case 'CANCELLED':
-        return { 
-          color: terracottaTheme.error, 
-          text: 'Cancelled', 
-          icon: <ClockCircleOutlined />,
-          bgColor: 'rgba(198, 40, 40, 0.1)'
-        };
-      default:
-        return { 
-          color: terracottaTheme.secondary, 
-          text: 'Confirmed', 
-          icon: <ShoppingCartOutlined />,
-          bgColor: 'rgba(205, 133, 63, 0.1)'
-        };
+    if (order.orderType === 'ganesh') {
+      switch (order.originalStatus) {
+        case 'delivered':
+          return { 
+            color: terracottaTheme.success, 
+            text: 'Delivered', 
+            icon: <CheckCircleOutlined />,
+            bgColor: 'rgba(107, 120, 33, 0.1)'
+          };
+        case 'ready_for_delivery':
+          return { 
+            color: '#00BCD4', 
+            text: 'Ready for Delivery', 
+            icon: <CarOutlined />,
+            bgColor: 'rgba(0, 188, 212, 0.1)'
+          };
+        case 'in_production':
+          return { 
+            color: terracottaTheme.ganesh, 
+            text: 'In Production', 
+            icon: <ToolOutlined />,
+            bgColor: 'rgba(255, 143, 0, 0.1)'
+          };
+        case 'advance_paid':
+          return { 
+            color: '#7B1FA2', 
+            text: 'Advance Paid', 
+            icon: <DollarOutlined />,
+            bgColor: 'rgba(123, 31, 162, 0.1)'
+          };
+        case 'pending_advance':
+          return { 
+            color: terracottaTheme.warning, 
+            text: 'Waiting for Advance', 
+            icon: <ClockCircleOutlined />,
+            bgColor: 'rgba(255, 143, 0, 0.1)'
+          };
+        case 'cancelled':
+          return { 
+            color: terracottaTheme.error, 
+            text: 'Cancelled', 
+            icon: <ExclamationCircleOutlined />,
+            bgColor: 'rgba(198, 40, 40, 0.1)'
+          };
+        default:
+          return { 
+            color: terracottaTheme.warning, 
+            text: 'Waiting for Advance', 
+            icon: <ClockCircleOutlined />,
+            bgColor: 'rgba(255, 143, 0, 0.1)'
+          };
+      }
+    } else {
+      // Regular order status logic (existing)
+      switch (order.originalStatus?.toUpperCase()) {
+        case 'DELIVERED':
+          return { 
+            color: terracottaTheme.success, 
+            text: 'Delivered', 
+            icon: <CheckCircleOutlined />,
+            bgColor: 'rgba(107, 120, 33, 0.1)'
+          };
+        case 'IN_TRANSIT':
+          return { 
+            color: terracottaTheme.primary, 
+            text: 'In Transit', 
+            icon: <CarOutlined />,
+            bgColor: 'rgba(210, 105, 30, 0.1)'
+          };
+        case 'CHECKED_IN':
+          return { 
+            color: '#7B1FA2', 
+            text: 'Checked In', 
+            icon: <ArrowRightOutlined />,
+            bgColor: 'rgba(123, 31, 162, 0.1)'
+          };
+        case 'PROCESSING':
+        case 'CONFIRMED':
+          return { 
+            color: terracottaTheme.warning, 
+            text: 'Processing', 
+            icon: <HourglassOutlined />,
+            bgColor: 'rgba(255, 143, 0, 0.1)'
+          };
+        case 'PENDING':
+          return { 
+            color: terracottaTheme.secondary, 
+            text: 'Pending', 
+            icon: <ClockCircleOutlined />,
+            bgColor: 'rgba(205, 133, 63, 0.1)'
+          };
+        case 'CANCELLED':
+          return { 
+            color: terracottaTheme.error, 
+            text: 'Cancelled', 
+            icon: <ExclamationCircleOutlined />,
+            bgColor: 'rgba(198, 40, 40, 0.1)'
+          };
+        default:
+          return { 
+            color: terracottaTheme.secondary, 
+            text: 'Confirmed', 
+            icon: <ShoppingCartOutlined />,
+            bgColor: 'rgba(205, 133, 63, 0.1)'
+          };
+      }
     }
   };
 
@@ -255,27 +380,50 @@ const OrderStatusBadge = ({ status, paymentStatus }) => {
   
   return (
     <Space>
+      {/* Order Type Badge */}
+      <Tag
+        icon={order.orderType === 'ganesh' ? <GiftOutlined /> : <ShoppingCartOutlined />}
+        color={order.orderType === 'ganesh' ? terracottaTheme.ganesh : terracottaTheme.primary}
+        style={{
+          backgroundColor: order.orderType === 'ganesh' ? 'rgba(255, 143, 0, 0.1)' : 'rgba(210, 105, 30, 0.1)',
+          color: order.orderType === 'ganesh' ? terracottaTheme.ganesh : terracottaTheme.primary,
+          border: `1px solid ${order.orderType === 'ganesh' ? terracottaTheme.ganesh : terracottaTheme.primary}`,
+          fontWeight: 'bold',
+          borderRadius: '16px',
+          padding: '4px 12px'
+        }}
+      >
+        {order.orderType === 'ganesh' ? '🕉️ Ganesh Order' : 'Regular Order'}
+      </Tag>
+      
+      {/* Status Badge */}
       <Tag 
         color={config.color}
         icon={config.icon}
         style={{
-          ...styles.statusBadge,
           backgroundColor: config.bgColor,
           color: config.color,
-          border: `1px solid ${config.color}`
+          border: `1px solid ${config.color}`,
+          borderRadius: '16px',
+          fontWeight: 'bold',
+          padding: '4px 12px'
         }}
       >
         {config.text}
       </Tag>
-      {paymentStatus === 'COMPLETED' && (
+      
+      {/* Payment Status */}
+      {(order.paymentStatus === 'COMPLETED' || order.paymentStatus === 'paid') && (
         <Tag 
           color={terracottaTheme.success}
           icon={<DollarOutlined />}
           style={{
-            ...styles.statusBadge,
             backgroundColor: 'rgba(107, 120, 33, 0.1)',
             color: terracottaTheme.success,
-            border: `1px solid ${terracottaTheme.success}`
+            border: `1px solid ${terracottaTheme.success}`,
+            borderRadius: '16px',
+            fontWeight: 'bold',
+            padding: '4px 12px'
           }}
         >
           Paid
@@ -285,23 +433,65 @@ const OrderStatusBadge = ({ status, paymentStatus }) => {
   );
 };
 
-// Order Progress Tracker
-const OrderProgress = ({ status, orderDate, deliveryDate, deliveredAt }) => {
+// Enhanced Order Progress Tracker
+const OrderProgress = ({ order }) => {
   const getActiveStep = () => {
-    switch (status?.toUpperCase()) {
-      case 'DELIVERED': return 4;
-      case 'IN_TRANSIT': return 3;
-      case 'CHECKED_IN': return 2;
-      case 'PROCESSING':
-      case 'CONFIRMED': return 1;
-      default: return 0;
+    if (order.orderType === 'ganesh') {
+      switch (order.originalStatus) {
+        case 'delivered': return 4;
+        case 'ready_for_delivery': return 3;
+        case 'in_production': return 2;
+        case 'advance_paid': return 1;
+        case 'pending_advance': return 0;
+        case 'cancelled': return -1;
+        default: return 0;
+      }
+    } else {
+      switch (order.originalStatus?.toUpperCase()) {
+        case 'DELIVERED': return 4;
+        case 'IN_TRANSIT': return 3;
+        case 'CHECKED_IN': return 2;
+        case 'PROCESSING':
+        case 'CONFIRMED': return 1;
+        case 'PENDING': return 0;
+        case 'CANCELLED': return -1;
+        default: return 0;
+      }
     }
   };
 
-  const steps = [
+  const steps = order.orderType === 'ganesh' ? [
+    {
+      title: 'Interest Submitted',
+      description: new Date(order.orderDate).toLocaleDateString(),
+      icon: <GiftOutlined />
+    },
+    {
+      title: 'Advance Paid',
+      description: 'Production can begin',
+      icon: <DollarOutlined />
+    },
+    {
+      title: 'In Production',
+      description: 'Idol being crafted',
+      icon: <ToolOutlined />
+    },
+    {
+      title: 'Ready for Delivery',
+      description: 'Idol completed',
+      icon: <TruckOutlined />
+    },
+    {
+      title: 'Delivered',
+      description: order.originalStatus === 'delivered' 
+        ? `Delivered on ${order.deliveredAt ? new Date(order.deliveredAt.seconds * 1000).toLocaleDateString() : 'Recently'}` 
+        : 'Idol delivery',
+      icon: <CheckCircleOutlined />
+    }
+  ] : [
     {
       title: 'Order Placed',
-      description: new Date(orderDate).toLocaleDateString(),
+      description: new Date(order.orderDate).toLocaleDateString(),
       icon: <ShoppingCartOutlined />
     },
     {
@@ -321,9 +511,9 @@ const OrderProgress = ({ status, orderDate, deliveryDate, deliveredAt }) => {
     },
     {
       title: 'Delivered',
-      description: status === 'DELIVERED' 
-        ? `Delivered on ${deliveredAt ? new Date(deliveredAt.seconds * 1000).toLocaleDateString() : 'Recently'}` 
-        : `Expected ${new Date(deliveryDate).toLocaleDateString()}`,
+      description: order.originalStatus === 'DELIVERED' 
+        ? `Delivered on ${order.deliveredAt ? new Date(order.deliveredAt.seconds * 1000).toLocaleDateString() : 'Recently'}` 
+        : 'Package delivery',
       icon: <CheckCircleOutlined />
     }
   ];
@@ -334,12 +524,13 @@ const OrderProgress = ({ status, orderDate, deliveryDate, deliveredAt }) => {
         current={getActiveStep()}
         size="small"
         items={steps}
+        status={order.originalStatus?.toLowerCase().includes('cancelled') ? 'error' : 'process'}
       />
     </div>
   );
 };
 
-// Order Card Component
+// Enhanced Order Card Component
 const OrderCard = ({ order, onTrack }) => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -353,14 +544,35 @@ const OrderCard = ({ order, onTrack }) => {
   };
 
   const orderItems = order.orderDetails?.items || [];
+  const isGaneshOrder = order.orderType === 'ganesh';
+
+  const cardStyle = {
+    height: '100%',
+    borderRadius: '16px',
+    overflow: 'hidden',
+    border: isGaneshOrder 
+      ? `2px solid ${terracottaTheme.ganesh}40` 
+      : `1px solid ${terracottaTheme.light}`,
+    cursor: 'pointer',
+    position: 'relative',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    background: isGaneshOrder 
+      ? `linear-gradient(135deg, ${terracottaTheme.ganesh}15 0%, #FFE0B2 100%)`
+      : 'rgba(255, 255, 255, 0.95)',
+    backdropFilter: 'blur(10px)',
+    ...(isHovered ? {
+      transform: 'translateY(-8px)',
+      boxShadow: isGaneshOrder 
+        ? `0 12px 48px ${terracottaTheme.ganesh}25`
+        : `0 12px 48px ${terracottaTheme.primary}25`,
+      borderColor: isGaneshOrder ? terracottaTheme.ganesh : terracottaTheme.primary
+    } : {})
+  };
 
   return (
     <>
       <Card
-        style={{
-          ...styles.orderCard,
-          ...(isHovered ? styles.orderCardHover : {})
-        }}
+        style={cardStyle}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
@@ -369,15 +581,15 @@ const OrderCard = ({ order, onTrack }) => {
           <Col>
             <Space direction="vertical" size={4}>
               <Space align="center">
-                <Title level={4} style={{ margin: 0, ...styles.gradientText }}>
+                <Title level={4} style={{ margin: 0, color: isGaneshOrder ? terracottaTheme.ganesh : terracottaTheme.primary }}>
                   #{order.id.slice(-6).toUpperCase()}
                 </Title>
-                <OrderStatusBadge status={order.status} paymentStatus={order.paymentStatus} />
+                <OrderStatusBadge order={order} />
               </Space>
               <Space>
                 <CalendarOutlined style={{ color: terracottaTheme.secondary }} />
                 <Text type="secondary">
-                  Placed on {new Date(order.orderDate).toLocaleDateString('en-IN', {
+                  {isGaneshOrder ? 'Interest shown on' : 'Placed on'} {new Date(order.orderDate).toLocaleDateString('en-IN', {
                     day: '2-digit',
                     month: 'short',
                     year: 'numeric'
@@ -400,12 +612,23 @@ const OrderCard = ({ order, onTrack }) => {
                   letterSpacing: '-0.5px'
                 }}
               />
+              {isGaneshOrder && (
+                <Text type="secondary" style={{ fontSize: '12px' }}>
+                  {order.paymentStatus === 'paid' ? 'Advance Paid' : 'Advance Amount'}
+                </Text>
+              )}
               <Space>
                 <Button 
                   type="primary" 
                   icon={<EyeOutlined />} 
                   onClick={showOrderDetails}
-                  style={styles.primaryButton}
+                  style={{
+                    background: isGaneshOrder 
+                      ? `linear-gradient(135deg, ${terracottaTheme.ganesh} 0%, #FFB74D 100%)`
+                      : `linear-gradient(135deg, ${terracottaTheme.primary} 0%, ${terracottaTheme.accent} 100%)`,
+                    border: 'none',
+                    borderRadius: '8px'
+                  }}
                 >
                   View Details
                 </Button>
@@ -415,12 +638,39 @@ const OrderCard = ({ order, onTrack }) => {
         </Row>
 
         {/* Order Progress */}
-        <OrderProgress 
-          status={order.status} 
-          orderDate={order.orderDate}
-          deliveryDate={order.deliveryDate}
-          deliveredAt={order.deliveredAt}
-        />
+        <OrderProgress order={order} />
+
+        {/* Quick Info for Ganesh Orders */}
+        {isGaneshOrder && (
+          <Alert
+            message="🕉️ Custom Ganesh Idol Order"
+            description={`${order.idolDetails?.name || 'Ganesh Idol'} • ${order.idolDetails?.category || 'Traditional'} Style • ${order.idolDetails?.estimatedDays || 7} days delivery`}
+            type="info"
+            showIcon
+            style={{
+              marginTop: '16px',
+              backgroundColor: `${terracottaTheme.ganesh}10`,
+              border: `1px solid ${terracottaTheme.ganesh}30`,
+              borderRadius: '8px'
+            }}
+          />
+        )}
+
+        {/* Admin Notes for Ganesh Orders */}
+        {isGaneshOrder && order.notes && (
+          <Alert
+            message="📝 Admin Notes"
+            description={order.notes}
+            type="success"
+            showIcon
+            style={{
+              marginTop: '12px',
+              backgroundColor: `${terracottaTheme.success}10`,
+              border: `1px solid ${terracottaTheme.success}30`,
+              borderRadius: '8px'
+            }}
+          />
+        )}
 
         {/* Quick Actions */}
         <Row gutter={8} style={{ marginTop: '16px' }}>
@@ -429,7 +679,13 @@ const OrderCard = ({ order, onTrack }) => {
               block 
               size="small" 
               icon={<PhoneOutlined />}
-              style={styles.quickActionButton}
+              style={{
+                borderRadius: '8px',
+                fontSize: '12px',
+                height: '32px',
+                borderColor: isGaneshOrder ? terracottaTheme.ganesh : terracottaTheme.primary,
+                color: isGaneshOrder ? terracottaTheme.ganesh : terracottaTheme.primary
+              }}
             >
               Support
             </Button>
@@ -442,11 +698,15 @@ const OrderCard = ({ order, onTrack }) => {
               disabled={!order.deliveryDetails?.consignmentNumber}
               onClick={() => onTrack(order.deliveryDetails)}
               style={{
-                ...styles.quickActionButton,
+                borderRadius: '8px',
+                fontSize: '12px',
+                height: '32px',
+                borderColor: isGaneshOrder ? terracottaTheme.ganesh : terracottaTheme.primary,
+                color: isGaneshOrder ? terracottaTheme.ganesh : terracottaTheme.primary,
                 ...(order.deliveryDetails?.consignmentNumber ? {
-                  backgroundColor: 'rgba(210, 105, 30, 0.1)',
-                  borderColor: terracottaTheme.primary,
-                  color: terracottaTheme.primary
+                  backgroundColor: isGaneshOrder 
+                    ? `rgba(255, 143, 0, 0.1)` 
+                    : `rgba(210, 105, 30, 0.1)`
                 } : {})
               }}
             >
@@ -456,13 +716,13 @@ const OrderCard = ({ order, onTrack }) => {
         </Row>
       </Card>
 
-      {/* Detailed Order Modal */}
+      {/* Enhanced Order Details Modal */}
       <Modal
         title={
           <div style={{ color: 'white' }}>
             <Space>
-              <ShoppingCartOutlined style={{ color: 'white' }} />
-              <span>Order Details - #{order.id.slice(-6).toUpperCase()}</span>
+              {isGaneshOrder ? <GiftOutlined style={{ color: 'white' }} /> : <ShoppingCartOutlined style={{ color: 'white' }} />}
+              <span>{isGaneshOrder ? '🕉️ Ganesh Order Details' : 'Order Details'} - #{order.id.slice(-6).toUpperCase()}</span>
             </Space>
           </div>
         }
@@ -473,37 +733,163 @@ const OrderCard = ({ order, onTrack }) => {
             Close
           </Button>
         ]}
-        width={600}
+        width={700}
         style={{ top: 20 }}
         styles={{
-          header: styles.modalHeader
+          header: {
+            background: isGaneshOrder 
+              ? `linear-gradient(135deg, ${terracottaTheme.ganesh} 0%, #FFB74D 100%)`
+              : `linear-gradient(135deg, ${terracottaTheme.primary} 0%, ${terracottaTheme.secondary} 100())`,
+            borderRadius: '8px 8px 0 0'
+          }
         }}
       >
         <div style={{ padding: '20px 0' }}>
           <Space direction="vertical" style={{ width: '100%' }} size="large">
+            {/* Order Status */}
             <div>
               <Title level={5}>Order Status</Title>
-              <OrderStatusBadge status={order.status} paymentStatus={order.paymentStatus} />
+              <OrderStatusBadge order={order} />
             </div>
             
-            <div>
-              <Title level={5}>Order Items</Title>
-              {orderItems.length > 0 ? (
-                orderItems.map((item, index) => (
-                  <div key={index} style={{ marginBottom: '8px', padding: '8px', border: '1px solid #f0f0f0', borderRadius: '4px' }}>
-                    <Text strong>{item.name}</Text> - Qty: {item.quantity} - ₹{(item.price * item.quantity).toFixed(2)}
+            {/* Ganesh Order Specific Details */}
+            {isGaneshOrder && (
+              <>
+                <div>
+                  <Title level={5}>🕉️ Ganesh Idol Details</Title>
+                  <Row gutter={[16, 8]}>
+                    <Col span={12}>
+                      <Text strong>Idol Name:</Text>
+                      <div>{order.idolDetails?.name || 'Custom Ganesh Idol'}</div>
+                    </Col>
+                    <Col span={12}>
+                      <Text strong>Category:</Text>
+                      <div style={{ textTransform: 'capitalize' }}>
+                        {order.idolDetails?.category || 'Traditional'}
+                      </div>
+                    </Col>
+                    <Col span={12}>
+                      <Text strong>Height:</Text>
+                      <div>{order.idolDetails?.height || 'As per requirement'}</div>
+                    </Col>
+                    <Col span={12}>
+                      <Text strong>Material:</Text>
+                      <div>{order.idolDetails?.material || 'Eco-friendly Clay'}</div>
+                    </Col>
+                    <Col span={12}>
+                      <Text strong>Estimated Days:</Text>
+                      <div>{order.idolDetails?.estimatedDays || 7} days</div>
+                    </Col>
+                    <Col span={12}>
+                      <Text strong>Customizable:</Text>
+                      <div>{order.idolDetails?.customizable ? 'Yes' : 'No'}</div>
+                    </Col>
+                  </Row>
+                </div>
+
+                <div>
+                  <Title level={5}>💰 Payment Information</Title>
+                  <Row gutter={[16, 8]}>
+                    <Col span={12}>
+                      <Text strong>Final Price:</Text>
+                      <div style={{ color: terracottaTheme.ganesh, fontSize: '16px', fontWeight: 'bold' }}>
+                        ₹{order.finalPrice?.toLocaleString() || order.advanceAmount?.toLocaleString()}
+                      </div>
+                    </Col>
+                    <Col span={12}>
+                      <Text strong>Advance Amount:</Text>
+                      <div style={{ color: terracottaTheme.success, fontSize: '16px', fontWeight: 'bold' }}>
+                        ₹{order.advanceAmount?.toLocaleString()}
+                      </div>
+                    </Col>
+                    {order.remainingAmount > 0 && (
+                      <Col span={12}>
+                        <Text strong>Remaining Amount:</Text>
+                        <div style={{ color: terracottaTheme.warning, fontSize: '16px', fontWeight: 'bold' }}>
+                          ₹{order.remainingAmount?.toLocaleString()}
+                        </div>
+                      </Col>
+                    )}
+                  </Row>
+                </div>
+
+                {/* Customer Requirements */}
+                {order.requirements && (
+                  <div>
+                    <Title level={5}>📝 Special Requirements</Title>
+                    <Text>{order.requirements}</Text>
                   </div>
-                ))
-              ) : (
-                <Text type="secondary">No items found</Text>
-              )}
+                )}
+
+                {/* Admin Notes */}
+                {order.notes && (
+                  <div>
+                    <Title level={5}>🗒️ Admin Notes</Title>
+                    <Alert
+                      message="Notes from our team"
+                      description={order.notes}
+                      type="info"
+                      showIcon
+                      style={{
+                        backgroundColor: `${terracottaTheme.ganesh}10`,
+                        border: `1px solid ${terracottaTheme.ganesh}30`
+                      }}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+            
+            {/* Regular Order Items */}
+            {!isGaneshOrder && (
+              <div>
+                <Title level={5}>Order Items</Title>
+                {orderItems.length > 0 ? (
+                  orderItems.map((item, index) => (
+                    <div key={index} style={{ marginBottom: '8px', padding: '8px', border: '1px solid #f0f0f0', borderRadius: '4px' }}>
+                      <Text strong>{item.name}</Text> - Qty: {item.quantity} - ₹{(item.price * item.quantity).toFixed(2)}
+                    </div>
+                  ))
+                ) : (
+                  <Text type="secondary">No items found</Text>
+                )}
+              </div>
+            )}
+
+            {/* Customer Information */}
+            <div>
+              <Title level={5}>Customer Information</Title>
+              <Row gutter={[16, 8]}>
+                <Col span={12}>
+                  <Text strong>Name:</Text>
+                  <div>{order.orderDetails?.personalInfo?.fullName || order.customerInfo?.name || 'Not provided'}</div>
+                </Col>
+                <Col span={12}>
+                  <Text strong>Phone:</Text>
+                  <div>{order.orderDetails?.personalInfo?.phone || order.customerInfo?.phone || 'Not provided'}</div>
+                </Col>
+                <Col span={24}>
+                  <Text strong>Email:</Text>
+                  <div>{order.orderDetails?.personalInfo?.email || order.customerInfo?.email || 'Not provided'}</div>
+                </Col>
+                <Col span={24}>
+                  <Text strong>Address:</Text>
+                  <div>{order.orderDetails?.deliveryAddress?.addressLine1 || order.customerInfo?.address || 'Not provided'}</div>
+                </Col>
+              </Row>
             </div>
 
+            {/* Total Amount */}
             <div>
               <Title level={5}>Total Amount</Title>
               <Text strong style={{ fontSize: '18px', color: terracottaTheme.success }}>
                 ₹{order.orderDetails?.totalAmount?.toFixed(2) || '0.00'}
               </Text>
+              {isGaneshOrder && order.paymentStatus !== 'paid' && (
+                <div style={{ marginTop: '8px' }}>
+                  <Text type="warning">Advance payment pending</Text>
+                </div>
+              )}
             </div>
           </Space>
         </div>
@@ -512,120 +898,16 @@ const OrderCard = ({ order, onTrack }) => {
   );
 };
 
-// Loading Component
-const LoadingView = ({ message = "Loading your orders..." }) => (
-  <div style={styles.loadingContainer}>
-    <Card style={styles.loadingCard}>
-      <Spin size="large" />
-      <Title level={4} style={{ marginTop: '20px', ...styles.gradientText }}>
-        {message}
-      </Title>
-    </Card>
-  </div>
-);
-
-// Error Component
-const ErrorView = ({ error, onRetry }) => (
-  <div style={styles.pageContainer}>
-    <div style={styles.contentWrapper}>
-      <Card style={styles.errorCard}>
-        <Result
-          status="error"
-          title="Unable to Load Orders"
-          subTitle={error || "Something went wrong while fetching your orders. Please try again."}
-          extra={[
-            <Button 
-              type="primary" 
-              key="retry" 
-              icon={<ReloadOutlined />}
-              onClick={onRetry}
-              style={styles.primaryButton}
-            >
-              Try Again
-            </Button>,
-            <Button 
-              key="home" 
-              icon={<ShopOutlined />}
-              onClick={() => window.location.href = '/products'}
-              style={styles.secondaryButton}
-            >
-              Continue Shopping
-            </Button>
-          ]}
-        />
-      </Card>
-    </div>
-  </div>
-);
-
-// Empty State Component
-const EmptyOrdersView = ({ onShop, onRetry }) => (
-  <Card style={styles.emptyStateCard}>
-    <Empty
-      image={
-        <ShoppingCartOutlined 
-          style={{ 
-            fontSize: '120px', 
-            color: terracottaTheme.secondary,
-            opacity: 0.3
-          }} 
-        />
-      }
-      imageStyle={{ height: 120 }}
-      description={
-        <div>
-          <Title level={3} style={{ color: terracottaTheme.secondary }}>
-            No orders yet
-          </Title>
-          <Paragraph style={{ 
-            fontSize: '16px', 
-            color: terracottaTheme.text.secondary, 
-            maxWidth: '400px', 
-            margin: '0 auto 24px' 
-          }}>
-            Start exploring our amazing terracotta products and place your first order to see it here!
-          </Paragraph>
-        </div>
-      }
-    >
-      <Space>
-        <Button 
-          type="primary" 
-          size="large"
-          icon={<ShopOutlined />}
-          onClick={onShop}
-          style={{
-            ...styles.primaryButton,
-            padding: '12px 32px', 
-            height: 'auto',
-            fontSize: '16px'
-          }}
-        >
-          Start Shopping
-        </Button>
-        <Button 
-          size="large"
-          icon={<ReloadOutlined />}
-          onClick={onRetry}
-          style={styles.secondaryButton}
-        >
-          Refresh
-        </Button>
-      </Space>
-    </Empty>
-  </Card>
-);
-
-// Main Orders Component
+// Main Orders Component with rest of the existing code...
 const Orders = () => {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [authLoading, setAuthLoading] = useState(true);
   const [user, setUser] = useState(null);
-  const [error, setError] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Courier tracking URLs
+  // Use the unified orders hook
+  const { orders, loading, error, refetch } = useUnifiedOrders(user);
+
+  // Courier tracking URLs (existing code)
   const courierTrackingUrls = {
     'Delhivery': 'https://www.delhivery.com/track/package/',
     'DTDC': 'https://www.dtdc.in/tracking.asp',
@@ -634,12 +916,11 @@ const Orders = () => {
     'Amazon': 'https://www.amazon.in/trackpkg/',
   };
 
-  // Auth state management
+  // Auth state management (existing code)
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (!currentUser) {
         setAuthLoading(false);
-        setLoading(false);
         navigate('/auth');
         return;
       }
@@ -651,81 +932,7 @@ const Orders = () => {
     return () => unsubscribe();
   }, [navigate]);
 
-  // Fetch orders function with fallback methods
-  const fetchOrders = useCallback(async (userId) => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Primary method: Try with orderBy
-      let ordersData = [];
-      
-      try {
-        const q = query(
-          collection(db, 'orders'), 
-          where('userId', '==', userId),
-          orderBy('createdAt', 'desc')
-        );
-        
-        const querySnapshot = await getDocs(q);
-        querySnapshot.forEach((doc) => {
-          ordersData.push({ id: doc.id, ...doc.data() });
-        });
-      } catch (orderByError) {
-        // Fallback: Try without orderBy
-        const q = query(
-          collection(db, 'orders'), 
-          where('userId', '==', userId)
-        );
-        
-        const querySnapshot = await getDocs(q);
-        querySnapshot.forEach((doc) => {
-          ordersData.push({ id: doc.id, ...doc.data() });
-        });
-        
-        // Sort manually
-        ordersData.sort((a, b) => {
-          const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
-          const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
-          return dateB - dateA;
-        });
-      }
-
-      // Process orders data
-      const processedOrders = ordersData.map(order => {
-        const orderDate = order.createdAt?.toDate 
-          ? order.createdAt.toDate() 
-          : new Date(order.createdAt || Date.now());
-        
-        const deliveryDate = new Date(orderDate);
-        deliveryDate.setDate(deliveryDate.getDate() + 3);
-        
-        return {
-          ...order,
-          orderDate,
-          deliveryDate,
-          status: order.status || 'PENDING',
-          paymentStatus: order.paymentStatus || 'INITIATED'
-        };
-      });
-
-      setOrders(processedOrders);
-      setLoading(false);
-    } catch (err) {
-      console.error('Error fetching orders:', err);
-      setError(err.message || 'Failed to load orders');
-      setLoading(false);
-    }
-  }, []);
-
-  // Fetch orders when user is authenticated
-  useEffect(() => {
-    if (user?.uid && !authLoading) {
-      fetchOrders(user.uid);
-    }
-  }, [user?.uid, authLoading, fetchOrders]);
-
-  // Track package handler
+  // Track package handler (existing code)
   const handleTrackPackage = useCallback((deliveryDetails) => {
     if (!deliveryDetails?.company || !deliveryDetails?.consignmentNumber) {
       notification.warning({
@@ -754,14 +961,10 @@ const Orders = () => {
 
   // Manual retry function
   const handleRetry = useCallback(() => {
-    if (user?.uid) {
-      fetchOrders(user.uid);
-    } else {
-      window.location.reload();
-    }
-  }, [user?.uid, fetchOrders]);
+    refetch();
+  }, [refetch]);
 
-  // Navigation handlers
+  // Navigation handlers (existing code)
   const handleShopNavigation = useCallback(() => {
     navigate('/products');
   }, [navigate]);
@@ -772,24 +975,70 @@ const Orders = () => {
 
   // Show loading while authentication is being checked
   if (authLoading) {
-    return <LoadingView message="Checking authentication..." />;
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+        <Spin size="large" />
+      </div>
+    );
   }
 
   // Show error if there's an error
   if (error) {
-    return <ErrorView error={error} onRetry={handleRetry} />;
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#f5f5f5', padding: '24px' }}>
+        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+          <Result
+            status="error"
+            title="Unable to Load Orders"
+            subTitle={error || "Something went wrong while fetching your orders. Please try again."}
+            extra={[
+              <Button 
+                type="primary" 
+                key="retry" 
+                icon={<ReloadOutlined />}
+                onClick={handleRetry}
+              >
+                Try Again
+              </Button>,
+              <Button 
+                key="home" 
+                icon={<ShopOutlined />}
+                onClick={handleShopNavigation}
+              >
+                Continue Shopping
+              </Button>
+            ]}
+          />
+        </div>
+      </div>
+    );
   }
 
   // Show loading while orders are being fetched
   if (loading) {
-    return <LoadingView />;
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+        <Spin size="large" />
+      </div>
+    );
   }
 
   return (
-    <div style={styles.pageContainer}>
-      <div style={styles.contentWrapper}>
+    <div style={{ 
+      minHeight: '100vh', 
+      background: `linear-gradient(135deg, ${terracottaTheme.primary} 0%, ${terracottaTheme.secondary} 50%, ${terracottaTheme.accent} 100%)`,
+      padding: '20px 0'
+    }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
         {/* Header */}
-        <Card style={styles.headerCard}>
+        <Card style={{ 
+          borderRadius: '20px',
+          marginBottom: '24px',
+          background: 'rgba(255,255,255,0.95)',
+          backdropFilter: 'blur(10px)',
+          border: 'none',
+          boxShadow: `0 8px 32px rgba(210, 105, 30, 0.15)`
+        }}>
           <Row justify="space-between" align="middle">
             <Col>
               <Space>
@@ -802,11 +1051,18 @@ const Orders = () => {
                   }}
                 />
                 <div>
-                  <Title level={2} style={{ margin: 0, ...styles.gradientText }}>
+                  <Title level={2} style={{ 
+                    margin: 0,
+                    background: `linear-gradient(135deg, ${terracottaTheme.primary} 0%, ${terracottaTheme.secondary} 100())`,
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text',
+                    fontWeight: 600
+                  }}>
                     My Orders
                   </Title>
                   <Text type="secondary" style={{ fontSize: '16px' }}>
-                    Track and manage all your orders in one place
+                    Track and manage all your orders • Regular & Ganesh orders
                   </Text>
                 </div>
               </Space>
@@ -826,7 +1082,12 @@ const Orders = () => {
                     size="large"
                     icon={<ShopOutlined />}
                     onClick={handleShopNavigation}
-                    style={styles.primaryButton}
+                    style={{
+                      background: `linear-gradient(135deg, ${terracottaTheme.primary} 0%, ${terracottaTheme.accent} 100())`,
+                      border: 'none',
+                      boxShadow: `0 4px 12px rgba(210, 105, 30, 0.3)`,
+                      borderRadius: '12px'
+                    }}
                   >
                     Continue Shopping
                   </Button>
@@ -835,7 +1096,11 @@ const Orders = () => {
                   size="large"
                   icon={<ReloadOutlined />}
                   onClick={handleRetry}
-                  style={styles.secondaryButton}
+                  style={{
+                    borderColor: terracottaTheme.primary,
+                    color: terracottaTheme.primary,
+                    borderRadius: '8px'
+                  }}
                 >
                   Refresh
                 </Button>
@@ -844,17 +1109,116 @@ const Orders = () => {
           </Row>
         </Card>
 
+        {/* Orders Statistics */}
+        {orders.length > 0 && (
+          <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
+            <Col xs={24} sm={8}>
+              <Card style={{ borderRadius: '12px', textAlign: 'center' }}>
+                <Statistic
+                  title="Total Orders"
+                  value={orders.length}
+                  valueStyle={{ color: terracottaTheme.primary }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={8}>
+              <Card style={{ borderRadius: '12px', textAlign: 'center' }}>
+                <Statistic
+                  title="Ganesh Orders"
+                  value={orders.filter(o => o.orderType === 'ganesh').length}
+                  valueStyle={{ color: terracottaTheme.ganesh }}
+                  prefix="🕉️"
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={8}>
+              <Card style={{ borderRadius: '12px', textAlign: 'center' }}>
+                <Statistic
+                  title="Regular Orders"
+                  value={orders.filter(o => o.orderType === 'regular').length}
+                  valueStyle={{ color: terracottaTheme.primary }}
+                  prefix="🛒"
+                />
+              </Card>
+            </Col>
+          </Row>
+        )}
+
         {/* Orders List or Empty State */}
         {orders.length === 0 ? (
-          <EmptyOrdersView 
-            onShop={handleShopNavigation} 
-            onRetry={handleRetry} 
-          />
+          <Card style={{ 
+            borderRadius: '20px',
+            textAlign: 'center',
+            padding: '60px 40px',
+            background: 'rgba(255,255,255,0.95)',
+            backdropFilter: 'blur(10px)',
+            border: 'none'
+          }}>
+            <Empty
+              image={
+                <ShoppingCartOutlined 
+                  style={{ 
+                    fontSize: '120px', 
+                    color: terracottaTheme.secondary,
+                    opacity: 0.3
+                  }} 
+                />
+              }
+              imageStyle={{ height: 120 }}
+              description={
+                <div>
+                  <Title level={3} style={{ color: terracottaTheme.secondary }}>
+                    No orders yet
+                  </Title>
+                  <Paragraph style={{ 
+                    fontSize: '16px', 
+                    color: terracottaTheme.text.secondary, 
+                    maxWidth: '400px', 
+                    margin: '0 auto 24px' 
+                  }}>
+                    Start exploring our amazing products and place your first order to see it here!
+                  </Paragraph>
+                </div>
+              }
+            >
+              <Space>
+                <Button 
+                  type="primary" 
+                  size="large"
+                  icon={<ShopOutlined />}
+                  onClick={handleShopNavigation}
+                  style={{
+                    background: `linear-gradient(135deg, ${terracottaTheme.primary} 0%, ${terracottaTheme.accent} 100())`,
+                    border: 'none',
+                    borderRadius: '12px',
+                    padding: '12px 32px', 
+                    height: 'auto',
+                    fontSize: '16px',
+                    boxShadow: `0 4px 20px rgba(210, 105, 30, 0.3)`
+                  }}
+                >
+                  Start Shopping
+                </Button>
+                <Button 
+                  size="large"
+                  icon={<ReloadOutlined />}
+                  onClick={handleRetry}
+                  style={{
+                    borderColor: terracottaTheme.primary,
+                    color: terracottaTheme.primary,
+                    borderRadius: '8px'
+                  }}
+                >
+                  Refresh
+                </Button>
+              </Space>
+            </Empty>
+          </Card>
         ) : (
           <div>
             {orders.map((order) => (
               <OrderCard
-                key={order.id}
+                key={`${order.orderType}-${order.id}`}
                 order={order}
                 onTrack={handleTrackPackage}
               />
@@ -881,7 +1245,12 @@ const Orders = () => {
                 size="large"
                 icon={<ShopOutlined />}
                 onClick={handleShopNavigation}
-                style={styles.primaryButton}
+                style={{
+                  background: `linear-gradient(135deg, ${terracottaTheme.primary} 0%, ${terracottaTheme.accent} 100())`,
+                  border: 'none',
+                  borderRadius: '12px',
+                  boxShadow: `0 4px 12px rgba(210, 105, 30, 0.3)`
+                }}
               >
                 Shop More
               </Button>
@@ -889,14 +1258,22 @@ const Orders = () => {
                 size="large"
                 icon={<HeartOutlined />}
                 onClick={handleWishlistNavigation}
-                style={styles.secondaryButton}
+                style={{
+                  borderColor: terracottaTheme.primary,
+                  color: terracottaTheme.primary,
+                  borderRadius: '8px'
+                }}
               >
                 View Wishlist
               </Button>
               <Button 
                 size="large"
                 icon={<PhoneOutlined />}
-                style={styles.secondaryButton}
+                style={{
+                  borderColor: terracottaTheme.primary,
+                  color: terracottaTheme.primary,
+                  borderRadius: '8px'
+                }}
               >
                 Contact Support
               </Button>
@@ -904,304 +1281,6 @@ const Orders = () => {
           </Card>
         )}
       </div>
-
-      {/* Custom CSS for Ant Design components */}
-      <style jsx>{`
-        .ant-steps-item-finish .ant-steps-item-icon {
-          background-color: ${terracottaTheme.success} !important;
-          border-color: ${terracottaTheme.success} !important;
-        }
-        
-        .ant-steps-item-process .ant-steps-item-icon {
-          background-color: ${terracottaTheme.primary} !important;
-          border-color: ${terracottaTheme.primary} !important;
-        }
-        
-        .ant-steps-item-wait .ant-steps-item-icon {
-          background-color: #f5f5f5 !important;
-          border-color: #d9d9d9 !important;
-        }
-        
-        .ant-steps-item-title {
-          font-weight: 600 !important;
-          color: ${terracottaTheme.text.primary} !important;
-        }
-        
-        .ant-steps-item-description {
-          color: ${terracottaTheme.text.secondary} !important;
-        }
-        
-        .ant-card-head-title {
-          font-weight: 600;
-          color: ${terracottaTheme.text.primary} !important;
-        }
-        
-        .ant-modal-header {
-          background: linear-gradient(135deg, ${terracottaTheme.primary} 0%, ${terracottaTheme.secondary} 100%) !important;
-          border-radius: 8px 8px 0 0;
-        }
-        
-        .ant-modal-title {
-          color: white !important;
-          font-weight: 600;
-        }
-        
-        .ant-modal-close-x {
-          color: white !important;
-        }
-        
-        .ant-spin-dot-item {
-          background-color: ${terracottaTheme.primary} !important;
-        }
-        
-        .ant-badge-count {
-          font-weight: 600;
-          font-size: 12px;
-          box-shadow: 0 2px 8px rgba(210, 105, 30, 0.3);
-        }
-        
-        .ant-card-hoverable:hover {
-          box-shadow: 0 8px 32px rgba(210, 105, 30, 0.2) !important;
-        }
-        
-        .ant-notification {
-          border-radius: 12px;
-          box-shadow: 0 8px 32px rgba(210, 105, 30, 0.15);
-        }
-        
-        .ant-notification-notice {
-          border-radius: 12px;
-          backdrop-filter: blur(10px);
-        }
-        
-        .ant-rate-star {
-          color: ${terracottaTheme.warning} !important;
-        }
-        
-        .ant-statistic-content-value {
-          font-weight: 700 !important;
-          letter-spacing: -0.5px;
-        }
-        
-        .ant-empty-description {
-          color: ${terracottaTheme.text.secondary} !important;
-          font-size: 16px;
-        }
-        
-        .ant-btn:focus,
-        .ant-input:focus,
-        .ant-select-selector:focus {
-          outline: 2px solid ${terracottaTheme.primary};
-          outline-offset: 2px;
-        }
-        
-        .ant-btn-primary:hover {
-          background: linear-gradient(135deg, ${terracottaTheme.dark} 0%, ${terracottaTheme.primary} 100%) !important;
-          border-color: ${terracottaTheme.dark} !important;
-          transform: translateY(-2px);
-          box-shadow: 0 6px 20px rgba(210, 105, 30, 0.4) !important;
-        }
-        
-        .ant-btn:hover {
-          transform: translateY(-1px);
-          transition: all 0.3s ease;
-        }
-        
-        .ant-tag {
-          transition: all 0.3s ease;
-        }
-        
-        .ant-tag:hover {
-          transform: scale(1.05);
-        }
-        
-        .ant-result-title {
-          color: ${terracottaTheme.text.primary} !important;
-        }
-        
-        .ant-result-subtitle {
-          color: ${terracottaTheme.text.secondary} !important;
-        }
-        
-        /* Mobile responsive styles */
-        @media (max-width: 768px) {
-          .ant-card-body {
-            padding: 16px !important;
-          }
-          
-          .ant-modal {
-            margin: 0 !important;
-            padding: 16px !important;
-          }
-          
-          .ant-modal-content {
-            border-radius: 12px !important;
-          }
-          
-          .ant-steps {
-            margin: 16px 0 !important;
-          }
-          
-          .ant-steps-item-title {
-            font-size: 12px !important;
-          }
-          
-          .ant-steps-item-description {
-            font-size: 11px !important;
-          }
-          
-          .ant-row {
-            flex-direction: column !important;
-          }
-          
-          .ant-col {
-            width: 100% !important;
-            margin-bottom: 16px !important;
-          }
-          
-          .ant-space {
-            flex-direction: column !important;
-            width: 100% !important;
-          }
-          
-          .ant-space-item {
-            width: 100% !important;
-          }
-        }
-        
-        @media (max-width: 576px) {
-          .ant-space-item {
-            margin-bottom: 8px !important;
-          }
-          
-          .ant-btn {
-            font-size: 12px !important;
-            height: 32px !important;
-            padding: 0 12px !important;
-          }
-          
-          .ant-btn-lg {
-            font-size: 14px !important;
-            height: 40px !important;
-            padding: 0 16px !important;
-          }
-          
-          .ant-statistic-content-value {
-            font-size: 16px !important;
-          }
-          
-          .ant-typography h2 {
-            font-size: 20px !important;
-          }
-          
-          .ant-typography h3 {
-            font-size: 18px !important;
-          }
-          
-          .ant-typography h4 {
-            font-size: 16px !important;
-          }
-          
-          .ant-empty-image {
-            height: 80px !important;
-          }
-          
-          .ant-empty-image svg {
-            font-size: 80px !important;
-          }
-        }
-        
-        /* Dark mode support */
-        @media (prefers-color-scheme: dark) {
-          .ant-card {
-            background: rgba(20, 20, 20, 0.95) !important;
-            color: #fff !important;
-          }
-          
-          .ant-typography {
-            color: #fff !important;
-          }
-          
-          .ant-btn:not(.ant-btn-primary) {
-            background: rgba(255, 255, 255, 0.1) !important;
-            border-color: rgba(255, 255, 255, 0.2) !important;
-            color: #fff !important;
-          }
-          
-          .ant-modal-content {
-            background: rgba(20, 20, 20, 0.95) !important;
-            color: #fff !important;
-          }
-        }
-        
-        /* Accessibility improvements */
-        .ant-btn:focus-visible {
-          outline: 3px solid ${terracottaTheme.primary} !important;
-          outline-offset: 2px !important;
-        }
-        
-        .ant-card:focus-within {
-          outline: 2px solid ${terracottaTheme.primary} !important;
-          outline-offset: 2px !important;
-        }
-        
-        /* Animation improvements */
-        .ant-card {
-          animation: fadeInUp 0.6s ease-out;
-        }
-        
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        
-        .ant-steps-item {
-          transition: all 0.3s ease;
-        }
-        
-        .ant-steps-item:hover {
-          transform: scale(1.02);
-        }
-        
-        /* Loading animation */
-        .ant-spin-dot {
-          animation: spin 1.2s infinite linear;
-        }
-        
-        @keyframes spin {
-          from {
-            transform: rotate(0deg);
-          }
-          to {
-            transform: rotate(360deg);
-          }
-        }
-        
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-          width: 8px;
-        }
-        
-        ::-webkit-scrollbar-track {
-          background: ${terracottaTheme.light};
-          border-radius: 4px;
-        }
-        
-        ::-webkit-scrollbar-thumb {
-          background: ${terracottaTheme.primary};
-          border-radius: 4px;
-        }
-        
-        ::-webkit-scrollbar-thumb:hover {
-          background: ${terracottaTheme.dark};
-        }
-      `}</style>
     </div>
   );
 };
