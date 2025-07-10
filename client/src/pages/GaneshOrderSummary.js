@@ -195,7 +195,7 @@ const handleSubmitInterest = async (values) => {
 
   if (!idol) {
     return null;
-  }
+  
 
   const advanceAmount = Math.round(idol.price * (idol.advancePercentage || 25) / 100);
 
