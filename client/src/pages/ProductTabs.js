@@ -354,36 +354,63 @@ const ProductTabs = memo(({ product }) => {
                   that honors both tradition and Mother Earth.
                 </Paragraph>
 
-                <Card 
-                  style={{ 
-                    marginBottom: '24px',
-                    borderRadius: '12px',
-                    border: `2px solid ${colors.eco}30`,
-                    backgroundColor: `${colors.eco}05`,
-                  }}
-                  bodyStyle={{ padding: '20px' }}
-                >
-                  <Title level={5} style={{ color: colors.eco, marginBottom: '16px' }}>
-                    🌿 Benefits of Our Eco-Friendly Approach:
-                  </Title>
-                  <List
-                    dataSource={[
-                      'A pure and heartfelt Pooja experience',
-                      'Zero contribution to water pollution',
-                      'Growth of new life - a living testament to your faith',
-                      'A lasting, beautiful memory of your Ganesh Chaturthi',
-                      'Supporting environmental conservation',
-                      'Teaching children about responsible celebration',
-                    ]}
-                    renderItem={(item) => (
-                      <List.Item style={{ border: 'none', padding: '4px 0' }}>
-                        <CheckCircleOutlined style={{ color: colors.eco, marginRight: '8px' }} />
-                        <Text>{item}</Text>
-                      </List.Item>
-                    )}
-                  />
-                </Card>
+                
 
+
+<Card 
+  style={{ 
+    marginBottom: '24px',
+    borderRadius: '12px',
+    border: `2px solid ${colors.eco}30`,
+    backgroundColor: `${colors.eco}05`,
+  }}
+  bodyStyle={{ padding: '20px' }}
+>
+  <Title level={5} style={{ color: colors.eco, marginBottom: '16px' }}>
+    🌿 Benefits of Our Eco-Friendly Approach:
+  </Title>
+  <List
+    dataSource={[
+      'A pure and heartfelt Pooja experience',
+      'Zero contribution to water pollution',
+      'Growth of new life - a living testament to your faith',
+      'A lasting, beautiful memory of your Ganesh Chaturthi',
+      'Supporting environmental conservation',
+      'Teaching children about responsible celebration',
+    ]}
+    renderItem={(item) => (
+      <List.Item style={{ 
+        border: 'none', 
+        padding: '8px 0',
+        display: 'flex',
+        alignItems: 'flex-start',
+        textAlign: 'left'
+      }}>
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'flex-start', 
+          width: '100%',
+          gap: '8px'
+        }}>
+          <CheckCircleOutlined style={{ 
+            color: colors.eco, 
+            fontSize: '16px',
+            marginTop: '2px',
+            flexShrink: 0
+          }} />
+          <Text style={{ 
+            fontSize: '14px', 
+            lineHeight: '1.5',
+            textAlign: 'left',
+            flex: 1
+          }}>
+            {item}
+          </Text>
+        </div>
+      </List.Item>
+    )}
+  />
+</Card>
                 {/* Why Choose Our Ganesh Idols */}
                 <Title level={4} style={{ color: colors.text, marginTop: '32px', marginBottom: '24px' }}>
                   Why Choose Our Sacred Ganesh Idols?

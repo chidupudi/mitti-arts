@@ -1,4 +1,4 @@
-// ProductDetail.jsx - Enhanced Main Component with Restructured Layout
+// ProductDetail.jsx - Enhanced Main Component with Proper Mobile/Desktop Layout
 import React, {
   useEffect,
   useState,
@@ -282,7 +282,7 @@ const ProductDetailSkeleton = () => (
   <div style={customStyles.container}>
     <Skeleton.Button size="large" style={{ marginBottom: '24px' }} />
     <Row gutter={[24, 24]}>
-      <Col xs={24} lg={14}>
+      <Col xs={24} lg={12}>
         <div style={customStyles.imageCard}>
           <Skeleton.Image style={{ width: '100%', height: '500px' }} />
           <div style={{ display: 'flex', gap: '8px', marginTop: '16px', padding: '16px' }}>
@@ -292,7 +292,7 @@ const ProductDetailSkeleton = () => (
           </div>
         </div>
       </Col>
-      <Col xs={24} lg={10}>
+      <Col xs={24} lg={12}>
         <div style={customStyles.productInfoCard}>
           <Skeleton active paragraph={{ rows: 8 }} style={{ padding: '24px' }} />
         </div>
@@ -431,7 +431,6 @@ const ProductDetail = () => {
     }
   }, [user, navigate]);
 
-
   const handleToggleWishlist = useCallback(async (product) => {
     if (!user) {
       navigate('/auth');
@@ -490,22 +489,17 @@ const ProductDetail = () => {
         {product.isGaneshIdol ? 'Back to Ganesh Collection' : 'Back to Products'}
       </Button>
 
-      {/* Main Product Section - Evenly Balanced 50-50 Layout */}
-      <Row gutter={[24, 24]}>
-        {/* Left Column: Images + Basic Description (50% width) */}
+      {/* MAIN PRODUCT SECTION - IMAGES + PRODUCT INFO */}
+      <Row gutter={[24, 24]} style={{ marginBottom: '48px' }}>
+        {/* LEFT: Product Images */}
         <Col xs={24} lg={12}>
           <ProductImageGallery
             images={product.images}
             productName={product.name}
           />
-          
-          {/* Basic Product Description - Heritage & craftsmanship info */}
-          <ProductDescription
-            product={product}
-          />
         </Col>
 
-        {/* Right Column: Complete Product Info + Features (50% width) */}
+        {/* RIGHT: Product Info (Title, Price, Description, Contact/Actions) */}
         <Col xs={24} lg={12}>
           <ProductInfo
             product={product}
@@ -517,11 +511,17 @@ const ProductDetail = () => {
         </Col>
       </Row>
 
-      {/* Service Features */}
-      <ServiceFeatures product={product} />
+      {/* BELOW BOTH: Additional Product Information */}
+      <div style={{ marginTop: '48px' }}>
+        {/* Product Description (Heritage & craftsmanship info) */}
+        <ProductDescription product={product} />
 
-      {/* Product Details Tabs */}
-      <ProductTabs product={product} />
+        {/* Service Features */}
+        <ServiceFeatures product={product} />
+
+        {/* Product Details Tabs */}
+        <ProductTabs product={product} />
+      </div>
 
       {/* Mobile Actions Bar */}
       {screens.xs && (
