@@ -1,4 +1,4 @@
-// Enhanced AddGaneshIdolDialog.js - Now supports both images and videos
+// Enhanced AddGaneshIdolDialog.js - Now supports both images and videos with enhanced animations
 import React, { useState } from 'react';
 import {
   Modal,
@@ -38,6 +38,7 @@ import {
   VideoCameraOutlined,
   PlayCircleOutlined,
   PictureOutlined,
+  CheckCircleOutlined,
 } from '@ant-design/icons';
 
 // Import enhanced Cloudinary utilities with video support
@@ -55,6 +56,79 @@ const { TextArea } = Input;
 const { Option } = Select;
 const { TabPane } = Tabs;
 
+// Enhanced loading animation styles
+const loadingAnimationStyles = `
+  @keyframes pulseUpload {
+    0% { 
+      transform: scale(1);
+      box-shadow: 0 0 0 0 rgba(255, 143, 0, 0.7);
+    }
+    50% { 
+      transform: scale(1.05);
+      box-shadow: 0 0 0 10px rgba(255, 143, 0, 0.3);
+    }
+    100% { 
+      transform: scale(1);
+      box-shadow: 0 0 0 0 rgba(255, 143, 0, 0);
+    }
+  }
+
+  @keyframes rotateUpload {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  @keyframes uploadProgress {
+    0% { width: 0%; }
+    100% { width: 100%; }
+  }
+
+  .upload-loading-container {
+    animation: pulseUpload 2s infinite;
+    background: linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%);
+    border: 2px dashed #FF8F00 !important;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .upload-loading-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 143, 0, 0.2), transparent);
+    animation: uploadProgress 1.5s infinite;
+  }
+
+  .upload-spinner {
+    animation: rotateUpload 1s linear infinite;
+    color: #FF8F00;
+    font-size: 32px;
+  }
+
+  .upload-success-animation {
+    animation: successPulse 0.6s ease-out;
+  }
+
+  @keyframes successPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+  }
+
+  .upload-progress-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #FF8F00, #FFB74D);
+    transition: width 0.3s ease;
+    border-radius: 0 0 6px 6px;
+  }
+`;
+
 const AddGaneshIdolDialog = ({
   open,
   onClose,
@@ -68,6 +142,10 @@ const AddGaneshIdolDialog = ({
   const [uploadingIndex, setUploadingIndex] = useState(null);
   const [uploadingVideoIndex, setUploadingVideoIndex] = useState(null);
   
+  // NEW: Enhanced upload progress states
+  const [uploadProgress, setUploadProgress] = useState({});
+  const [uploadSuccess, setUploadSuccess] = useState({});
+  
   // NEW: Video-related states
   const [videoMetadata, setVideoMetadata] = useState({});
   const [videoUploadProgress, setVideoUploadProgress] = useState({});
@@ -78,7 +156,7 @@ const AddGaneshIdolDialog = ({
     form.setFieldsValue({ [field]: value });
   };
 
-  // ENHANCED: Handle image upload (existing functionality)
+  // ENHANCED: Handle image upload with better animations
   const handleImageChange = async (e, index) => {
     try {
       const file = e.target.files[0];
@@ -91,9 +169,19 @@ const AddGaneshIdolDialog = ({
 
       // Set loading state for this specific index
       setUploadingIndex(index);
+      setUploadProgress({ [index]: 0 });
+      
       const newImages = [...(idol.images || Array(8).fill(''))];
       newImages[index] = 'loading';
       handleChange('images', newImages);
+
+      // Simulate upload progress for better UX
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => ({
+          ...prev,
+          [index]: Math.min((prev[index] || 0) + Math.random() * 20, 85)
+        }));
+      }, 200);
 
       // Upload to cloudinary
       let imageUrl;
@@ -103,10 +191,20 @@ const AddGaneshIdolDialog = ({
         throw new Error('Upload service not available');
       }
 
+      // Complete progress
+      clearInterval(progressInterval);
+      setUploadProgress({ [index]: 100 });
+
       // Update with actual URL
       const updatedImages = [...(idol.images || Array(8).fill(''))];
       updatedImages[index] = imageUrl;
       handleChange('images', updatedImages);
+
+      // Show success animation
+      setUploadSuccess({ [index]: true });
+      setTimeout(() => {
+        setUploadSuccess({});
+      }, 1000);
 
       message.success('Image uploaded successfully!');
     } catch (error) {
@@ -120,10 +218,11 @@ const AddGaneshIdolDialog = ({
       message.error(error.message || 'Failed to upload image');
     } finally {
       setUploadingIndex(null);
+      setUploadProgress({});
     }
   };
 
-  // NEW: Handle video upload
+  // ENHANCED: Handle video upload with progress tracking
   const handleVideoChange = async (e, index) => {
     try {
       const file = e.target.files[0];
@@ -138,6 +237,8 @@ const AddGaneshIdolDialog = ({
       
       // Set loading state
       setUploadingVideoIndex(index);
+      setVideoUploadProgress({ [index]: 0 });
+      
       const newVideos = [...(idol.videos || Array(5).fill(null))];
       newVideos[index] = { 
         loading: true, 
@@ -147,11 +248,23 @@ const AddGaneshIdolDialog = ({
       };
       handleChange('videos', newVideos);
 
+      // Simulate upload progress for videos (they take longer)
+      const progressInterval = setInterval(() => {
+        setVideoUploadProgress(prev => ({
+          ...prev,
+          [index]: Math.min((prev[index] || 0) + Math.random() * 15, 80)
+        }));
+      }, 300);
+
       // Upload video to Cloudinary
       const videoData = await uploadVideoToCloudinary(file, {
         quality: 'auto',
         thumbnailTime: 2 // Generate thumbnail at 2 seconds
       });
+
+      // Complete progress
+      clearInterval(progressInterval);
+      setVideoUploadProgress({ [index]: 100 });
 
       // Update with video data
       const updatedVideos = [...(idol.videos || Array(5).fill(null))];
@@ -176,6 +289,12 @@ const AddGaneshIdolDialog = ({
         [index]: metadata
       }));
 
+      // Show success animation
+      setUploadSuccess({ [`video_${index}`]: true });
+      setTimeout(() => {
+        setUploadSuccess({});
+      }, 1000);
+
       message.success('Video uploaded successfully!');
     } catch (error) {
       console.error('Error uploading video:', error);
@@ -188,6 +307,7 @@ const AddGaneshIdolDialog = ({
       message.error(error.message || 'Failed to upload video');
     } finally {
       setUploadingVideoIndex(null);
+      setVideoUploadProgress({});
     }
   };
 
@@ -238,19 +358,23 @@ const AddGaneshIdolDialog = ({
     return 2000; // Default
   };
 
-  // NEW: Video upload card component
+  // ENHANCED: Video upload card component with animations
   const VideoUploadCard = ({ index }) => {
     const videoData = idol.videos?.[index];
     const isLoading = uploadingVideoIndex === index || videoData?.loading;
+    const progress = videoUploadProgress[index] || 0;
+    const isSuccess = uploadSuccess[`video_${index}`];
 
     return (
       <Card
+        className={isLoading ? 'upload-loading-container' : isSuccess ? 'upload-success-animation' : ''}
         style={{
           height: '160px',
           border: '2px dashed #FF8F00',
           borderRadius: '8px',
           position: 'relative',
           cursor: !videoData ? 'pointer' : 'default',
+          transition: 'all 0.3s ease',
         }}
         bodyStyle={{ 
           padding: 0, 
@@ -266,9 +390,11 @@ const AddGaneshIdolDialog = ({
         }}
       >
         {isLoading ? (
-          <div style={{ textAlign: 'center', padding: '16px' }}>
-            <LoadingOutlined style={{ fontSize: '32px', color: '#FF8F00' }} />
-            <div style={{ marginTop: '8px', color: '#FF8F00', fontSize: '12px' }}>
+          <div style={{ textAlign: 'center', padding: '16px', position: 'relative', zIndex: 2 }}>
+            <div className="upload-spinner">
+              <LoadingOutlined />
+            </div>
+            <div style={{ marginTop: '8px', color: '#FF8F00', fontSize: '12px', fontWeight: 'bold' }}>
               Uploading video...
             </div>
             {videoData?.filename && (
@@ -276,6 +402,22 @@ const AddGaneshIdolDialog = ({
                 {videoData.filename}
               </div>
             )}
+            <div style={{ marginTop: '8px', width: '80px', margin: '0 auto' }}>
+              <Progress 
+                percent={progress} 
+                size="small" 
+                strokeColor={{
+                  '0%': '#FF8F00',
+                  '100%': '#FFB74D',
+                }}
+                showInfo={false}
+              />
+            </div>
+            {/* Progress bar at bottom */}
+            <div 
+              className="upload-progress-bar"
+              style={{ width: `${progress}%` }}
+            />
           </div>
         ) : videoData ? (
           <div style={{ position: 'relative', width: '100%', height: '100%' }}>
@@ -344,6 +486,19 @@ const AddGaneshIdolDialog = ({
               </div>
             )}
 
+            {/* Success indicator */}
+            {isSuccess && (
+              <div style={{
+                position: 'absolute',
+                top: '4px',
+                right: '40px',
+                color: '#52c41a',
+                fontSize: '16px',
+              }}>
+                <CheckCircleOutlined />
+              </div>
+            )}
+
             {/* Delete Button */}
             <Button
               type="primary"
@@ -382,19 +537,23 @@ const AddGaneshIdolDialog = ({
     );
   };
 
-  // Image upload component (existing with minor enhancements)
+  // ENHANCED: Image upload component with animations
   const ImageUploadCard = ({ index }) => {
     const imageUrl = idol.images?.[index];
     const isLoading = uploadingIndex === index || imageUrl === 'loading';
+    const progress = uploadProgress[index] || 0;
+    const isSuccess = uploadSuccess[index];
 
     return (
       <Card
+        className={isLoading ? 'upload-loading-container' : isSuccess ? 'upload-success-animation' : ''}
         style={{
           height: '140px',
           border: '2px dashed #FFB74D',
           borderRadius: '8px',
           position: 'relative',
           cursor: !imageUrl ? 'pointer' : 'default',
+          transition: 'all 0.3s ease',
         }}
         bodyStyle={{ 
           padding: 0, 
@@ -410,11 +569,29 @@ const AddGaneshIdolDialog = ({
         }}
       >
         {isLoading ? (
-          <div style={{ textAlign: 'center' }}>
-            <LoadingOutlined style={{ fontSize: '32px', color: '#FF8F00' }} />
-            <div style={{ marginTop: '8px', color: '#FF8F00', fontSize: '12px' }}>
+          <div style={{ textAlign: 'center', position: 'relative', zIndex: 2 }}>
+            <div className="upload-spinner">
+              <LoadingOutlined />
+            </div>
+            <div style={{ marginTop: '8px', color: '#FF8F00', fontSize: '12px', fontWeight: 'bold' }}>
               Uploading...
             </div>
+            <div style={{ marginTop: '8px', width: '60px', margin: '0 auto' }}>
+              <Progress 
+                percent={progress} 
+                size="small" 
+                strokeColor={{
+                  '0%': '#FF8F00',
+                  '100%': '#FFB74D',
+                }}
+                showInfo={false}
+              />
+            </div>
+            {/* Progress bar at bottom */}
+            <div 
+              className="upload-progress-bar"
+              style={{ width: `${progress}%` }}
+            />
           </div>
         ) : imageUrl ? (
           <>
@@ -428,6 +605,20 @@ const AddGaneshIdolDialog = ({
                 borderRadius: '6px',
               }}
             />
+            
+            {/* Success indicator */}
+            {isSuccess && (
+              <div style={{
+                position: 'absolute',
+                top: '4px',
+                right: '40px',
+                color: '#52c41a',
+                fontSize: '16px',
+              }}>
+                <CheckCircleOutlined />
+              </div>
+            )}
+
             <Button
               type="primary"
               danger
@@ -463,6 +654,9 @@ const AddGaneshIdolDialog = ({
           <div style={{ textAlign: 'center' }}>
             <CloudUploadOutlined style={{ fontSize: '32px', color: '#FF8F00' }} />
             <div style={{ marginTop: 8, color: '#FF6F00' }}>Upload Image</div>
+            <div style={{ marginTop: 4, fontSize: '10px', color: '#999' }}>
+              JPEG, PNG, GIF, WebP (Max 10MB)
+            </div>
           </div>
         )}
         
@@ -478,394 +672,399 @@ const AddGaneshIdolDialog = ({
   };
 
   return (
-    <Modal
-      title={
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <PlusOutlined style={{ color: '#FF8F00' }} />
-          <span style={{ color: '#E65100' }}>🕉️ Add New Ganesh Idol</span>
-        </div>
-      }
-      open={open}
-      onCancel={onClose}
-      width={1000} // Increased width for video support
-      footer={[
-        <Button key="cancel" onClick={onClose} size="large">
-          Cancel
-        </Button>,
-        <Button 
-          key="save" 
-          type="primary" 
-          icon={<SaveOutlined />}
-          onClick={onSave}
-          size="large"
-          style={{
-            background: 'linear-gradient(135deg, #FF8F00 0%, #FFB74D 100%)',
-            border: 'none',
-            fontWeight: '600'
-          }}
-        >
-          🕉️ Add Ganesh Idol
-        </Button>,
-      ]}
-      styles={{
-        header: {
-          background: 'linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%)',
-          borderBottom: '2px solid #FFB74D'
+    <>
+      {/* Inject CSS animations */}
+      <style>{loadingAnimationStyles}</style>
+      
+      <Modal
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <PlusOutlined style={{ color: '#FF8F00' }} />
+            <span style={{ color: '#E65100' }}>🕉️ Add New Ganesh Idol</span>
+          </div>
         }
-      }}
-    >
-      <Form form={form} layout="vertical" style={{ marginTop: '16px' }}>
-        {/* Basic Information - Same as before */}
-        <Card 
-          title={
-            <Space>
-              <CrownOutlined style={{ color: '#FF8F00' }} />
-              <span style={{ color: '#E65100' }}>Basic Information</span>
-            </Space>
+        open={open}
+        onCancel={onClose}
+        width={1000} // Increased width for video support
+        footer={[
+          <Button key="cancel" onClick={onClose} size="large">
+            Cancel
+          </Button>,
+          <Button 
+            key="save" 
+            type="primary" 
+            icon={<SaveOutlined />}
+            onClick={onSave}
+            size="large"
+            style={{
+              background: 'linear-gradient(135deg, #FF8F00 0%, #FFB74D 100%)',
+              border: 'none',
+              fontWeight: '600'
+            }}
+          >
+            🕉️ Add Ganesh Idol
+          </Button>,
+        ]}
+        styles={{
+          header: {
+            background: 'linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%)',
+            borderBottom: '2px solid #FFB74D'
           }
-          style={{ marginBottom: '16px', borderColor: '#FFE0B2' }}
-        >
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                label={<Text strong>Idol Name *</Text>}
-                name="name"
-                rules={[{ required: true, message: 'Idol name is required' }]}
-              >
-                <Input
-                  value={idol.name}
-                  onChange={e => handleChange('name', e.target.value)}
-                  placeholder="e.g., Traditional Ganesha, Modern Eco-Friendly Ganesha"
-                  prefix="🕉️"
-                />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item label={<Text strong>Category *</Text>} name="category">
-                <Select
-                  value={idol.category}
-                  onChange={value => handleChange('category', value)}
-                  placeholder="Select category"
+        }}
+      >
+        <Form form={form} layout="vertical" style={{ marginTop: '16px' }}>
+          {/* Basic Information - Same as before */}
+          <Card 
+            title={
+              <Space>
+                <CrownOutlined style={{ color: '#FF8F00' }} />
+                <span style={{ color: '#E65100' }}>Basic Information</span>
+              </Space>
+            }
+            style={{ marginBottom: '16px', borderColor: '#FFE0B2' }}
+          >
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  label={<Text strong>Idol Name *</Text>}
+                  name="name"
+                  rules={[{ required: true, message: 'Idol name is required' }]}
                 >
-                  <Option value="traditional">
-                    <Space><CrownOutlined style={{ color: '#8E24AA' }} /> Traditional</Space>
-                  </Option>
-                  <Option value="modern">
-                    <Space><StarOutlined style={{ color: '#1976D2' }} /> Modern</Space>
-                  </Option>
-                  <Option value="premium">
-                    <Space><FireOutlined style={{ color: '#D32F2F' }} /> Premium</Space>
-                  </Option>
-                </Select>
-              </Form.Item>
-            </Col>
-          </Row>
+                  <Input
+                    value={idol.name}
+                    onChange={e => handleChange('name', e.target.value)}
+                    placeholder="e.g., Traditional Ganesha, Modern Eco-Friendly Ganesha"
+                    prefix="🕉️"
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label={<Text strong>Category *</Text>} name="category">
+                  <Select
+                    value={idol.category}
+                    onChange={value => handleChange('category', value)}
+                    placeholder="Select category"
+                  >
+                    <Option value="traditional">
+                      <Space><CrownOutlined style={{ color: '#8E24AA' }} /> Traditional</Space>
+                    </Option>
+                    <Option value="modern">
+                      <Space><StarOutlined style={{ color: '#1976D2' }} /> Modern</Space>
+                    </Option>
+                    <Option value="premium">
+                      <Space><FireOutlined style={{ color: '#D32F2F' }} /> Premium</Space>
+                    </Option>
+                  </Select>
+                </Form.Item>
+              </Col>
+            </Row>
 
-          <Form.Item label={<Text strong>Description</Text>} name="description">
-            <TextArea
-              rows={3}
-              value={idol.description}
-              onChange={e => handleChange('description', e.target.value)}
-              placeholder="Describe the Ganesh idol - style, significance, special features..."
-            />
-          </Form.Item>
-        </Card>
+            <Form.Item label={<Text strong>Description</Text>} name="description">
+              <TextArea
+                rows={3}
+                value={idol.description}
+                onChange={e => handleChange('description', e.target.value)}
+                placeholder="Describe the Ganesh idol - style, significance, special features..."
+              />
+            </Form.Item>
+          </Card>
 
-        {/* Pricing & Business - Same as before */}
-        <Card 
-          title={
-            <Space>
-              <DollarOutlined style={{ color: '#4CAF50' }} />
-              <span style={{ color: '#E65100' }}>Pricing & Business Details</span>
-            </Space>
-          }
-          style={{ marginBottom: '16px', borderColor: '#FFE0B2' }}
-        >
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                label={<Text strong>Price (₹) *</Text>}
-                name="price"
-                rules={[{ required: true, message: 'Price is required' }]}
-              >
-                <InputNumber
-                  style={{ width: '100%' }}
-                  value={idol.price}
-                  onChange={value => handleChange('price', value)}
-                  formatter={value => `₹ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                  parser={value => value.replace(/₹\s?|(,*)/g, '')}
-                  placeholder="15000"
-                  min={1000}
-                  max={50000}
-                />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item label={<Text strong>Advance % *</Text>} name="advancePercentage">
-                <InputNumber
-                  style={{ width: '100%' }}
-                  value={idol.advancePercentage}
-                  onChange={value => handleChange('advancePercentage', value)}
-                  formatter={value => `${value}%`}
-                  parser={value => value.replace('%', '')}
-                  placeholder="25"
-                  min={10}
-                  max={50}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
+          {/* Pricing & Business - Same as before */}
+          <Card 
+            title={
+              <Space>
+                <DollarOutlined style={{ color: '#4CAF50' }} />
+                <span style={{ color: '#E65100' }}>Pricing & Business Details</span>
+              </Space>
+            }
+            style={{ marginBottom: '16px', borderColor: '#FFE0B2' }}
+          >
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  label={<Text strong>Price (₹) *</Text>}
+                  name="price"
+                  rules={[{ required: true, message: 'Price is required' }]}
+                >
+                  <InputNumber
+                    style={{ width: '100%' }}
+                    value={idol.price}
+                    onChange={value => handleChange('price', value)}
+                    formatter={value => `₹ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                    parser={value => value.replace(/₹\s?|(,*)/g, '')}
+                    placeholder="15000"
+                    min={1000}
+                    max={50000}
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label={<Text strong>Advance % *</Text>} name="advancePercentage">
+                  <InputNumber
+                    style={{ width: '100%' }}
+                    value={idol.advancePercentage}
+                    onChange={value => handleChange('advancePercentage', value)}
+                    formatter={value => `${value}%`}
+                    parser={value => value.replace('%', '')}
+                    placeholder="25"
+                    min={10}
+                    max={50}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
 
-          {/* Advance Preview */}
-          {idol.price && (
-            <Alert
-              message={
-                <div>
-                  <Text strong>💰 Advance Amount Preview: </Text>
-                  <Text style={{ color: '#4CAF50', fontWeight: 'bold' }}>
-                    ₹{calculateAdvancePreview().toLocaleString()} 
+            {/* Advance Preview */}
+            {idol.price && (
+              <Alert
+                message={
+                  <div>
+                    <Text strong>💰 Advance Amount Preview: </Text>
+                    <Text style={{ color: '#4CAF50', fontWeight: 'bold' }}>
+                      ₹{calculateAdvancePreview().toLocaleString()} 
+                    </Text>
+                    <Text type="secondary">
+                      {' '}(for price of ₹{idol.price.toLocaleString()})
+                    </Text>
+                  </div>
+                }
+                type="info"
+                style={{ marginTop: '8px' }}
+              />
+            )}
+
+            <Row gutter={16} style={{ marginTop: '16px' }}>
+              <Col span={12}>
+                <Form.Item label={<Text strong>Availability</Text>} name="availability">
+                  <Select
+                    value={idol.availability}
+                    onChange={value => handleChange('availability', value)}
+                    placeholder="Select availability"
+                  >
+                    <Option value="available">✅ Available</Option>
+                    <Option value="custom-order">🛠️ Custom Order Only</Option>
+                    <Option value="sold-out">❌ Sold Out</Option>
+                  </Select>
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label={<Text strong>Estimated Days</Text>} name="estimatedDays">
+                  <InputNumber
+                    style={{ width: '100%' }}
+                    value={idol.estimatedDays}
+                    onChange={value => handleChange('estimatedDays', value)}
+                    placeholder="7"
+                    min={1}
+                    max={30}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+          </Card>
+
+          {/* Physical Specifications - Same as before */}
+          <Card 
+            title={
+              <Space>
+                <ToolOutlined style={{ color: '#1976D2' }} />
+                <span style={{ color: '#E65100' }}>Physical Specifications</span>
+              </Space>
+            }
+            style={{ marginBottom: '16px', borderColor: '#FFE0B2' }}
+          >
+            <Row gutter={16}>
+              <Col span={8}>
+                <Form.Item label={<Text strong>Height</Text>} name="height">
+                  <Input
+                    value={idol.height || ''}
+                    onChange={e => handleChange('height', e.target.value)}
+                    placeholder="e.g., 12 inches, 1.5 feet"
+                    suffix="📏"
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={8}>
+                <Form.Item label={<Text strong>Weight</Text>} name="weight">
+                  <Input
+                    value={idol.weight || ''}
+                    onChange={e => handleChange('weight', e.target.value)}
+                    placeholder="e.g., 2.5 kg"
+                    suffix="⚖️"
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={8}>
+                <Form.Item label={<Text strong>Color</Text>} name="color">
+                  <Input
+                    value={idol.color || ''}
+                    onChange={e => handleChange('color', e.target.value)}
+                    placeholder="e.g., Natural Clay, Golden"
+                    suffix="🎨"
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Row gutter={16}>
+              <Col span={16}>
+                <Form.Item label={<Text strong>Material</Text>} name="material">
+                  <Input
+                    value={idol.material || ''}
+                    onChange={e => handleChange('material', e.target.value)}
+                    placeholder="e.g., Eco-friendly Clay, Plaster of Paris"
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={8}>
+                <Form.Item label={<Text strong>Customizable</Text>} name="customizable">
+                  <Switch
+                    checked={idol.customizable}
+                    onChange={value => handleChange('customizable', value)}
+                    checkedChildren="Yes"
+                    unCheckedChildren="No"
+                  />
+                  <Text type="secondary" style={{ marginLeft: '8px', fontSize: '12px' }}>
+                    Can customers request modifications?
                   </Text>
+                </Form.Item>
+              </Col>
+            </Row>
+          </Card>
+
+          {/* Features - Same as before */}
+          <Card 
+            title={
+              <Space>
+                <StarOutlined style={{ color: '#E91E63' }} />
+                <span style={{ color: '#E65100' }}>Features & Highlights</span>
+              </Space>
+            }
+            style={{ marginBottom: '16px', borderColor: '#FFE0B2' }}
+          >
+            <Space.Compact style={{ width: '100%', marginBottom: '12px' }}>
+              <Input
+                value={newFeature}
+                onChange={(e) => setNewFeature(e.target.value)}
+                placeholder="Add a feature (e.g., Hand-crafted, Eco-friendly, Detailed carving)"
+                onPressEnter={addFeature}
+              />
+              <Button 
+                type="primary" 
+                icon={<PlusOutlined />}
+                onClick={addFeature}
+                style={{ background: '#FF8F00', borderColor: '#FF8F00' }}
+              >
+                Add
+              </Button>
+            </Space.Compact>
+            
+            <Space wrap>
+              {features.map((feature, index) => (
+                <Tag
+                  key={index}
+                  closable
+                  onClose={() => removeFeature(feature)}
+                  style={{
+                    background: '#FFF3E0',
+                    borderColor: '#FFB74D',
+                    color: '#E65100',
+                    padding: '4px 8px',
+                    borderRadius: '6px'
+                  }}
+                >
+                  {feature}
+                </Tag>
+              ))}
+            </Space>
+            
+            {features.length === 0 && (
+              <Text type="secondary">No features added yet. Add features to highlight this idol's uniqueness.</Text>
+            )}
+          </Card>
+
+          {/* ENHANCED: Media Upload Section with Tabs */}
+          <Card 
+            title={
+              <Space>
+                <CameraOutlined style={{ color: '#9C27B0' }} />
+                <span style={{ color: '#E65100' }}>Media Gallery (Images & Videos)</span>
+              </Space>
+            }
+            style={{ marginBottom: '16px', borderColor: '#FFE0B2' }}
+          >
+            <Alert
+              message="Media Guidelines"
+              description="Upload high-quality images and videos showcasing different angles and details of the Ganesh idol. First image will be the primary display image. Images max 10MB, Videos max 100MB."
+              type="info"
+              style={{ marginBottom: '16px' }}
+              icon={<InfoCircleOutlined />}
+            />
+
+            <Tabs defaultActiveKey="images" type="card">
+              {/* Images Tab */}
+              <TabPane 
+                tab={
+                  <Space>
+                    <PictureOutlined />
+                    Images (0-8)
+                  </Space>
+                } 
+                key="images"
+              >
+                <div style={{ marginBottom: '12px' }}>
                   <Text type="secondary">
-                    {' '}(for price of ₹{idol.price.toLocaleString()})
+                    Supported formats: JPEG, PNG, GIF, WebP (Max 10MB each)
                   </Text>
                 </div>
-              }
-              type="info"
-              style={{ marginTop: '8px' }}
-            />
-          )}
+                
+                <Row gutter={[16, 16]}>
+                  {Array.from({ length: 8 }).map((_, index) => (
+                    <Col span={6} key={index}>
+                      <ImageUploadCard index={index} />
+                      {index === 0 && (
+                        <Text type="secondary" style={{ fontSize: '10px', textAlign: 'center', display: 'block', marginTop: '4px' }}>
+                          Primary Image
+                        </Text>
+                      )}
+                    </Col>
+                  ))}
+                </Row>
+              </TabPane>
 
-          <Row gutter={16} style={{ marginTop: '16px' }}>
-            <Col span={12}>
-              <Form.Item label={<Text strong>Availability</Text>} name="availability">
-                <Select
-                  value={idol.availability}
-                  onChange={value => handleChange('availability', value)}
-                  placeholder="Select availability"
-                >
-                  <Option value="available">✅ Available</Option>
-                  <Option value="custom-order">🛠️ Custom Order Only</Option>
-                  <Option value="sold-out">❌ Sold Out</Option>
-                </Select>
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item label={<Text strong>Estimated Days</Text>} name="estimatedDays">
-                <InputNumber
-                  style={{ width: '100%' }}
-                  value={idol.estimatedDays}
-                  onChange={value => handleChange('estimatedDays', value)}
-                  placeholder="7"
-                  min={1}
-                  max={30}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-        </Card>
-
-        {/* Physical Specifications - Same as before */}
-        <Card 
-          title={
-            <Space>
-              <ToolOutlined style={{ color: '#1976D2' }} />
-              <span style={{ color: '#E65100' }}>Physical Specifications</span>
-            </Space>
-          }
-          style={{ marginBottom: '16px', borderColor: '#FFE0B2' }}
-        >
-          <Row gutter={16}>
-            <Col span={8}>
-              <Form.Item label={<Text strong>Height</Text>} name="height">
-                <Input
-                  value={idol.height || ''}
-                  onChange={e => handleChange('height', e.target.value)}
-                  placeholder="e.g., 12 inches, 1.5 feet"
-                  suffix="📏"
-                />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item label={<Text strong>Weight</Text>} name="weight">
-                <Input
-                  value={idol.weight || ''}
-                  onChange={e => handleChange('weight', e.target.value)}
-                  placeholder="e.g., 2.5 kg"
-                  suffix="⚖️"
-                />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item label={<Text strong>Color</Text>} name="color">
-                <Input
-                  value={idol.color || ''}
-                  onChange={e => handleChange('color', e.target.value)}
-                  placeholder="e.g., Natural Clay, Golden"
-                  suffix="🎨"
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={16}>
-            <Col span={16}>
-              <Form.Item label={<Text strong>Material</Text>} name="material">
-                <Input
-                  value={idol.material || ''}
-                  onChange={e => handleChange('material', e.target.value)}
-                  placeholder="e.g., Eco-friendly Clay, Plaster of Paris"
-                />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item label={<Text strong>Customizable</Text>} name="customizable">
-                <Switch
-                  checked={idol.customizable}
-                  onChange={value => handleChange('customizable', value)}
-                  checkedChildren="Yes"
-                  unCheckedChildren="No"
-                />
-                <Text type="secondary" style={{ marginLeft: '8px', fontSize: '12px' }}>
-                  Can customers request modifications?
-                </Text>
-              </Form.Item>
-            </Col>
-          </Row>
-        </Card>
-
-        {/* Features - Same as before */}
-        <Card 
-          title={
-            <Space>
-              <StarOutlined style={{ color: '#E91E63' }} />
-              <span style={{ color: '#E65100' }}>Features & Highlights</span>
-            </Space>
-          }
-          style={{ marginBottom: '16px', borderColor: '#FFE0B2' }}
-        >
-          <Space.Compact style={{ width: '100%', marginBottom: '12px' }}>
-            <Input
-              value={newFeature}
-              onChange={(e) => setNewFeature(e.target.value)}
-              placeholder="Add a feature (e.g., Hand-crafted, Eco-friendly, Detailed carving)"
-              onPressEnter={addFeature}
-            />
-            <Button 
-              type="primary" 
-              icon={<PlusOutlined />}
-              onClick={addFeature}
-              style={{ background: '#FF8F00', borderColor: '#FF8F00' }}
-            >
-              Add
-            </Button>
-          </Space.Compact>
-          
-          <Space wrap>
-            {features.map((feature, index) => (
-              <Tag
-                key={index}
-                closable
-                onClose={() => removeFeature(feature)}
-                style={{
-                  background: '#FFF3E0',
-                  borderColor: '#FFB74D',
-                  color: '#E65100',
-                  padding: '4px 8px',
-                  borderRadius: '6px'
-                }}
+              {/* Videos Tab */}
+              <TabPane 
+                tab={
+                  <Space>
+                    <VideoCameraOutlined />
+                    Videos (0-5)
+                  </Space>
+                } 
+                key="videos"
               >
-                {feature}
-              </Tag>
-            ))}
-          </Space>
-          
-          {features.length === 0 && (
-            <Text type="secondary">No features added yet. Add features to highlight this idol's uniqueness.</Text>
-          )}
-        </Card>
-
-        {/* ENHANCED: Media Upload Section with Tabs */}
-        <Card 
-          title={
-            <Space>
-              <CameraOutlined style={{ color: '#9C27B0' }} />
-              <span style={{ color: '#E65100' }}>Media Gallery (Images & Videos)</span>
-            </Space>
-          }
-          style={{ marginBottom: '16px', borderColor: '#FFE0B2' }}
-        >
-          <Alert
-            message="Media Guidelines"
-            description="Upload high-quality images and videos showcasing different angles and details of the Ganesh idol. First image will be the primary display image."
-            type="info"
-            style={{ marginBottom: '16px' }}
-            icon={<InfoCircleOutlined />}
-          />
-
-          <Tabs defaultActiveKey="images" type="card">
-            {/* Images Tab */}
-            <TabPane 
-              tab={
-                <Space>
-                  <PictureOutlined />
-                  Images (0-8)
-                </Space>
-              } 
-              key="images"
-            >
-              <div style={{ marginBottom: '12px' }}>
-                <Text type="secondary">
-                  Supported formats: JPEG, PNG, GIF, WebP (Max 10MB each)
-                </Text>
-              </div>
-              
-              <Row gutter={[16, 16]}>
-                {Array.from({ length: 8 }).map((_, index) => (
-                  <Col span={6} key={index}>
-                    <ImageUploadCard index={index} />
-                    {index === 0 && (
-                      <Text type="secondary" style={{ fontSize: '10px', textAlign: 'center', display: 'block', marginTop: '4px' }}>
-                        Primary Image
-                      </Text>
-                    )}
-                  </Col>
-                ))}
-              </Row>
-            </TabPane>
-
-            {/* Videos Tab */}
-            <TabPane 
-              tab={
-                <Space>
-                  <VideoCameraOutlined />
-                  Videos (0-5)
-                </Space>
-              } 
-              key="videos"
-            >
-              <div style={{ marginBottom: '12px' }}>
-                <Text type="secondary">
-                  Supported formats: MP4, WebM, MOV, AVI (Max 100MB each, 5 minutes duration)
-                </Text>
-              </div>
-              
-              <Row gutter={[16, 16]}>
-                {Array.from({ length: 5 }).map((_, index) => (
-                  <Col span={8} key={index}>
-                    <VideoUploadCard index={index} />
-                    {index === 0 && (
-                      <Text type="secondary" style={{ fontSize: '10px', textAlign: 'center', display: 'block', marginTop: '4px' }}>
-                        Primary Video
-                      </Text>
-                    )}
-                  </Col>
-                ))}
-              </Row>
-            </TabPane>
-          </Tabs>
-        </Card>
-      </Form>
-    </Modal>
+                <div style={{ marginBottom: '12px' }}>
+                  <Text type="secondary">
+                    Supported formats: MP4, WebM, MOV, AVI (Max 100MB each, 5 minutes duration)
+                  </Text>
+                </div>
+                
+                <Row gutter={[16, 16]}>
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <Col span={8} key={index}>
+                      <VideoUploadCard index={index} />
+                      {index === 0 && (
+                        <Text type="secondary" style={{ fontSize: '10px', textAlign: 'center', display: 'block', marginTop: '4px' }}>
+                          Primary Video
+                        </Text>
+                      )}
+                    </Col>
+                  ))}
+                </Row>
+              </TabPane>
+            </Tabs>
+          </Card>
+        </Form>
+      </Modal>
+    </>
   );
 };
 
