@@ -34,17 +34,17 @@ export const uploadToCloudinary = async (file) => {
   }
 };
 
-// EXISTING: Image validation
+// UPDATED: Image validation - increased to 10MB and added BMP support
 export const validateImageFile = (file) => {
-  const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-  const maxSize = 5 * 1024 * 1024; // 5MB
+  const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'];
+  const maxSize = 10 * 1024 * 1024; // 10MB (increased from 5MB)
 
   if (!validTypes.includes(file.type)) {
-    throw new Error('Invalid file type. Please upload a JPEG, PNG, GIF, or WebP image.');
+    throw new Error('Invalid file type. Please upload a JPEG, PNG, GIF, WebP, or BMP image.');
   }
 
   if (file.size > maxSize) {
-    throw new Error('File size too large. Maximum size is 5MB.');
+    throw new Error('File size too large. Maximum size is 10MB.');
   }
 
   return true;
