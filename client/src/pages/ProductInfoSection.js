@@ -132,7 +132,7 @@ const customStyles = {
 // UPDATED: Helper function to format description into bullet points
 const formatDescriptionAsPoints = (description) => {
   if (!description) return [];
-  
+
   // Split by common delimiters like periods, semicolons, or line breaks
   const points = description
     .split(/[.;]|\n/)
@@ -143,7 +143,7 @@ const formatDescriptionAsPoints = (description) => {
       return point.replace(/^[-•*]\s*/, '').trim();
     })
     .filter(point => point.length > 0);
-  
+
   // If we get very few points, try splitting by commas for shorter segments
   if (points.length <= 2) {
     const alternativePoints = description
@@ -152,10 +152,10 @@ const formatDescriptionAsPoints = (description) => {
       .filter(point => point.length > 5)
       .map(point => point.replace(/^[-•*]\s*/, '').trim())
       .filter(point => point.length > 0);
-    
+
     return alternativePoints.length > points.length ? alternativePoints : points;
   }
-  
+
   return points;
 };
 
@@ -240,7 +240,7 @@ const TermsModal = memo(({ open, onClose, product }) => {
       ]
     },
     {
-      title: "💰 REFUND POLICY", 
+      title: "💰 REFUND POLICY",
       points: [
         "Refunds available for incorrect, missing, or poor-quality items only.",
         "Refund requests must be made within 24 hours of delivery.",
@@ -254,9 +254,9 @@ const TermsModal = memo(({ open, onClose, product }) => {
   return (
     <Modal
       title={
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
           gap: '12px',
           color: product?.isGaneshIdol ? colors.ganesh : colors.primary,
           fontSize: '18px',
@@ -269,9 +269,9 @@ const TermsModal = memo(({ open, onClose, product }) => {
       open={open}
       onCancel={onClose}
       footer={[
-        <Button 
-          key="close" 
-          type="primary" 
+        <Button
+          key="close"
+          type="primary"
           onClick={onClose}
           style={{
             backgroundColor: product?.isGaneshIdol ? colors.ganesh : colors.primary,
@@ -286,12 +286,12 @@ const TermsModal = memo(({ open, onClose, product }) => {
       width={700}
       centered
       styles={{
-        content: { 
+        content: {
           borderRadius: '16px',
           maxHeight: '80vh',
           overflow: 'hidden'
         },
-        header: { 
+        header: {
           borderRadius: '16px 16px 0 0',
           backgroundColor: product?.isGaneshIdol ? `${colors.ganesh}08` : `${colors.primary}08`,
           borderBottom: `2px solid ${product?.isGaneshIdol ? colors.ganesh : colors.primary}20`
@@ -303,14 +303,14 @@ const TermsModal = memo(({ open, onClose, product }) => {
         }
       }}
     >
-      <div style={{ 
+      <div style={{
         padding: '24px',
         background: `linear-gradient(135deg, ${product?.isGaneshIdol ? colors.ganesh : colors.primary}05 0%, rgba(255,255,255,0.8) 100%)`
       }}>
         {/* Important Notice */}
         <Alert
           message="Please Read Before Ordering"
-          description={product?.isGaneshIdol 
+          description={product?.isGaneshIdol
             ? "Custom Ganesh idols have specific terms due to their handcrafted nature and delivery requirements."
             : "Important information about our handcrafted products and policies."
           }
@@ -326,7 +326,7 @@ const TermsModal = memo(({ open, onClose, product }) => {
         {/* Terms Content */}
         {termsToShow.map((section, sectionIndex) => (
           <div key={sectionIndex} style={{ marginBottom: '20px' }}>
-            <Title level={5} style={{ 
+            <Title level={5} style={{
               color: product?.isGaneshIdol ? colors.ganesh : colors.primary,
               marginBottom: '12px',
               fontSize: '16px',
@@ -338,21 +338,21 @@ const TermsModal = memo(({ open, onClose, product }) => {
               size="small"
               dataSource={section.points}
               renderItem={(point, index) => (
-                <List.Item style={{ 
-                  padding: '6px 0', 
+                <List.Item style={{
+                  padding: '6px 0',
                   border: 'none',
                   alignItems: 'flex-start'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', width: '100%' }}>
-                    <CheckCircleOutlined style={{ 
+                    <CheckCircleOutlined style={{
                       color: product?.isGaneshIdol ? colors.ganesh : colors.success,
                       fontSize: '14px',
                       marginTop: '2px',
                       flexShrink: 0
                     }} />
-                    
-                    <Text style={{ 
-                      fontSize: '14px', 
+
+                    <Text style={{
+                      fontSize: '14px',
                       lineHeight: '1.5',
                       color: colors.text,
                       flex: 1
@@ -375,15 +375,15 @@ const TermsModal = memo(({ open, onClose, product }) => {
           border: `1px solid ${product?.isGaneshIdol ? colors.ganesh : colors.primary}20`,
           textAlign: 'center'
         }}>
-          <Text strong style={{ 
-            display: 'block', 
+          <Text strong style={{
+            display: 'block',
             marginBottom: '8px',
             color: colors.text,
             fontSize: '15px'
           }}>
             Questions? Contact us:
           </Text>
-          <Text style={{ 
+          <Text style={{
             color: product?.isGaneshIdol ? colors.ganesh : colors.primary,
             fontWeight: 600
           }}>
@@ -417,7 +417,7 @@ const PoojaKitDisplay = memo(() => {
           Complete Pooja Kit Included 🙏
         </Title>
       </div>
-      
+
       <Row gutter={[12, 12]}>
         {poojaKitItems.map((item, index) => (
           <Col xs={24} sm={12} key={index}>
@@ -444,7 +444,7 @@ const PoojaKitDisplay = memo(() => {
           </Col>
         ))}
       </Row>
-      
+
       <div style={{
         marginTop: '16px',
         padding: '12px',
@@ -755,7 +755,7 @@ const PoojaKitModal = memo(({ open, onClose, product }) => {
               lineHeight: '1.5',
               display: 'block'
             }}>
-              Our plant sapling enables you to perform an environmentally conscious Visarjan ceremony at home. 
+              Our plant sapling enables you to perform an environmentally conscious Visarjan ceremony at home.
               Transform your celebration into an act of environmental stewardship while maintaining all spiritual significance.
             </Text>
           </div>
@@ -782,7 +782,7 @@ const PoojaKitModal = memo(({ open, onClose, product }) => {
             fontSize: '14px',
             lineHeight: '1.5'
           }}>
-            No need to source materials separately - everything you need for an authentic, 
+            No need to source materials separately - everything you need for an authentic,
             eco-friendly Ganesh Chaturthi celebration is thoughtfully included with your idol.
           </Text>
         </div>
@@ -925,7 +925,7 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
           <Breadcrumb.Item>
             {product.name}
             {product.isGaneshIdol && (
-              <Tag 
+              <Tag
                 icon={<GiftOutlined />}
                 color="#FF6B35"
                 style={{ marginLeft: '8px', fontSize: '12px' }}
@@ -934,7 +934,7 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
               </Tag>
             )}
             {product.hyderabadOnly && !product.isGaneshIdol && (
-              <Tag 
+              <Tag
                 icon={<EnvironmentOutlined />}
                 color="#9C27B0"
                 style={{ marginLeft: '8px', fontSize: '12px' }}
@@ -947,22 +947,22 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
 
         {/* Product Title */}
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', marginBottom: '16px' }}>
-          <Title level={2} style={{ 
-            marginBottom: screens.xs ? '8px' : '0', 
+          <Title level={2} style={{
+            marginBottom: screens.xs ? '8px' : '0',
             marginRight: '8px',
             color: colors.text,
             fontSize: screens.xs ? '24px' : '32px',
           }}>
             {product.name}
           </Title>
-          
+
           {product.isGaneshIdol && (
             <Space wrap>
-              <Tag 
-                icon={<GiftOutlined />} 
+              <Tag
+                icon={<GiftOutlined />}
                 color="#FF6B35"
-                style={{ 
-                  fontWeight: 600, 
+                style={{
+                  fontWeight: 600,
                   marginLeft: screens.xs ? '0' : '8px',
                   marginTop: screens.xs ? '8px' : '0',
                   padding: '4px 8px',
@@ -971,11 +971,11 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
               >
                 Custom Made
               </Tag>
-              <Tag 
-                icon={<EnvironmentOutlined />} 
+              <Tag
+                icon={<EnvironmentOutlined />}
                 color="#4CAF50"
-                style={{ 
-                  fontWeight: 600, 
+                style={{
+                  fontWeight: 600,
                   marginTop: screens.xs ? '8px' : '0',
                   padding: '4px 8px',
                   borderRadius: '4px',
@@ -985,13 +985,13 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
               </Tag>
             </Space>
           )}
-          
+
           {product.hyderabadOnly && !product.isGaneshIdol && (
-            <Tag 
-              icon={<EnvironmentOutlined />} 
+            <Tag
+              icon={<EnvironmentOutlined />}
               color="#9C27B0"
-              style={{ 
-                fontWeight: 600, 
+              style={{
+                fontWeight: 600,
                 marginLeft: screens.xs ? '0' : '8px',
                 marginTop: screens.xs ? '8px' : '0',
                 padding: '4px 8px',
@@ -1033,8 +1033,8 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
             <Space wrap align="baseline">
-              <Title level={1} style={{ 
-                margin: 0, 
+              <Title level={1} style={{
+                margin: 0,
                 color: product.isGaneshIdol ? colors.ganesh : colors.primary,
                 fontSize: screens.xs ? '24px' : '32px',
               }}>
@@ -1127,10 +1127,10 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
             </Space>
           </div>
           <Text type="secondary">
-            {product.isGaneshIdol 
+            {product.isGaneshIdol
               ? `Made with Pure Ganga Clay • Supporting Local Artisans • Eco-Friendly Celebration`
-              : product.hyderabadOnly 
-                ? 'Inclusive of all taxes • Available for delivery in Hyderabad only' 
+              : product.hyderabadOnly
+                ? 'Inclusive of all taxes • Available for delivery in Hyderabad only'
                 : 'Inclusive of all taxes • Free shipping above ₹500'
             }
           </Text>
@@ -1141,26 +1141,26 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
           <Title level={5} style={{ color: colors.text, marginBottom: '12px' }}>
             {product.isGaneshIdol ? 'About This Sacred Ganesh Idol' : 'Product Description'}
           </Title>
-          
+
           {/* Display formatted description as bullet points */}
           <List
             size="small"
             dataSource={formattedDescriptionPoints}
             renderItem={(point, index) => (
-              <List.Item style={{ 
-                padding: '6px 0', 
+              <List.Item style={{
+                padding: '6px 0',
                 border: 'none',
                 alignItems: 'flex-start'
               }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', width: '100%' }}>
-                  <CheckCircleOutlined style={{ 
+                  <CheckCircleOutlined style={{
                     color: product.isGaneshIdol ? colors.ganesh : colors.success,
                     fontSize: '14px',
                     marginTop: '2px',
                     flexShrink: 0
                   }} />
-                  <Text style={{ 
-                    fontSize: '14px', 
+                  <Text style={{
+                    fontSize: '14px',
                     lineHeight: '1.6',
                     color: colors.text,
                     flex: 1
@@ -1179,7 +1179,7 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
           type={stockStatus.status}
           icon={stockStatus.icon}
           showIcon
-          style={{ 
+          style={{
             marginBottom: '20px',
             borderRadius: '8px',
             backgroundColor: `${stockStatus.color}10`,
@@ -1209,9 +1209,9 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
             ]}
             renderItem={item => (
               <List.Item style={{ padding: '4px 0', border: 'none' }}>
-                <CheckCircleOutlined style={{ 
-                  color: product.isGaneshIdol ? colors.ganesh : colors.success, 
-                  marginRight: '8px' 
+                <CheckCircleOutlined style={{
+                  color: product.isGaneshIdol ? colors.ganesh : colors.success,
+                  marginRight: '8px'
                 }} />
                 <Text style={{ fontSize: '14px' }}>{item}</Text>
               </List.Item>
@@ -1234,7 +1234,7 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
               >
                 🕉️ Show Interest
               </Button>
-              
+
               <Button
                 size="large"
                 icon={<PhoneOutlined />}
@@ -1249,8 +1249,8 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
                 Contact for Customization
               </Button>
 
-              <Text 
-                style={{ 
+              <Text
+                style={{
                   display: 'block',
                   textAlign: 'center',
                   fontSize: '13px',
@@ -1308,7 +1308,7 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
                     />
                   </Tooltip>
                 </Space>
-                
+
                 {/* Buy Now Button */}
                 <Button
                   size="large"
@@ -1350,7 +1350,7 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
             type="info"
             icon={<EnvironmentOutlined />}
             showIcon
-            style={{ 
+            style={{
               marginTop: '20px',
               borderRadius: '8px',
               backgroundColor: '#9C27B010',
@@ -1362,7 +1362,7 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
       </Card>
 
       {/* Terms & Conditions Modal */}
-      <TermsModal 
+      <TermsModal
         open={termsModalOpen}
         onClose={() => setTermsModalOpen(false)}
         product={product}
@@ -1411,11 +1411,11 @@ const ProductDescription = memo(({ product }) => {
         ...customStyles.productInfoCard,
         marginBottom: '24px'
       }} bodyStyle={{ padding: '24px' }}>
-        <Title level={3} style={{ 
-          color: colors.text, 
+        <Title level={3} style={{
+          color: colors.text,
           marginBottom: '20px',
           textAlign: 'center',
-          background: product.isGaneshIdol 
+          background: product.isGaneshIdol
             ? `linear-gradient(135deg, ${colors.ganesh} 0%, #FFB74D 100%)`
             : `linear-gradient(135deg, ${colors.primary} 0%, ${colors.secondary} 100%)`,
           backgroundClip: 'text',
@@ -1424,27 +1424,27 @@ const ProductDescription = memo(({ product }) => {
         }}>
           {product.isGaneshIdol ? '🕉️ About This Sacred Ganesh Idol' : '📋 Detailed Product Information'}
         </Title>
-        
+
         {/* UPDATED: Extended Description as Bullet Points */}
         <div style={{ marginBottom: '24px' }}>
           <List
             size="small"
             dataSource={formattedDescriptionPoints}
             renderItem={(point, index) => (
-              <List.Item style={{ 
-                padding: '8px 0', 
+              <List.Item style={{
+                padding: '8px 0',
                 border: 'none',
                 alignItems: 'flex-start'
               }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', width: '100%' }}>
-                  <CheckCircleOutlined style={{ 
+                  <CheckCircleOutlined style={{
                     color: product.isGaneshIdol ? colors.ganesh : colors.success,
                     fontSize: '16px',
                     marginTop: '4px',
                     flexShrink: 0
                   }} />
-                  <Text style={{ 
-                    fontSize: '16px', 
+                  <Text style={{
+                    fontSize: '16px',
                     lineHeight: '1.7',
                     color: colors.text,
                     flex: 1,
@@ -1463,7 +1463,7 @@ const ProductDescription = memo(({ product }) => {
           <Title level={4} style={{ color: colors.text, marginBottom: '16px' }}>
             {product.isGaneshIdol ? 'Heritage & Craftsmanship' : 'Key Features'}
           </Title>
-          
+
           <Row gutter={[16, 12]}>
             {(product.isGaneshIdol ? [
               'Made from sacred Ganga Clay sourced from holy Ganges',
@@ -1477,17 +1477,17 @@ const ProductDescription = memo(({ product }) => {
               'Premium quality guarantee with rigorous quality control',
             ]).map((feature, index) => (
               <Col xs={24} sm={12} key={index}>
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'flex-start', 
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
                   gap: '12px',
                   padding: '12px',
                   borderRadius: '8px',
                   background: `${product.isGaneshIdol ? colors.ganesh : colors.primary}05`,
                   border: `1px solid ${product.isGaneshIdol ? colors.ganesh : colors.primary}15`,
                 }}>
-                  <CheckCircleOutlined style={{ 
-                    color: product.isGaneshIdol ? colors.ganesh : colors.success, 
+                  <CheckCircleOutlined style={{
+                    color: product.isGaneshIdol ? colors.ganesh : colors.success,
                     fontSize: '16px',
                     marginTop: '2px',
                     flexShrink: 0
@@ -1510,10 +1510,10 @@ const ProductDescription = memo(({ product }) => {
             <Row gutter={[12, 12]}>
               {product.height && (
                 <Col xs={12} sm={6}>
-                  <div style={{ 
-                    textAlign: 'center', 
-                    padding: '12px', 
-                    backgroundColor: `${colors.primary}08`, 
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '12px',
+                    backgroundColor: `${colors.primary}08`,
                     borderRadius: '8px',
                     border: `1px solid ${colors.primary}15`
                   }}>
@@ -1524,10 +1524,10 @@ const ProductDescription = memo(({ product }) => {
               )}
               {product.weight && (
                 <Col xs={12} sm={6}>
-                  <div style={{ 
-                    textAlign: 'center', 
-                    padding: '12px', 
-                    backgroundColor: `${colors.secondary}08`, 
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '12px',
+                    backgroundColor: `${colors.secondary}08`,
                     borderRadius: '8px',
                     border: `1px solid ${colors.secondary}15`
                   }}>
@@ -1538,10 +1538,10 @@ const ProductDescription = memo(({ product }) => {
               )}
               {product.material && (
                 <Col xs={12} sm={6}>
-                  <div style={{ 
-                    textAlign: 'center', 
-                    padding: '12px', 
-                    backgroundColor: `${colors.eco}08`, 
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '12px',
+                    backgroundColor: `${colors.eco}08`,
                     borderRadius: '8px',
                     border: `1px solid ${colors.eco}15`
                   }}>
@@ -1552,10 +1552,10 @@ const ProductDescription = memo(({ product }) => {
               )}
               {product.color && (
                 <Col xs={12} sm={6}>
-                  <div style={{ 
-                    textAlign: 'center', 
-                    padding: '12px', 
-                    backgroundColor: `${colors.ganesh}08`, 
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '12px',
+                    backgroundColor: `${colors.ganesh}08`,
                     borderRadius: '8px',
                     border: `1px solid ${colors.ganesh}15`
                   }}>
@@ -1624,140 +1624,98 @@ const MobileActions = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, 
           borderRadius: '24px 24px 0 0',
           boxShadow: '0 -8px 32px rgba(0,0,0,0.1)',
         }}>
-          {/* Product Summary Bar */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            marginBottom: '16px',
-            padding: '12px',
-            borderRadius: '12px',
-            background: `linear-gradient(135deg, ${product.isGaneshIdol ? colors.ganesh : colors.primary}08 0%, rgba(255,255,255,0.8) 100%)`,
-            border: `1px solid ${product.isGaneshIdol ? colors.ganesh : colors.primary}20`,
-          }}>
-            <Avatar
-              src={product.images?.[0] || product.imgUrl}
-              size={48}
-              shape="square"
-              style={{ borderRadius: '8px' }}
-            />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <Text strong style={{ 
-                display: 'block',
-                fontSize: '16px',
-                color: colors.text,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis'
-              }}>
-                {product.name}
-              </Text>
-              <Space size="small" wrap>
-                <Text style={{ 
-                  fontSize: '18px',
-                  fontWeight: 'bold',
-                  color: product.isGaneshIdol ? colors.ganesh : colors.primary
-                }}>
-                  ₹{product.price.toLocaleString()}
-                </Text>
-                {product.isGaneshIdol && (
-                  <Tag 
+          {/* Mobile Action Buttons ONLY */}
+          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            {/* First Row: Show Interest + Phone Icon (for Ganesh Idol) or Add to Cart + Wishlist/Contact (for regular) */}
+            <Space size="middle" style={{ width: '100%', justifyContent: 'center' }}>
+              {product.isGaneshIdol ? (
+                <>
+                  <Button
+                    type="primary"
+                    size="large"
                     icon={<GiftOutlined />}
-                    size="small"
+                    onClick={handleAddToCart}
                     style={{
-                      backgroundColor: `${colors.ganesh}15`,
-                      color: colors.ganesh,
-                      border: 'none',
-                      borderRadius: '12px'
+                      background: `linear-gradient(135deg, ${colors.ganesh} 0%, #FFB74D 100%)`,
+                      borderColor: colors.ganesh,
+                      flex: 1,
+                      height: '52px',
+                      borderRadius: '12px',
+                      fontWeight: 600,
+                      fontSize: '16px',
                     }}
                   >
-                    Custom Made
-                  </Tag>
-                )}
-              </Space>
-            </div>
-            {/* T&C Icon for Mobile */}
-            <Button
-              type="text"
-              icon={<FileTextOutlined />}
-              onClick={() => setTermsModalOpen(true)}
-              style={{
-                color: product.isGaneshIdol ? colors.ganesh : colors.primary,
-                fontSize: '16px',
-                width: '36px',
-                height: '36px',
-                borderRadius: '8px',
-                border: `1px solid ${product.isGaneshIdol ? colors.ganesh : colors.primary}30`,
-                backgroundColor: `${product.isGaneshIdol ? colors.ganesh : colors.primary}08`,
-              }}
-            />
-          </div>
-
-          {/* Mobile Action Buttons */}
-          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-            {/* First Row: Primary Action + Wishlist/Contact */}
-            <Space size="middle" style={{ width: '100%' }}>
-              {/* Wishlist Button - Only for regular products */}
-              {!product.isGaneshIdol && (
-                <Button
-                  size="large"
-                  icon={isInWishlist ? <HeartFilled /> : <HeartOutlined />}
-                  onClick={() => onToggleWishlist(product)}
-                  style={{
-                    borderColor: colors.divider,
-                    color: isInWishlist ? colors.error : colors.textSecondary,
-                    width: '60px',
-                    height: '52px',
-                    borderRadius: '12px',
-                  }}
-                />
+                    🕉️ Show Interest
+                  </Button>
+                  <Button
+                    size="large"
+                    icon={<PhoneOutlined />}
+                    onClick={() => window.location.href = '/contactus'}
+                    style={{
+                      borderColor: colors.secondary,
+                      color: colors.secondary,
+                      width: '52px',
+                      height: '52px',
+                      borderRadius: '12px',
+                      marginLeft: '8px',
+                    }}
+                  />
+                </>
+              ) : (
+                <>
+                  <Button
+                    type="primary"
+                    size="large"
+                    icon={<ShoppingCartOutlined />}
+                    onClick={handleAddToCart}
+                    disabled={product.stock === 0}
+                    style={{
+                      backgroundColor: colors.primary,
+                      borderColor: colors.primary,
+                      flex: 1,
+                      height: '52px',
+                      borderRadius: '12px',
+                      fontWeight: 600,
+                      fontSize: '16px',
+                    }}
+                  >
+                    {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
+                  </Button>
+                  <Button
+                    size="large"
+                    icon={isInWishlist ? <HeartFilled /> : <HeartOutlined />}
+                    onClick={() => onToggleWishlist(product)}
+                    style={{
+                      borderColor: colors.divider,
+                      color: isInWishlist ? colors.error : colors.textSecondary,
+                      width: '52px',
+                      height: '52px',
+                      borderRadius: '12px',
+                      marginLeft: '8px',
+                    }}
+                  />
+                  <Button
+                    size="large"
+                    icon={<PhoneOutlined />}
+                    onClick={() => window.location.href = '/contactus'}
+                    style={{
+                      borderColor: colors.secondary,
+                      color: colors.secondary,
+                      width: '52px',
+                      height: '52px',
+                      borderRadius: '12px',
+                      marginLeft: '8px',
+                    }}
+                  />
+                </>
               )}
-
-              {/* Contact Button */}
-              <Button
-                size="large"
-                icon={<PhoneOutlined />}
-                onClick={() => window.location.href = '/contactus'}
-                style={{
-                  borderColor: colors.secondary,
-                  color: colors.secondary,
-                  width: '60px',
-                  height: '52px',
-                  borderRadius: '12px',
-                }}
-              />
-
-              {/* Main Action Button */}
-              <Button
-                type="primary"
-                size="large"
-                icon={product.isGaneshIdol ? <GiftOutlined /> : <ShoppingCartOutlined />}
-                onClick={handleAddToCart}
-                disabled={!product.isGaneshIdol && product.stock === 0}
-                style={{
-                  ...(product.isGaneshIdol ? {
-                    background: `linear-gradient(135deg, ${colors.ganesh} 0%, #FFB74D 100%)`,
-                    borderColor: colors.ganesh,
-                  } : {
-                    backgroundColor: colors.primary,
-                    borderColor: colors.primary,
-                  }),
-                  flex: 1,
-                  height: '52px',
-                  borderRadius: '12px',
-                  fontWeight: 600,
-                  fontSize: '16px',
-                }}
-              >
-                {product.isGaneshIdol ? '🕉️ Show Interest' : (product.stock === 0 ? 'Out of Stock' : 'Add to Cart')}
-              </Button>
             </Space>
 
-            {/* Second Row: Buy Now/Contact Button */}
+            {/* Second Row: Buy Now/Contact Button - FIXED */}
             <Button
               size="large"
               icon={product.isGaneshIdol ? <PhoneOutlined /> : <ThunderboltOutlined />}
-              onClick={handleBuyNow}
+              onClick={product.isGaneshIdol ? () => window.location.href = '/contactus' : handleBuyNow}
               disabled={!product.isGaneshIdol && product.stock === 0}
               style={{
                 ...(product.isGaneshIdol ? {
@@ -1782,10 +1740,10 @@ const MobileActions = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, 
         </div>
       </Affix>
 
-      {/* Action Modal */}
+      {/* Action Modal - FIXED */}
       <Modal
-        title={product.isGaneshIdol 
-          ? (actionType === 'cart' ? 'Show Interest in Ganesh Idol' : 'Contact for Details')
+        title={product.isGaneshIdol
+          ? 'Show Interest in Ganesh Idol'
           : (actionType === 'cart' ? 'Add to Cart' : 'Buy Now')
         }
         open={modalVisible}
@@ -1800,8 +1758,8 @@ const MobileActions = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, 
             onClick={confirmAction}
             style={product.isGaneshIdol ? customStyles.ganeshButton : customStyles.primaryButton}
           >
-            {product.isGaneshIdol 
-              ? (actionType === 'cart' ? '🕉️ Show Interest' : 'Contact Us')
+            {product.isGaneshIdol
+              ? '🕉️ Show Interest'
               : (actionType === 'cart' ? 'Add to Cart' : 'Buy Now')
             }
           </Button>,
@@ -1851,7 +1809,7 @@ const MobileActions = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, 
       </Modal>
 
       {/* Terms & Conditions Modal for Mobile */}
-      <TermsModal 
+      <TermsModal
         open={termsModalOpen}
         onClose={() => setTermsModalOpen(false)}
         product={product}
@@ -1891,10 +1849,10 @@ const ServiceFeatures = memo(({ product }) => {
     {
       icon: <TruckOutlined style={{ fontSize: '48px', color: product?.hyderabadOnly ? '#9C27B0' : colors.primary }} />,
       title: product?.hyderabadOnly ? 'Hyderabad Delivery' : 'Free Shipping',
-      description: product?.hyderabadOnly 
+      description: product?.hyderabadOnly
         ? 'Same-day delivery available within Hyderabad city limits'
         : 'Free delivery across India for orders above ₹500',
-      highlights: product?.hyderabadOnly 
+      highlights: product?.hyderabadOnly
         ? ['Same Day Delivery', 'Local Service', 'Real-time Tracking']
         : ['Pan India Delivery', 'Free Above ₹500', 'Secure Packaging']
     },
@@ -1921,18 +1879,18 @@ const ServiceFeatures = memo(({ product }) => {
   return (
     <div style={{ marginTop: '32px' }}>
       {/* Section Header */}
-      <div style={{ 
-        textAlign: 'center', 
+      <div style={{
+        textAlign: 'center',
         marginBottom: '32px',
         padding: '24px',
         borderRadius: '16px',
         background: `linear-gradient(135deg, ${product.isGaneshIdol ? colors.ganesh : colors.primary}08 0%, rgba(255,255,255,0.8) 100%)`,
         border: `1px solid ${product.isGaneshIdol ? colors.ganesh : colors.primary}20`,
       }}>
-        <Title level={2} style={{ 
+        <Title level={2} style={{
           color: colors.text,
           marginBottom: '12px',
-          background: product.isGaneshIdol 
+          background: product.isGaneshIdol
             ? `linear-gradient(135deg, ${colors.ganesh} 0%, #FFB74D 100%)`
             : `linear-gradient(135deg, ${colors.primary} 0%, ${colors.secondary} 100%)`,
           backgroundClip: 'text',
@@ -1941,14 +1899,14 @@ const ServiceFeatures = memo(({ product }) => {
         }}>
           {product.isGaneshIdol ? '🕉️ Our Sacred Promise' : '🛡️ Why Choose Us?'}
         </Title>
-        <Paragraph style={{ 
+        <Paragraph style={{
           fontSize: '16px',
           color: colors.textSecondary,
           maxWidth: '600px',
           margin: '0 auto',
           lineHeight: '1.6'
         }}>
-          {product.isGaneshIdol 
+          {product.isGaneshIdol
             ? 'Committed to authentic, eco-friendly, and spiritually enriching Ganesh Chaturthi experience.'
             : 'Committed to providing exceptional quality products and outstanding customer service.'
           }
@@ -1971,8 +1929,8 @@ const ServiceFeatures = memo(({ product }) => {
                   backgroundColor: '#9C27B008',
                 } : {})
               }}
-              bodyStyle={{ 
-                textAlign: 'center', 
+              bodyStyle={{
+                textAlign: 'center',
                 padding: '24px',
                 display: 'flex',
                 flexDirection: 'column',
@@ -1990,10 +1948,10 @@ const ServiceFeatures = memo(({ product }) => {
                 {feature.icon}
               </div>
 
-              <Title level={4} style={{ 
+              <Title level={4} style={{
                 marginBottom: '12px',
-                color: product.isGaneshIdol 
-                  ? colors.ganesh 
+                color: product.isGaneshIdol
+                  ? colors.ganesh
                   : (index === 0 && product?.hyderabadOnly ? '#9C27B0' : colors.text),
                 fontSize: '18px',
                 minHeight: '48px',
@@ -2004,7 +1962,7 @@ const ServiceFeatures = memo(({ product }) => {
                 {feature.title}
               </Title>
 
-              <Paragraph style={{ 
+              <Paragraph style={{
                 color: colors.textSecondary,
                 fontSize: '14px',
                 lineHeight: '1.5',
@@ -2016,7 +1974,7 @@ const ServiceFeatures = memo(({ product }) => {
 
               <Space wrap size="small" style={{ justifyContent: 'center' }}>
                 {feature.highlights.map((highlight, idx) => (
-                  <Tag 
+                  <Tag
                     key={idx}
                     style={{
                       backgroundColor: product.isGaneshIdol ? `${colors.ganesh}15` : `${colors.primary}15`,
@@ -2097,6 +2055,12 @@ ProductInfo.displayName = 'ProductInfo';
 QuantitySelector.displayName = 'QuantitySelector';
 TermsModal.displayName = 'TermsModal';
 PoojaKitModal.displayName = 'PoojaKitModal';
+ProductDescription.displayName = 'ProductDescription';
+MobileActions.displayName = 'MobileActions';
+ServiceFeatures.displayName = 'ServiceFeatures';
+PoojaKitDisplay.displayName = 'PoojaKitDisplay';
+GreenerVisarjanDisplay.displayName = 'GreenerVisarjanDisplay';
+
 
 export default ProductInfo;
 export { MobileActions, ServiceFeatures, ProductDescription };
