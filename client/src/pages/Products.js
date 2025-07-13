@@ -26,7 +26,12 @@ import {
 
 const { useBreakpoint } = Grid;
 
-// Enhanced custom styles with Ganesh season additions
+// Custom pottery image URL - Replace this with your own image URL
+const CUSTOM_POTTERY_IMAGE = 'https://res.cloudinary.com/dca26n68n/image/upload/v1752423554/WhatsApp_Image_2025-07-13_at_13.36.04_5cdf4b7c_ucnech.jpg';
+// You can replace the above URL with your own pottery image URL
+// Example: const CUSTOM_POTTERY_IMAGE = 'https://yourdomain.com/pottery-image.jpg';
+
+// Enhanced custom styles with Ganesh season additions and mobile responsiveness
 const customStyles = `
   .products-container {
     background-color: ${terracottaColors.background};
@@ -64,7 +69,7 @@ const customStyles = `
     box-shadow: 0 8px 24px rgba(255, 193, 7, 0.2);
   }
 
-  /* Mobile responsive styles */
+  /* Enhanced Mobile responsive styles */
   @media (max-width: 576px) {
     .products-main-wrapper {
       padding: 0 8px;
@@ -83,6 +88,20 @@ const customStyles = `
     .search-filter-card .ant-card-body {
       padding: 16px;
     }
+
+    /* Mobile-specific Ganesh card improvements */
+    .ganesh-idol-card .ant-card-body {
+      padding: 0;
+    }
+
+    .ganesh-idol-card img {
+      border-radius: 0;
+    }
+
+    /* Ensure proper spacing on mobile */
+    .ant-col {
+      margin-bottom: 16px;
+    }
   }
 
   @media (max-width: 768px) {
@@ -92,6 +111,11 @@ const customStyles = `
     
     .header-title {
       font-size: 28px !important;
+    }
+
+    /* Tablet optimizations */
+    .ganesh-idol-card {
+      height: auto !important;
     }
   }
 
@@ -113,9 +137,16 @@ const customStyles = `
   .products-filter-sidebar::-webkit-scrollbar-thumb:hover {
     background: ${terracottaColors.primaryDark};
   }
+
+  /* Image loading optimizations */
+  .ganesh-idol-card img,
+  .pottery-unavailable-card img {
+    object-fit: cover;
+    object-position: center;
+  }
 `;
 
-// Custom hooks for data fetching
+// Custom hooks for data fetching (keeping all existing functionality)
 const useProducts = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -162,7 +193,7 @@ const useProducts = () => {
   return { products, loading, error };
 };
 
-// Hook to fetch Ganesh idols
+// Hook to fetch Ganesh idols (keeping all existing functionality)
 const useGaneshIdols = () => {
   const [ganeshIdols, setGaneshIdols] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -205,7 +236,7 @@ const useGaneshIdols = () => {
   return { ganeshIdols, loading, error };
 };
 
-// Wishlist hook
+// Wishlist hook (keeping all existing functionality)
 const useWishlist = (user) => {
   const [wishlist, setWishlist] = useState([]);
 
@@ -278,7 +309,7 @@ const useWishlist = (user) => {
   return { wishlist, toggleWishlistItem, isInWishlist };
 };
 
-// Product search and filtering hook
+// Product search and filtering hook (keeping all existing functionality)
 const useProductSearch = (products, searchQuery, filters) => {
   return useMemo(() => {
     let filtered = [...products];
@@ -362,7 +393,7 @@ const Products = () => {
   // Season context
   const { currentSeason, isGaneshSeason, loading: seasonLoading } = useSeason();
   
-  // State
+  // State (keeping all existing state)
   const [user, setUser] = useState(null);
   const [priceRange, setPriceRange] = useState([1, 5000]);
   const [sortBy, setSortBy] = useState('relevance');
@@ -372,7 +403,7 @@ const Products = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
 
-  // Use hooks
+  // Use hooks (keeping all existing hooks)
   const { products, loading: productsLoading, error: productsError } = useProducts();
   const { ganeshIdols, loading: ganeshLoading, error: ganeshError } = useGaneshIdols();
   const { wishlist, toggleWishlistItem, isInWishlist } = useWishlist(user);
@@ -393,7 +424,7 @@ const Products = () => {
     isSearching 
   } = useProductSearch(products, searchQuery, searchParams);
 
-  // Auth effect
+  // Auth effect (keeping existing functionality)
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
@@ -401,7 +432,7 @@ const Products = () => {
     return unsubscribe;
   }, []);
 
-  // Responsive grid configuration
+  // Responsive grid configuration (keeping existing functionality)
   const getProductGridCols = () => {
     if (!screens.sm) return { xs: 24 }; // 1 column on mobile (< 576px)
     if (!screens.md) return { xs: 24, sm: 12 }; // 2 columns on small screens (576px - 768px)
@@ -412,7 +443,7 @@ const Products = () => {
 
   const productGridCols = getProductGridCols();
 
-  // Stable callbacks to prevent infinite loops
+  // Stable callbacks to prevent infinite loops (keeping all existing handlers)
   const showMessage = useCallback((content, type = 'success') => {
     message[type](content);
   }, []);
@@ -422,7 +453,7 @@ const Products = () => {
     window.location.href = `/product/${id}?code=${code}`;
   }, []);
 
-  // Season-specific handlers
+  // Season-specific handlers (keeping existing functionality)
   const handlePotteryPrebook = useCallback(() => {
     showMessage('Pre-booking feature coming soon!', 'info');
   }, [showMessage]);
@@ -462,7 +493,7 @@ const Products = () => {
     navigate(`/ganesh-idol/${idolId}`);
   }, [navigate]);
 
-  // Add to Cart handler
+  // Add to Cart handler (keeping existing functionality)
   const handleAddToCart = useCallback(async (product) => {
     if (product.hidden || product.stock === 0) {
       showMessage(
@@ -482,7 +513,7 @@ const Products = () => {
     setModalOpen(true);
   }, [user, navigate, showMessage]);
 
-  // Buy Now handler
+  // Buy Now handler (keeping existing functionality)
   const handleBuyNow = useCallback(async (product) => {
     if (product.hidden || product.stock === 0) {
       showMessage(
@@ -538,7 +569,7 @@ const Products = () => {
     }
   }, [user, navigate, showMessage, toggleWishlistItem]);
 
-  // Confirm Add to Cart handler
+  // Confirm Add to Cart handler (keeping existing functionality)
   const handleConfirmAddToCart = useCallback(async (quantity) => {
     if (!selectedProduct || !user) return;
 
@@ -577,7 +608,7 @@ const Products = () => {
     setDrawerOpen(prev => !prev);
   }, []);
 
-  // Loading states
+  // Loading states (keeping existing functionality)
   if (seasonLoading || (isGaneshSeason && ganeshLoading)) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
@@ -593,7 +624,7 @@ const Products = () => {
       
       <div className="products-container">
         <div className="products-main-wrapper">
-          {/* Header Section - Season Aware */}
+          {/* Header Section - Season Aware (keeping existing functionality) */}
           <ProductsHeader 
             isGaneshSeason={isGaneshSeason}
             isMobile={isMobile}
@@ -601,7 +632,7 @@ const Products = () => {
             hyderabadCount={hyderabadCount}
           />
 
-          {/* Search and Filter Bar - Only show for non-Ganesh season */}
+          {/* Search and Filter Bar - Only show for non-Ganesh season (keeping existing functionality) */}
           {!isGaneshSeason && (
             <div style={{ marginBottom: '32px' }}>
               <SearchFilterBar
@@ -618,7 +649,7 @@ const Products = () => {
             </div>
           )}
 
-          {/* Main Content */}
+          {/* Main Content (keeping existing functionality) */}
           <Row gutter={[24, 0]}>
             {/* Desktop Filter Panel - Only show for non-Ganesh season */}
             {!isMobile && !isGaneshSeason && (
@@ -659,14 +690,17 @@ const Products = () => {
                     isGaneshSeason={isGaneshSeason}
                   />
                 ) : isGaneshSeason ? (
-                  // Ganesh Season Layout
+                  // Ganesh Season Layout with Custom Pottery Image
                   <Row gutter={[16, 16]}>
-                    {/* First Card: Pottery Coming Soon */}
+                    {/* First Card: Pottery Coming Soon with Custom Image */}
                     <Col {...productGridCols}>
-                      <PotteryComingSoonCard onClick={handlePotteryPrebook} />
+                      <PotteryComingSoonCard 
+                        onClick={handlePotteryPrebook}
+                        customPotteryImage={CUSTOM_POTTERY_IMAGE}
+                      />
                     </Col>
 
-                    {/* Ganesh Idols */}
+                    {/* Ganesh Idols with Enhanced Mobile Image Height */}
                     {ganeshIdols.map((idol) => (
                       <Col {...productGridCols} key={idol.id}>
                         <GaneshIdolCard
@@ -718,7 +752,7 @@ const Products = () => {
           </Row>
         </div>
 
-        {/* Mobile Filter Drawer - Only for non-Ganesh season */}
+        {/* Mobile Filter Drawer - Only for non-Ganesh season (keeping existing functionality) */}
         {!isGaneshSeason && (
           <Drawer
             title="Filters"
@@ -746,7 +780,7 @@ const Products = () => {
           </Drawer>
         )}
 
-        {/* Quantity Modal */}
+        {/* Quantity Modal (keeping existing functionality) */}
         {modalOpen && selectedProduct && (
           <QuantityModal
             open={modalOpen}
