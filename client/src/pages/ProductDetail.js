@@ -1,4 +1,4 @@
-// Updated ProductDetail.jsx - Enhanced with Video Support
+// Updated ProductDetail.jsx - FINAL VERSION WITH ALL ENHANCEMENTS
 import React, {
   useEffect,
   useState,
@@ -31,10 +31,10 @@ import {
 } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 
-// Import helper components
-import ProductImageGallery from './ProductImageGallery'; // Enhanced with video support
-import ProductInfo, { MobileActions, ServiceFeatures } from './ProductInfoSection';
-import ProductTabs from './ProductTabs';
+// Import helper components - UPDATED VERSIONS
+import ProductImageGallery from './ProductImageGallery'; // Enhanced with video support and mobile fixes
+import ProductInfo, { MobileActions, ServiceFeatures } from './ProductInfoSection'; // Enhanced with formatted descriptions
+import ProductTabs from './ProductTabs'; // Enhanced with formatted descriptions
 
 // Import the FIXED cart utilities
 import { addToCartSafe } from '../utils/cartUtility';

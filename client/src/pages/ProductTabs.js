@@ -1,5 +1,5 @@
-// ProductTabs.jsx - Enhanced with Ganesh Idol Features
-import React, { memo } from 'react';
+// ProductTabs.jsx - Enhanced with Ganesh Idol Features and Formatted Descriptions
+import React, { memo, useMemo } from 'react';
 import {
   Card,
   Tabs,
@@ -61,6 +61,36 @@ const customStyles = {
     border: `1px solid ${colors.divider}`,
     borderRadius: '12px',
   },
+};
+
+// UPDATED: Helper function to format description into bullet points
+const formatDescriptionAsPoints = (description) => {
+  if (!description) return [];
+  
+  // Split by common delimiters like periods, semicolons, or line breaks
+  const points = description
+    .split(/[.;]|\n/)
+    .map(point => point.trim())
+    .filter(point => point.length > 10) // Filter out very short segments
+    .map(point => {
+      // Remove leading dashes or bullets if they exist
+      return point.replace(/^[-•*]\s*/, '').trim();
+    })
+    .filter(point => point.length > 0);
+  
+  // If we get very few points, try splitting by commas for shorter segments
+  if (points.length <= 2) {
+    const alternativePoints = description
+      .split(/,|\n/)
+      .map(point => point.trim())
+      .filter(point => point.length > 5)
+      .map(point => point.replace(/^[-•*]\s*/, '').trim())
+      .filter(point => point.length > 0);
+    
+    return alternativePoints.length > points.length ? alternativePoints : points;
+  }
+  
+  return points;
 };
 
 // Product Tabs Component
@@ -252,6 +282,32 @@ const ProductTabs = memo(({ product }) => {
     },
   ];
 
+  // UPDATED: Format description as bullet points
+  const formattedDescriptionPoints = useMemo(() => {
+    if (product.isGaneshIdol) {
+      return [
+        'Experience the divine presence of Lord Ganesha with our beautifully handcrafted idols made from sacred Ganga Clay',
+        'Each piece represents the perfect harmony of traditional craftsmanship, spiritual authenticity, and environmental consciousness',
+        'Our skilled artisans, who have perfected their techniques over generations, create each idol with love and devotion using pure Ganga Clay sourced from the sacred Ganges',
+        'By choosing our idols, you\'re not just bringing home a beautiful deity, but also supporting local artisan communities and preserving traditional Indian heritage crafts',
+        'Every idol comes with a complete Pooja kit, reflecting our commitment to natural and sustainable living, ensuring your celebration is both authentic and pure'
+      ];
+    }
+
+    if (product.description) {
+      const points = formatDescriptionAsPoints(product.description);
+      return points.length > 0 ? points : [product.description];
+    }
+
+    return [
+      `The ${product.name} represents the perfect blend of traditional craftsmanship and modern design`,
+      'Each piece is carefully handcrafted by skilled artisans who have perfected their techniques over generations',
+      'Made from premium quality materials, this product ensures durability while maintaining aesthetic appeal',
+      'The natural variations in color and texture make each piece unique, adding character to your collection',
+      'Whether you\'re looking to enhance your daily routine or searching for the perfect gift, this product combines functionality with timeless beauty that will be appreciated for years to come'
+    ];
+  }, [product.description, product.isGaneshIdol, product.name]);
+
   return (
     <Card style={{ ...customStyles.tabsContainer, marginTop: '48px' }}>
       <Tabs defaultActiveKey="1" size="large">
@@ -264,15 +320,38 @@ const ProductTabs = memo(({ product }) => {
             {product.isGaneshIdol ? (
               // Ganesh Idol Description
               <>
-                <Paragraph style={{ fontSize: '16px', lineHeight: '1.8', marginBottom: '16px' }}>
-                  Experience the divine presence of Lord Ganesha with our beautifully handcrafted idols made from sacred Ganga Clay. 
-                  Each piece represents the perfect harmony of traditional craftsmanship, spiritual authenticity, and environmental consciousness.
-                </Paragraph>
-                
-                <Paragraph style={{ fontSize: '16px', lineHeight: '1.8', marginBottom: '24px' }}>
-                  Our skilled artisans, who have perfected their techniques over generations, create each idol with love and devotion using pure Ganga Clay sourced from the sacred Ganges. 
-                  By choosing our idols, you're not just bringing home a beautiful deity, but also supporting local artisan communities and preserving traditional Indian heritage crafts.
-                </Paragraph>
+                {/* UPDATED: Display description as formatted bullet points */}
+                <div style={{ marginBottom: '24px' }}>
+                  <List
+                    size="small"
+                    dataSource={formattedDescriptionPoints}
+                    renderItem={(point, index) => (
+                      <List.Item style={{ 
+                        padding: '8px 0', 
+                        border: 'none',
+                        alignItems: 'flex-start'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', width: '100%' }}>
+                          <CheckCircleOutlined style={{ 
+                            color: colors.ganesh,
+                            fontSize: '16px',
+                            marginTop: '4px',
+                            flexShrink: 0
+                          }} />
+                          <Text style={{ 
+                            fontSize: '16px', 
+                            lineHeight: '1.8',
+                            color: colors.text,
+                            flex: 1,
+                            textAlign: 'justify'
+                          }}>
+                            {point}
+                          </Text>
+                        </div>
+                      </List.Item>
+                    )}
+                  />
+                </div>
 
                 {/* Complete Pooja Kit Section */}
                 <Title level={4} style={{ color: colors.ganesh, marginBottom: '20px' }}>
@@ -354,63 +433,61 @@ const ProductTabs = memo(({ product }) => {
                   that honors both tradition and Mother Earth.
                 </Paragraph>
 
-                
+                <Card 
+                  style={{ 
+                    marginBottom: '24px',
+                    borderRadius: '12px',
+                    border: `2px solid ${colors.eco}30`,
+                    backgroundColor: `${colors.eco}05`,
+                  }}
+                  bodyStyle={{ padding: '20px' }}
+                >
+                  <Title level={5} style={{ color: colors.eco, marginBottom: '16px' }}>
+                    🌿 Benefits of Our Eco-Friendly Approach:
+                  </Title>
+                  <List
+                    dataSource={[
+                      'A pure and heartfelt Pooja experience',
+                      'Zero contribution to water pollution',
+                      'Growth of new life - a living testament to your faith',
+                      'A lasting, beautiful memory of your Ganesh Chaturthi',
+                      'Supporting environmental conservation',
+                      'Teaching children about responsible celebration',
+                    ]}
+                    renderItem={(item) => (
+                      <List.Item style={{ 
+                        border: 'none', 
+                        padding: '8px 0',
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        textAlign: 'left'
+                      }}>
+                        <div style={{ 
+                          display: 'flex', 
+                          alignItems: 'flex-start', 
+                          width: '100%',
+                          gap: '8px'
+                        }}>
+                          <CheckCircleOutlined style={{ 
+                            color: colors.eco, 
+                            fontSize: '16px',
+                            marginTop: '2px',
+                            flexShrink: 0
+                          }} />
+                          <Text style={{ 
+                            fontSize: '14px', 
+                            lineHeight: '1.5',
+                            textAlign: 'left',
+                            flex: 1
+                          }}>
+                            {item}
+                          </Text>
+                        </div>
+                      </List.Item>
+                    )}
+                  />
+                </Card>
 
-
-<Card 
-  style={{ 
-    marginBottom: '24px',
-    borderRadius: '12px',
-    border: `2px solid ${colors.eco}30`,
-    backgroundColor: `${colors.eco}05`,
-  }}
-  bodyStyle={{ padding: '20px' }}
->
-  <Title level={5} style={{ color: colors.eco, marginBottom: '16px' }}>
-    🌿 Benefits of Our Eco-Friendly Approach:
-  </Title>
-  <List
-    dataSource={[
-      'A pure and heartfelt Pooja experience',
-      'Zero contribution to water pollution',
-      'Growth of new life - a living testament to your faith',
-      'A lasting, beautiful memory of your Ganesh Chaturthi',
-      'Supporting environmental conservation',
-      'Teaching children about responsible celebration',
-    ]}
-    renderItem={(item) => (
-      <List.Item style={{ 
-        border: 'none', 
-        padding: '8px 0',
-        display: 'flex',
-        alignItems: 'flex-start',
-        textAlign: 'left'
-      }}>
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'flex-start', 
-          width: '100%',
-          gap: '8px'
-        }}>
-          <CheckCircleOutlined style={{ 
-            color: colors.eco, 
-            fontSize: '16px',
-            marginTop: '2px',
-            flexShrink: 0
-          }} />
-          <Text style={{ 
-            fontSize: '14px', 
-            lineHeight: '1.5',
-            textAlign: 'left',
-            flex: 1
-          }}>
-            {item}
-          </Text>
-        </div>
-      </List.Item>
-    )}
-  />
-</Card>
                 {/* Why Choose Our Ganesh Idols */}
                 <Title level={4} style={{ color: colors.text, marginTop: '32px', marginBottom: '24px' }}>
                   Why Choose Our Sacred Ganesh Idols?
@@ -455,15 +532,38 @@ const ProductTabs = memo(({ product }) => {
             ) : (
               // Regular Product Description
               <>
-                <Paragraph style={{ fontSize: '16px', lineHeight: '1.8', marginBottom: '16px' }}>
-                  {product.description || `The ${product.name} represents the perfect blend of traditional craftsmanship and modern design. Each piece is carefully handcrafted by skilled artisans who have perfected their techniques over generations.`}
-                </Paragraph>
-                <Paragraph style={{ fontSize: '16px', lineHeight: '1.8', marginBottom: '16px' }}>
-                  Made from premium quality materials, this product ensures durability while maintaining aesthetic appeal. The natural variations in color and texture make each piece unique, adding character to your collection.
-                </Paragraph>
-                <Paragraph style={{ fontSize: '16px', lineHeight: '1.8' }}>
-                  Whether you're looking to enhance your daily routine or searching for the perfect gift, this product combines functionality with timeless beauty that will be appreciated for years to come.
-                </Paragraph>
+                {/* UPDATED: Display description as formatted bullet points */}
+                <div style={{ marginBottom: '24px' }}>
+                  <List
+                    size="small"
+                    dataSource={formattedDescriptionPoints}
+                    renderItem={(point, index) => (
+                      <List.Item style={{ 
+                        padding: '8px 0', 
+                        border: 'none',
+                        alignItems: 'flex-start'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', width: '100%' }}>
+                          <CheckCircleOutlined style={{ 
+                            color: colors.success,
+                            fontSize: '16px',
+                            marginTop: '4px',
+                            flexShrink: 0
+                          }} />
+                          <Text style={{ 
+                            fontSize: '16px', 
+                            lineHeight: '1.8',
+                            color: colors.text,
+                            flex: 1,
+                            textAlign: 'justify'
+                          }}>
+                            {point}
+                          </Text>
+                        </div>
+                      </List.Item>
+                    )}
+                  />
+                </div>
                 
                 {/* Why Choose Clay Pots Section */}
                 <Title level={3} style={{ color: colors.text, marginTop: '32px', marginBottom: '24px' }}>

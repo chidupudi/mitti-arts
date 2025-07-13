@@ -1,4 +1,4 @@
-// Enhanced ProductImageGallery.jsx - Supports both images and videos
+// Enhanced ProductImageGallery.jsx - Supports both images and videos - UPDATED: Mobile zoom button removed
 import React, { useState, useMemo, useEffect, memo } from 'react';
 import { Card, Image, Button, Tabs, Badge, Typography, Grid, Space, Tooltip } from 'antd';
 import { 
@@ -355,7 +355,7 @@ const ProductImageGallery = memo(({
             </div>
           </div>
         ) : selectedMedia && selectedMedia.type === 'image' ? (
-          // Image display (unchanged)
+          // Image display with UPDATED STYLING - NO MOBILE ZOOM BUTTON
           <>
             <Image
               src={selectedMedia.src}
@@ -363,26 +363,31 @@ const ProductImageGallery = memo(({
               style={{ 
                 maxWidth: '100%',
                 maxHeight: '100%',
-                objectFit: 'contain',
+                objectFit: 'contain', // UPDATED: Changed to contain to show full image
                 borderRadius: '8px',
+                width: 'auto',
+                height: 'auto',
               }}
               preview={false}
               onClick={() => setPreviewVisible(true)}
             />
-            <Button
-              type="primary"
-              shape="circle"
-              icon={<ZoomInOutlined />}
-              style={{
-                position: 'absolute',
-                top: '16px',
-                right: '16px',
-                backgroundColor: 'rgba(255,255,255,0.9)',
-                color: colors.primary,
-                border: 'none',
-              }}
-              onClick={() => setPreviewVisible(true)}
-            />
+            {/* UPDATED: Zoom button only shown on desktop/tablet, NOT on mobile */}
+            {!isMobile && (
+              <Button
+                type="primary"
+                shape="circle"
+                icon={<ZoomInOutlined />}
+                style={{
+                  position: 'absolute',
+                  top: '16px',
+                  right: '16px',
+                  backgroundColor: 'rgba(255,255,255,0.9)',
+                  color: colors.primary,
+                  border: 'none',
+                }}
+                onClick={() => setPreviewVisible(true)}
+              />
+            )}
           </>
         ) : selectedMedia && selectedMedia.type === 'video' && !isVideoPlayerVisible ? (
           // Video thumbnail with enhanced play button
@@ -409,7 +414,7 @@ const ProductImageGallery = memo(({
               style={{ 
                 maxWidth: '100%',
                 maxHeight: '100%',
-                objectFit: 'contain',
+                objectFit: 'contain', // UPDATED: Changed to contain to show full video thumbnail
                 borderRadius: '8px',
               }}
               onError={(e) => {

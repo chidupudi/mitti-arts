@@ -1,4 +1,4 @@
-// ProductInfoSection.jsx - FINAL VERSION WITH T&C MODAL
+// ProductInfoSection.jsx - FINAL VERSION WITH T&C MODAL AND FORMATTED DESCRIPTIONS
 import React, { useState, useMemo, memo, useCallback } from 'react';
 import {
   Card,
@@ -127,6 +127,36 @@ const customStyles = {
     background: `linear-gradient(135deg, rgba(255,255,255,0.9) 0%, ${colors.backgroundLight}20 100%)`,
     transition: 'all 0.3s ease',
   },
+};
+
+// UPDATED: Helper function to format description into bullet points
+const formatDescriptionAsPoints = (description) => {
+  if (!description) return [];
+  
+  // Split by common delimiters like periods, semicolons, or line breaks
+  const points = description
+    .split(/[.;]|\n/)
+    .map(point => point.trim())
+    .filter(point => point.length > 10) // Filter out very short segments
+    .map(point => {
+      // Remove leading dashes or bullets if they exist
+      return point.replace(/^[-•*]\s*/, '').trim();
+    })
+    .filter(point => point.length > 0);
+  
+  // If we get very few points, try splitting by commas for shorter segments
+  if (points.length <= 2) {
+    const alternativePoints = description
+      .split(/,|\n/)
+      .map(point => point.trim())
+      .filter(point => point.length > 5)
+      .map(point => point.replace(/^[-•*]\s*/, '').trim())
+      .filter(point => point.length > 0);
+    
+    return alternativePoints.length > points.length ? alternativePoints : points;
+  }
+  
+  return points;
 };
 
 // Quantity Selector Component
@@ -320,6 +350,7 @@ const TermsModal = memo(({ open, onClose, product }) => {
                       marginTop: '2px',
                       flexShrink: 0
                     }} />
+                    
                     <Text style={{ 
                       fontSize: '14px', 
                       lineHeight: '1.5',
@@ -681,7 +712,8 @@ const PoojaKitModal = memo(({ open, onClose, product }) => {
                         color: colors.ganesh,
                         border: 'none',
                         borderRadius: '12px',
-                        fontSize: '10px'
+                        fontSize: '10px',
+                        fontWeight: 600,
                       }}
                     >
                       ✨ {item.benefit}
@@ -759,7 +791,7 @@ const PoojaKitModal = memo(({ open, onClose, product }) => {
   );
 });
 
-// Main Product Info Component - UPDATED WITH ANIMATED GIFT ICON
+// Main Product Info Component - UPDATED WITH ANIMATED GIFT ICON AND FORMATTED DESCRIPTIONS
 const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, isInWishlist }) => {
   const [quantity, setQuantity] = useState(1);
   const [termsModalOpen, setTermsModalOpen] = useState(false);
@@ -797,6 +829,30 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
     if (product.stock <= 10) return { status: 'warning', icon: <InfoCircleOutlined />, text: 'Few items left', color: colors.warning };
     return { status: 'success', icon: <CheckCircleOutlined />, text: 'In Stock', color: colors.success };
   }, [product]);
+
+  // UPDATED: Format description as bullet points
+  const formattedDescriptionPoints = useMemo(() => {
+    if (product.isGaneshIdol) {
+      return [
+        'Beautifully handcrafted Ganga Clay Ganesh idol made by skilled artisans using traditional techniques',
+        'Made from sacred Ganga Clay sourced from the holy Ganges',
+        'Each idol is unique and can be customized according to your preferences for size, design, and finishing',
+        'Includes complete Pooja kit with organic materials',
+        'Eco-friendly Visarjan solution with plant sapling included'
+      ];
+    }
+
+    if (product.description) {
+      const points = formatDescriptionAsPoints(product.description);
+      return points.length > 0 ? points : [product.description];
+    }
+
+    return [
+      'Premium quality product crafted with attention to detail using traditional methods',
+      'Each piece is carefully made to ensure durability and aesthetic appeal',
+      'Natural variations in color and texture make each piece unique'
+    ];
+  }, [product.description, product.isGaneshIdol]);
 
   return (
     <>
@@ -1080,20 +1136,41 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
           </Text>
         </div>
 
-        {/* Product Description */}
+        {/* UPDATED: Product Description with Bullet Points */}
         <div style={{ marginBottom: '20px' }}>
           <Title level={5} style={{ color: colors.text, marginBottom: '12px' }}>
             {product.isGaneshIdol ? 'About This Sacred Ganesh Idol' : 'Product Description'}
           </Title>
-          <Paragraph
-            ellipsis={{ rows: 3, expandable: true, symbol: 'Show more' }}
-            style={{ fontSize: '15px', lineHeight: '1.6', marginBottom: '0' }}
-          >
-            {product.description || (product.isGaneshIdol 
-              ? 'Beautifully handcrafted Ganga Clay Ganesh idol made by skilled artisans using traditional techniques. Made from sacred Ganga Clay sourced from the holy Ganges. Each idol is unique and can be customized according to your preferences for size, design, and finishing.'
-              : 'Premium quality product crafted with attention to detail using traditional methods. Each piece is carefully made to ensure durability and aesthetic appeal. Natural variations in color and texture make each piece unique.'
+          
+          {/* Display formatted description as bullet points */}
+          <List
+            size="small"
+            dataSource={formattedDescriptionPoints}
+            renderItem={(point, index) => (
+              <List.Item style={{ 
+                padding: '6px 0', 
+                border: 'none',
+                alignItems: 'flex-start'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', width: '100%' }}>
+                  <CheckCircleOutlined style={{ 
+                    color: product.isGaneshIdol ? colors.ganesh : colors.success,
+                    fontSize: '14px',
+                    marginTop: '2px',
+                    flexShrink: 0
+                  }} />
+                  <Text style={{ 
+                    fontSize: '14px', 
+                    lineHeight: '1.6',
+                    color: colors.text,
+                    flex: 1
+                  }}>
+                    {point}
+                  </Text>
+                </div>
+              </List.Item>
             )}
-          </Paragraph>
+          />
         </div>
 
         {/* Stock/Availability Status */}
@@ -1301,8 +1378,32 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
   );
 });
 
-// FINAL Optimized Product Description Component
+// FINAL Optimized Product Description Component - UPDATED WITH BULLET POINTS
 const ProductDescription = memo(({ product }) => {
+  // UPDATED: Format description as bullet points
+  const formattedDescriptionPoints = useMemo(() => {
+    if (product.isGaneshIdol) {
+      return [
+        'Beautifully handcrafted Ganga Clay Ganesh idol made by skilled artisans using traditional techniques passed down through generations',
+        'Made from sacred Ganga Clay sourced directly from the holy Ganges River, each idol carries spiritual significance and environmental consciousness',
+        'Every piece is unique and can be completely customized according to your preferences for size, design, finishing, and decorative elements',
+        'Includes complete Pooja kit with organic materials for authentic celebration',
+        'Eco-friendly Visarjan solution with plant sapling for responsible environmental stewardship'
+      ];
+    }
+
+    if (product.description) {
+      const points = formatDescriptionAsPoints(product.description);
+      return points.length > 0 ? points : [product.description];
+    }
+
+    return [
+      'This premium quality product is crafted with meticulous attention to detail using time-honored traditional methods',
+      'Each piece is carefully made by skilled artisans to ensure exceptional durability, functionality, and aesthetic appeal',
+      'The natural variations in color, texture, and finish make each item unique, adding distinctive character to your collection'
+    ];
+  }, [product.description, product.isGaneshIdol]);
+
   return (
     <div style={{ marginTop: '32px' }}>
       {/* Main Description Card */}
@@ -1324,22 +1425,37 @@ const ProductDescription = memo(({ product }) => {
           {product.isGaneshIdol ? '🕉️ About This Sacred Ganesh Idol' : '📋 Detailed Product Information'}
         </Title>
         
-        {/* Extended Description */}
+        {/* UPDATED: Extended Description as Bullet Points */}
         <div style={{ marginBottom: '24px' }}>
-          <Paragraph
-            style={{ 
-              fontSize: '16px', 
-              lineHeight: '1.7', 
-              textAlign: 'justify',
-              color: colors.text,
-              marginBottom: '20px'
-            }}
-          >
-            {product.description || (product.isGaneshIdol 
-              ? 'Beautifully handcrafted Ganga Clay Ganesh idol made by skilled artisans using traditional techniques passed down through generations. Made from sacred Ganga Clay sourced directly from the holy Ganges River, each idol carries spiritual significance and environmental consciousness. Every piece is unique and can be completely customized according to your preferences for size, design, finishing, and decorative elements.'
-              : 'This premium quality product is crafted with meticulous attention to detail using time-honored traditional methods. Each piece is carefully made by skilled artisans to ensure exceptional durability, functionality, and aesthetic appeal. The natural variations in color, texture, and finish make each item unique, adding distinctive character to your collection.'
+          <List
+            size="small"
+            dataSource={formattedDescriptionPoints}
+            renderItem={(point, index) => (
+              <List.Item style={{ 
+                padding: '8px 0', 
+                border: 'none',
+                alignItems: 'flex-start'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', width: '100%' }}>
+                  <CheckCircleOutlined style={{ 
+                    color: product.isGaneshIdol ? colors.ganesh : colors.success,
+                    fontSize: '16px',
+                    marginTop: '4px',
+                    flexShrink: 0
+                  }} />
+                  <Text style={{ 
+                    fontSize: '16px', 
+                    lineHeight: '1.7',
+                    color: colors.text,
+                    flex: 1,
+                    textAlign: 'justify'
+                  }}>
+                    {point}
+                  </Text>
+                </div>
+              </List.Item>
             )}
-          </Paragraph>
+          />
         </div>
 
         {/* Heritage & Craftsmanship Features - Fixed Layout */}
