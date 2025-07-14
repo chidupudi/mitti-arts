@@ -1015,7 +1015,7 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
           <Breadcrumb.Item href="/">
             <HomeOutlined /> Home
           </Breadcrumb.Item>
-          <Breadcrumb.Item href={product.isGaneshIdol ? "/ganesh-collection" : "/products"}>
+          <Breadcrumb.Item href={product.isGaneshIdol ? "/products" : "/products"}>
             <AppstoreOutlined /> {product.isGaneshIdol ? 'Ganesh Collection' : 'Products'}
           </Breadcrumb.Item>
           <Breadcrumb.Item>
