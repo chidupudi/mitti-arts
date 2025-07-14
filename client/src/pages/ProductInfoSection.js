@@ -129,22 +129,46 @@ const customStyles = {
   },
 };
 
-// IMPROVED: Enhanced function to format description into bullet points
-const formatDescriptionAsPoints = (description) => {
-  if (!description || typeof description !== 'string') return [];
+// ENHANCED: Updated function to handle introductory text properly
+const formatDescriptionWithIntro = (description) => {
+  if (!description || typeof description !== 'string') {
+    return { introduction: '', points: [] };
+  }
 
-  // First, clean up the description
+  // Clean up the description
   let cleanedDescription = description.trim();
   
   // Remove common prefixes that might not be useful
   cleanedDescription = cleanedDescription.replace(/^(description:|about:|features:|details:)/i, '').trim();
   
-  // Try different splitting methods
+  let introduction = '';
+  let pointsText = cleanedDescription;
+  
+  // Check for introductory text ending with ":" followed by content
+  const introMatch = cleanedDescription.match(/^(.*?[:\.])\s*[\n\r]*(.*)$/s);
+  
+  if (introMatch) {
+    const potentialIntro = introMatch[1].trim();
+    const remainingText = introMatch[2].trim();
+    
+    // Check if this looks like an introduction (contains certain keywords and ends with :)
+    const introKeywords = ['offers', 'curated', 'includes', 'features', 'contains', 'provides', 'presents', 'kit', 'celebration'];
+    const looksLikeIntro = introKeywords.some(keyword => 
+      potentialIntro.toLowerCase().includes(keyword)
+    ) && potentialIntro.endsWith(':');
+    
+    if (looksLikeIntro && remainingText.length > 0) {
+      introduction = potentialIntro;
+      pointsText = remainingText;
+    }
+  }
+  
+  // Now process the points text
   let points = [];
   
   // Method 1: Split by line breaks first (most reliable)
-  if (cleanedDescription.includes('\n')) {
-    points = cleanedDescription
+  if (pointsText.includes('\n')) {
+    points = pointsText
       .split('\n')
       .map(point => point.trim())
       .filter(point => point.length > 5)
@@ -154,14 +178,12 @@ const formatDescriptionAsPoints = (description) => {
   
   // Method 2: If no line breaks, try splitting by periods
   if (points.length <= 1) {
-    points = cleanedDescription
+    points = pointsText
       .split(/\.\s+/)
       .map(point => point.trim())
       .filter(point => point.length > 10)
       .map(point => {
-        // Remove leading bullets or numbers
         let cleaned = point.replace(/^[-•*\d+\.\)\]]\s*/, '').trim();
-        // Ensure it ends properly
         if (cleaned && !cleaned.match(/[.!?]$/)) {
           cleaned += '.';
         }
@@ -171,11 +193,11 @@ const formatDescriptionAsPoints = (description) => {
   }
   
   // Method 3: If still no good split, try semicolons or commas for longer text
-  if (points.length <= 1 && cleanedDescription.length > 100) {
+  if (points.length <= 1 && pointsText.length > 100) {
     const delimiters = [';', ','];
     for (const delimiter of delimiters) {
-      if (cleanedDescription.includes(delimiter)) {
-        points = cleanedDescription
+      if (pointsText.includes(delimiter)) {
+        points = pointsText
           .split(delimiter)
           .map(point => point.trim())
           .filter(point => point.length > 15)
@@ -193,48 +215,13 @@ const formatDescriptionAsPoints = (description) => {
     }
   }
   
-  // Method 4: If we still have just one long point, try to break it into logical chunks
-  if (points.length <= 1 && cleanedDescription.length > 50) {
-    // Look for common sentence starters or phrases that indicate new points
-    const sentenceStarters = [
-      /\b(Made from|Created with|Features|Includes|Perfect for|Ideal for|Great for|Excellent|Handcrafted|Traditional|Each|This)/gi
-    ];
-    
-    let workingText = cleanedDescription;
-    for (const regex of sentenceStarters) {
-      const matches = [...workingText.matchAll(regex)];
-      if (matches.length > 1) {
-        // Split at these points
-        const splitPoints = matches.map(match => match.index).slice(1);
-        let currentIndex = 0;
-        points = [];
-        
-        splitPoints.forEach(splitIndex => {
-          const chunk = workingText.substring(currentIndex, splitIndex).trim();
-          if (chunk.length > 10) {
-            points.push(chunk.replace(/^[-•*\d+\.\)\]]\s*/, '').trim());
-          }
-          currentIndex = splitIndex;
-        });
-        
-        // Add the last chunk
-        const lastChunk = workingText.substring(currentIndex).trim();
-        if (lastChunk.length > 10) {
-          points.push(lastChunk.replace(/^[-•*\d+\.\)\]]\s*/, '').trim());
-        }
-        
-        if (points.length > 1) break;
-      }
-    }
-  }
-  
-  // If all methods fail, return the original text as a single point
+  // If all methods fail, use the original text as a single point
   if (points.length === 0) {
-    points = [cleanedDescription];
+    points = [pointsText];
   }
   
   // Final cleanup: ensure each point is properly formatted
-  return points
+  points = points
     .map(point => {
       let cleaned = point.trim();
       // Capitalize first letter
@@ -248,6 +235,14 @@ const formatDescriptionAsPoints = (description) => {
       return cleaned;
     })
     .filter(point => point.length > 3);
+
+  return { introduction, points };
+};
+
+// Legacy function for backward compatibility
+const formatDescriptionAsPoints = (description) => {
+  const { points } = formatDescriptionWithIntro(description);
+  return points;
 };
 
 // Quantity Selector Component
@@ -882,7 +877,7 @@ const PoojaKitModal = memo(({ open, onClose, product }) => {
   );
 });
 
-// Main Product Info Component - FIXED TO USE ORIGINAL DESCRIPTION
+// Main Product Info Component - UPDATED TO USE NEW DESCRIPTION FUNCTION
 const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, isInWishlist }) => {
   const [quantity, setQuantity] = useState(1);
   const [termsModalOpen, setTermsModalOpen] = useState(false);
@@ -921,33 +916,39 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
     return { status: 'success', icon: <CheckCircleOutlined />, text: 'In Stock', color: colors.success };
   }, [product]);
 
-  // FIXED: Always use original description and format as bullet points
-  const formattedDescriptionPoints = useMemo(() => {
+  // UPDATED: Use new function to format description with proper introduction handling
+  const formattedDescription = useMemo(() => {
     // Always try to use the original product description first
     if (product.description && product.description.trim()) {
-      const points = formatDescriptionAsPoints(product.description);
-      if (points.length > 0) {
-        return points;
+      const { introduction, points } = formatDescriptionWithIntro(product.description);
+      if (points.length > 0 || introduction) {
+        return { introduction, points };
       }
     }
 
-    // If Ganesh idol and no description, provide default points
+    // If Ganesh idol and no description, provide default
     if (product.isGaneshIdol) {
-      return [
-        'Beautifully handcrafted Ganesh idol made by skilled artisans using traditional techniques.',
-        'Made from sacred Ganga Clay sourced from the holy Ganges river.',
-        'Each idol is unique and can be customized according to your preferences.',
-        'Includes complete Pooja kit with organic materials for authentic celebration.',
-        'Eco-friendly Visarjan solution with plant sapling for responsible celebration.'
-      ];
+      return {
+        introduction: '',
+        points: [
+          'Beautifully handcrafted Ganesh idol made by skilled artisans using traditional techniques.',
+          'Made from sacred Ganga Clay sourced from the holy Ganges river.',
+          'Each idol is unique and can be customized according to your preferences.',
+          'Includes complete Pooja kit with organic materials for authentic celebration.',
+          'Eco-friendly Visarjan solution with plant sapling for responsible celebration.'
+        ]
+      };
     }
 
     // Default points for regular products when no description
-    return [
-      'Premium quality product crafted with attention to detail using traditional methods.',
-      'Each piece is carefully made to ensure durability and aesthetic appeal.',
-      'Natural variations in color and texture make each piece unique and special.'
-    ];
+    return {
+      introduction: '',
+      points: [
+        'Premium quality product crafted with attention to detail using traditional methods.',
+        'Each piece is carefully made to ensure durability and aesthetic appeal.',
+        'Natural variations in color and texture make each piece unique and special.'
+      ]
+    };
   }, [product.description, product.isGaneshIdol]);
 
   return (
@@ -1232,7 +1233,7 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
           </Text>
         </div>
 
-        {/* FIXED: Product Description with Bullet Points - Using Original Description */}
+        {/* UPDATED: Product Description with Proper Introduction and Bullet Points */}
         <div style={{ marginBottom: '20px' }}>
           <Title level={5} style={{ color: colors.text, marginBottom: '12px' }}>
             {product.isGaneshIdol ? 'About This Sacred Ganesh Idol' : 'Product Description'}
@@ -1245,35 +1246,54 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
             </div>
           )}
 
-          {/* Display formatted description as bullet points */}
-          <List
-            size="small"
-            dataSource={formattedDescriptionPoints}
-            renderItem={(point, index) => (
-              <List.Item style={{
-                padding: '6px 0',
-                border: 'none',
-                alignItems: 'flex-start'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', width: '100%' }}>
-                  <CheckCircleOutlined style={{
-                    color: product.isGaneshIdol ? colors.ganesh : colors.success,
-                    fontSize: '14px',
-                    marginTop: '2px',
-                    flexShrink: 0
-                  }} />
-                  <Text style={{
-                    fontSize: '14px',
-                    lineHeight: '1.6',
-                    color: colors.text,
-                    flex: 1
-                  }}>
-                    {point}
-                  </Text>
-                </div>
-              </List.Item>
-            )}
-          />
+          {/* UPDATED: Display introduction text (if any) */}
+          {formattedDescription.introduction && (
+            <Paragraph style={{
+              fontSize: '15px',
+              lineHeight: '1.6',
+              color: colors.text,
+              marginBottom: '16px',
+              fontWeight: 500,
+              background: `${product.isGaneshIdol ? colors.ganesh : colors.primary}08`,
+              padding: '12px 16px',
+              borderRadius: '8px',
+              border: `1px solid ${product.isGaneshIdol ? colors.ganesh : colors.primary}20`,
+            }}>
+              {formattedDescription.introduction}
+            </Paragraph>
+          )}
+
+          {/* UPDATED: Display bullet points */}
+          {formattedDescription.points.length > 0 && (
+            <List
+              size="small"
+              dataSource={formattedDescription.points}
+              renderItem={(point, index) => (
+                <List.Item style={{
+                  padding: '6px 0',
+                  border: 'none',
+                  alignItems: 'flex-start'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', width: '100%' }}>
+                    <CheckCircleOutlined style={{
+                      color: product.isGaneshIdol ? colors.ganesh : colors.success,
+                      fontSize: '14px',
+                      marginTop: '2px',
+                      flexShrink: 0
+                    }} />
+                    <Text style={{
+                      fontSize: '14px',
+                      lineHeight: '1.6',
+                      color: colors.text,
+                      flex: 1
+                    }}>
+                      {point}
+                    </Text>
+                  </div>
+                </List.Item>
+              )}
+            />
+          )}
         </div>
 
         {/* Stock/Availability Status */}
