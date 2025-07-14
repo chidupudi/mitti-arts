@@ -405,20 +405,7 @@ export const ProductsHeader = memo(({
         </Paragraph>
 
         {/* Season Alert */}
-        {isGaneshSeason && (
-          <Alert
-            message="🎉 Ganesh Festival Season is Here!"
-            description="We're currently focusing on crafting beautiful Ganesh idols. Our pottery collection will return after the festival. Browse our exclusive Ganesh idol collection below!"
-            type="info"
-            showIcon
-            style={{
-              marginBottom: '24px',
-              borderRadius: '12px',
-              backgroundColor: `${terracottaColors.ganesh}10`,
-              border: `1px solid ${terracottaColors.ganesh}30`,
-            }}
-          />
-        )}
+        
         
         {/* Products Stats */}
         {!isGaneshSeason && (
