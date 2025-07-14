@@ -1,4 +1,4 @@
-// pages/productscomponents/GaneshFilterPanel.js
+// pages/productscomponents/FilterPanel.js
 import React, { memo } from 'react';
 import {
   Typography,
@@ -13,11 +13,11 @@ import {
 import {
   DollarOutlined,
   SortAscendingOutlined,
-  ColumnHeightOutlined,
+  EnvironmentOutlined,
   ReloadOutlined,
-  CrownOutlined,
   StarOutlined,
   FireOutlined,
+  TrophyOutlined,
 } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
@@ -47,15 +47,13 @@ const formatPrice = (price) => {
   return `₹${price.toLocaleString('en-IN')}`;
 };
 
-const GaneshFilterPanel = memo(({
+const FilterPanel = memo(({
   priceRange,
   setPriceRange,
   sortBy,
   setSortBy,
-  categoryFilter,
-  setCategoryFilter,
-  customizableOnly,
-  setCustomizableOnly,
+  hyderabadOnly,
+  setHyderabadOnly,
   onResetFilters,
 }) => {
   const filterSections = [
@@ -63,7 +61,7 @@ const GaneshFilterPanel = memo(({
       key: '1',
       label: (
         <span>
-          <DollarOutlined style={{ color: terracottaColors.ganesh, marginRight: 8 }} />
+          <DollarOutlined style={{ color: terracottaColors.primary, marginRight: 8 }} />
           Price Range
         </span>
       ),
@@ -73,9 +71,9 @@ const GaneshFilterPanel = memo(({
             range
             value={priceRange}
             onChange={setPriceRange}
-            min={5000}
-            max={50000}
-            step={1000}
+            min={1}
+            max={5000}
+            step={50}
             tooltip={{
               formatter: formatPrice
             }}
@@ -96,7 +94,7 @@ const GaneshFilterPanel = memo(({
       key: '2',
       label: (
         <span>
-          <SortAscendingOutlined style={{ color: terracottaColors.ganesh, marginRight: 8 }} />
+          <SortAscendingOutlined style={{ color: terracottaColors.primary, marginRight: 8 }} />
           Sort By
         </span>
       ),
@@ -106,14 +104,49 @@ const GaneshFilterPanel = memo(({
           onChange={setSortBy}
           style={{ width: '100%' }}
         >
-          <Option value="relevance">🕉️ Most Relevant</Option>
-          <Option value="priceLowToHigh">💰 Price: Low to High</Option>
-          <Option value="priceHighToLow">💎 Price: High to Low</Option>
-          <Option value="heightLowToHigh">📏 Height: Small to Large</Option>
-          <Option value="heightHighToLow">🏛️ Height: Large to Small</Option>
-          <Option value="alphabetical">🔤 Alphabetical</Option>
-          <Option value="newest">✨ Newest First</Option>
-          <Option value="estimatedDays">⏰ Ready Time: Fast to Slow</Option>
+          <Option value="relevance">
+            <span>
+              <TrophyOutlined style={{ marginRight: 8 }} />
+              Most Relevant
+            </span>
+          </Option>
+          <Option value="priceLowToHigh">
+            <span>
+              💰 Price: Low to High
+            </span>
+          </Option>
+          <Option value="priceHighToLow">
+            <span>
+              💎 Price: High to Low
+            </span>
+          </Option>
+          <Option value="alphabetical">
+            <span>
+              🔤 Alphabetical
+            </span>
+          </Option>
+          <Option value="rating">
+            <span>
+              <StarOutlined style={{ marginRight: 8 }} />
+              Highest Rated
+            </span>
+          </Option>
+          <Option value="newest">
+            <span>
+              ✨ Newest First
+            </span>
+          </Option>
+          <Option value="featured">
+            <span>
+              <FireOutlined style={{ marginRight: 8 }} />
+              Featured
+            </span>
+          </Option>
+          <Option value="discount">
+            <span>
+              🏷️ Best Discounts
+            </span>
+          </Option>
         </Select>
       ),
     },
@@ -121,45 +154,8 @@ const GaneshFilterPanel = memo(({
       key: '3',
       label: (
         <span>
-          <CrownOutlined style={{ color: terracottaColors.ganesh, marginRight: 8 }} />
-          Category
-        </span>
-      ),
-      children: (
-        <Select
-          value={categoryFilter}
-          onChange={setCategoryFilter}
-          style={{ width: '100%' }}
-          placeholder="All Categories"
-        >
-          <Option value="all">All Categories</Option>
-          <Option value="traditional">
-            <span>
-              <CrownOutlined style={{ color: '#8E24AA', marginRight: 8 }} />
-              Traditional
-            </span>
-          </Option>
-          <Option value="modern">
-            <span>
-              <StarOutlined style={{ color: '#1976D2', marginRight: 8 }} />
-              Modern
-            </span>
-          </Option>
-          <Option value="premium">
-            <span>
-              <FireOutlined style={{ color: '#D32F2F', marginRight: 8 }} />
-              Premium
-            </span>
-          </Option>
-        </Select>
-      ),
-    },
-    {
-      key: '4',
-      label: (
-        <span>
-          <ColumnHeightOutlined style={{ color: terracottaColors.ganesh, marginRight: 8 }} />
-          Customization
+          <EnvironmentOutlined style={{ color: terracottaColors.primary, marginRight: 8 }} />
+          Delivery Options
         </span>
       ),
       children: (
@@ -167,31 +163,31 @@ const GaneshFilterPanel = memo(({
           style={{
             padding: '16px',
             borderRadius: '8px',
-            border: `1px dashed ${terracottaColors.ganesh}50`,
-            backgroundColor: `${terracottaColors.ganesh}08`,
+            border: `1px dashed ${terracottaColors.primary}50`,
+            backgroundColor: `${terracottaColors.primary}08`,
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
-              <Text strong>Customizable Only</Text>
+              <Text strong>Hyderabad Only</Text>
               <Tag 
                 style={{ 
                   marginLeft: 8,
-                  backgroundColor: customizableOnly ? terracottaColors.ganesh : `${terracottaColors.ganesh}30`,
-                  color: customizableOnly ? 'white' : terracottaColors.ganesh,
+                  backgroundColor: hyderabadOnly ? '#9C27B0' : '#9C27B030',
+                  color: hyderabadOnly ? 'white' : '#9C27B0',
                   border: 'none'
                 }}
               >
-                Custom
+                HYD
               </Tag>
             </div>
             <Switch
-              checked={customizableOnly}
-              onChange={setCustomizableOnly}
+              checked={hyderabadOnly}
+              onChange={setHyderabadOnly}
             />
           </div>
           <Text type="secondary" style={{ marginTop: '8px', display: 'block' }}>
-            Show only idols that can be customized according to your preferences
+            Show only products available for delivery in Hyderabad
           </Text>
         </div>
       ),
@@ -201,14 +197,14 @@ const GaneshFilterPanel = memo(({
   return (
     <div>
       <div style={{ marginBottom: '24px' }}>
-        <Title level={4} style={{ fontWeight: 700, marginBottom: '8px', color: terracottaColors.ganesh }}>
-          🕉️ Ganesh Idol Filters
+        <Title level={4} style={{ fontWeight: 700, marginBottom: '8px', color: terracottaColors.primary }}>
+          🔍 Product Filters
         </Title>
         <Divider style={{ margin: 0 }} />
       </div>
 
       <Collapse
-        defaultActiveKey={['1', '2', '3', '4']}
+        defaultActiveKey={['1', '2', '3']}
         ghost
         expandIconPosition="right"
         items={filterSections}
@@ -225,8 +221,8 @@ const GaneshFilterPanel = memo(({
           borderRadius: '8px',
           fontWeight: 600,
           borderWidth: 2,
-          borderColor: terracottaColors.ganesh,
-          color: terracottaColors.ganesh,
+          borderColor: terracottaColors.primary,
+          color: terracottaColors.primary,
         }}
       >
         Reset Filters
@@ -235,7 +231,7 @@ const GaneshFilterPanel = memo(({
   );
 });
 
-GaneshFilterPanel.displayName = 'GaneshFilterPanel';
+FilterPanel.displayName = 'FilterPanel';
 
-export default GaneshFilterPanel;
+export default FilterPanel;
 export { terracottaColors, formatPrice };

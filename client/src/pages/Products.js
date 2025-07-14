@@ -1,4 +1,4 @@
-// pages/Products.js - Main Products Page
+// pages/Products.js - Updated with Carousel and Mobile Layout
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Row,
@@ -35,6 +35,8 @@ import FilterPanel from './productscomponents/FilterPanel';
 import ProductCard from './productscomponents/ProductCard';
 import { GaneshIdolCard, PotteryComingSoonCard } from './productscomponents/GaneshComponents';
 import GaneshFilterPanel from './productscomponents/GaneshFilterPanel';
+import GaneshCarousel from './productscomponents/GaneshCarousel'; // NEW
+import CompactSearchFilter from './productscomponents/CompactSearchFilter'; // NEW
 import {
   QuantityModal,
   ProductsHeader,
@@ -48,12 +50,7 @@ import {
 const { useBreakpoint } = Grid;
 const { Title, Text } = Typography;
 
-// Custom pottery image URL - Replace this with your own image URL
-const CUSTOM_POTTERY_IMAGE = 'https://res.cloudinary.com/dca26n68n/image/upload/v1752423554/WhatsApp_Image_2025-07-13_at_13.36.04_5cdf4b7c_ucnech.jpg';
-// You can replace the above URL with your own pottery image URL
-// Example: const CUSTOM_POTTERY_IMAGE = 'https://yourdomain.com/pottery-image.jpg';
-
-// Enhanced custom styles with Ganesh season additions and mobile responsiveness
+// Enhanced custom styles with mobile-first approach
 const customStyles = `
   .products-container {
     background-color: ${terracottaColors.background};
@@ -77,7 +74,7 @@ const customStyles = `
   }
 
   .products-grid {
-    min-height: calc(100vh - 200px);
+    min-height: 40vh;
   }
 
   .ganesh-idol-card:hover {
@@ -166,9 +163,19 @@ const customStyles = `
     object-fit: cover;
     object-position: center;
   }
+
+  /* Compact header for mobile Ganesh season */
+  .mobile-ganesh-header {
+    text-align: center;
+    margin-bottom: 16px;
+    padding: 16px;
+    background: linear-gradient(135deg, ${terracottaColors.ganesh}15 0%, ${terracottaColors.backgroundLight}30 100%);
+    border-radius: 12px;
+    border: 1px solid ${terracottaColors.ganesh}20;
+  }
 `;
 
-// Custom hooks for data fetching (keeping all existing functionality)
+// All existing hooks remain the same...
 const useProducts = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -215,7 +222,6 @@ const useProducts = () => {
   return { products, loading, error };
 };
 
-// Hook to fetch Ganesh idols (keeping all existing functionality)
 const useGaneshIdols = () => {
   const [ganeshIdols, setGaneshIdols] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -242,7 +248,7 @@ const useGaneshIdols = () => {
               createdAt: data.createdAt || new Date().toISOString(),
               height: data.height || '',
               category: data.category || 'traditional',
-              customizable: data.customizable !== false, // Default to true
+              customizable: data.customizable !== false,
             });
           }
         });
@@ -261,7 +267,6 @@ const useGaneshIdols = () => {
   return { ganeshIdols, loading, error };
 };
 
-// Wishlist hook (keeping all existing functionality)
 const useWishlist = (user) => {
   const [wishlist, setWishlist] = useState([]);
 
@@ -334,12 +339,10 @@ const useWishlist = (user) => {
   return { wishlist, toggleWishlistItem, isInWishlist };
 };
 
-// Product search and filtering hook (keeping all existing functionality)
 const useProductSearch = (products, searchQuery, filters) => {
   return useMemo(() => {
     let filtered = [...products];
 
-    // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(product =>
@@ -350,19 +353,16 @@ const useProductSearch = (products, searchQuery, filters) => {
       );
     }
 
-    // Price range filter
     if (filters.priceRange) {
       filtered = filtered.filter(product =>
         product.price >= filters.priceRange[0] && product.price <= filters.priceRange[1]
       );
     }
 
-    // Hyderabad-only filter
     if (filters.hyderabadOnly) {
       filtered = filtered.filter(product => product.hyderabadOnly);
     }
 
-    // Sort products
     switch (filters.sortBy) {
       case 'relevance':
         filtered.sort((a, b) => {
@@ -408,12 +408,10 @@ const useProductSearch = (products, searchQuery, filters) => {
   }, [products, searchQuery, filters.priceRange, filters.sortBy, filters.hyderabadOnly]);
 };
 
-// Ganesh idol search and filtering hook
 const useGaneshIdolFilter = (ganeshIdols, searchQuery, filters) => {
   return useMemo(() => {
     let filtered = [...ganeshIdols];
 
-    // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(idol =>
@@ -423,26 +421,22 @@ const useGaneshIdolFilter = (ganeshIdols, searchQuery, filters) => {
       );
     }
 
-    // Price range filter
     if (filters.priceRange) {
       filtered = filtered.filter(idol =>
         idol.price >= filters.priceRange[0] && idol.price <= filters.priceRange[1]
       );
     }
 
-    // Category filter
     if (filters.categoryFilter && filters.categoryFilter !== 'all') {
       filtered = filtered.filter(idol => 
         idol.category === filters.categoryFilter
       );
     }
 
-    // Customizable filter
     if (filters.customizableOnly) {
       filtered = filtered.filter(idol => idol.customizable);
     }
 
-    // Sort Ganesh idols
     switch (filters.sortBy) {
       case 'relevance':
         filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
@@ -454,7 +448,6 @@ const useGaneshIdolFilter = (ganeshIdols, searchQuery, filters) => {
         filtered.sort((a, b) => b.price - a.price);
         break;
       case 'heightLowToHigh':
-        // Extract numeric part of height (e.g., "24 inches" -> 24)
         filtered.sort((a, b) => {
           const heightA = parseInt(a.height) || 0;
           const heightB = parseInt(b.height) || 0;
@@ -462,7 +455,6 @@ const useGaneshIdolFilter = (ganeshIdols, searchQuery, filters) => {
         });
         break;
       case 'heightHighToLow':
-        // Extract numeric part of height (e.g., "24 inches" -> 24)
         filtered.sort((a, b) => {
           const heightA = parseInt(a.height) || 0;
           const heightB = parseInt(b.height) || 0;
@@ -479,7 +471,6 @@ const useGaneshIdolFilter = (ganeshIdols, searchQuery, filters) => {
         filtered.sort((a, b) => (a.estimatedDays || 7) - (b.estimatedDays || 7));
         break;
       default:
-        // Default sort by height (high to low)
         filtered.sort((a, b) => {
           const heightA = parseInt(a.height) || 0;
           const heightB = parseInt(b.height) || 0;
@@ -508,17 +499,14 @@ const useGaneshIdolFilter = (ganeshIdols, searchQuery, filters) => {
 
 // Main Products Component
 const Products = () => {
-  // CORRECT: Call hooks at the top level of the component.
   const navigate = useNavigate();
   const screens = useBreakpoint();
   
   const isMobile = !screens.md;
   const isSmallScreen = !screens.sm;
   
-  // Season context
   const { currentSeason, isGaneshSeason, loading: seasonLoading } = useSeason();
   
-  // State (keeping all existing state)
   const [user, setUser] = useState(null);
   const [priceRange, setPriceRange] = useState([1, 5000]);
   const [sortBy, setSortBy] = useState('relevance');
@@ -528,19 +516,16 @@ const Products = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
 
-  // Ganesh specific filter state
   const [ganeshPriceRange, setGaneshPriceRange] = useState([5000, 50000]);
-  const [ganeshSortBy, setGaneshSortBy] = useState('priceLowToHigh'); // Default sort by price
+  const [ganeshSortBy, setGaneshSortBy] = useState('priceLowToHigh');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [customizableOnly, setCustomizableOnly] = useState(false);
   const [ganeshDrawerOpen, setGaneshDrawerOpen] = useState(false);
 
-  // Use hooks (keeping all existing hooks)
   const { products, loading: productsLoading, error: productsError } = useProducts();
   const { ganeshIdols, loading: ganeshLoading, error: ganeshError } = useGaneshIdols();
   const { wishlist, toggleWishlistItem, isInWishlist } = useWishlist(user);
   
-  // Memoize search parameters to prevent unnecessary re-renders
   const searchParams = useMemo(() => ({
     priceRange,
     sortBy,
@@ -548,7 +533,6 @@ const Products = () => {
     hideOutOfStock: false,
   }), [priceRange[0], priceRange[1], sortBy, hyderabadOnly]);
 
-  // Memoize Ganesh filter parameters
   const ganeshFilterParams = useMemo(() => ({
     priceRange: ganeshPriceRange,
     sortBy: ganeshSortBy,
@@ -556,7 +540,6 @@ const Products = () => {
     customizableOnly,
   }), [ganeshPriceRange[0], ganeshPriceRange[1], ganeshSortBy, categoryFilter, customizableOnly]);
 
-  // Search and filter with Hyderabad priority
   const { 
     products: filteredProducts, 
     totalCount, 
@@ -564,14 +547,12 @@ const Products = () => {
     isSearching 
   } = useProductSearch(products, searchQuery, searchParams);
 
-  // Filter Ganesh idols
   const {
     idols: filteredGaneshIdols,
     totalCount: ganeshTotalCount,
     isSearching: isGaneshSearching
   } = useGaneshIdolFilter(ganeshIdols, searchQuery, ganeshFilterParams);
 
-  // Auth effect (keeping existing functionality)
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
@@ -579,18 +560,17 @@ const Products = () => {
     return unsubscribe;
   }, []);
 
-  // Responsive grid configuration (keeping existing functionality)
   const getProductGridCols = () => {
-    if (!screens.sm) return { xs: 24 }; // 1 column on mobile (< 576px)
-    if (!screens.md) return { xs: 24, sm: 12 }; // 2 columns on small screens (576px - 768px)
-    if (!screens.lg) return { xs: 24, sm: 12, md: 8 }; // 3 columns on medium screens (768px - 992px)
-    if (!screens.xl) return { xs: 24, sm: 12, md: 8, lg: 6 }; // 4 columns on large screens (992px - 1200px)
-    return { xs: 24, sm: 12, md: 6, lg: 6, xl: 6 }; // 4 columns on extra large screens (> 1200px)
+    if (!screens.sm) return { xs: 24 };
+    if (!screens.md) return { xs: 24, sm: 12 };
+    if (!screens.lg) return { xs: 24, sm: 12, md: 8 };
+    if (!screens.xl) return { xs: 24, sm: 12, md: 8, lg: 6 };
+    return { xs: 24, sm: 12, md: 6, lg: 6, xl: 6 };
   };
 
   const productGridCols = getProductGridCols();
 
-  // Stable callbacks to prevent infinite loops (keeping all existing handlers)
+  // All existing handlers remain the same...
   const showMessage = useCallback((content, type = 'success') => {
     message[type](content);
   }, []);
@@ -600,10 +580,10 @@ const Products = () => {
     navigate(`/product/${id}?code=${code}`);
   }, [navigate]);
 
-  // Season-specific handlers (keeping existing functionality)
+  // UPDATED: Pottery handler now redirects to contact
   const handlePotteryPrebook = useCallback(() => {
-    showMessage('Pre-booking feature coming soon!', 'info');
-  }, [showMessage]);
+    navigate('/contact');
+  }, [navigate]);
 
   const handleShowInterest = useCallback((idol) => {
     if (!user) {
@@ -640,7 +620,6 @@ const Products = () => {
     navigate(`/ganesh-idol/${idolId}`);
   }, [navigate]);
 
-  // Add to Cart handler (keeping existing functionality)
   const handleAddToCart = useCallback(async (product) => {
     if (product.hidden || product.stock === 0) {
       showMessage(
@@ -660,7 +639,6 @@ const Products = () => {
     setModalOpen(true);
   }, [user, showMessage, navigate]);
 
-  // Buy Now handler (keeping existing functionality)
   const handleBuyNow = useCallback(async (product) => {
     if (product.hidden || product.stock === 0) {
       showMessage(
@@ -716,7 +694,6 @@ const Products = () => {
     }
   }, [user, showMessage, toggleWishlistItem, navigate]);
 
-  // Confirm Add to Cart handler (keeping existing functionality)
   const handleConfirmAddToCart = useCallback(async (quantity) => {
     if (!selectedProduct || !user) return;
 
@@ -767,7 +744,6 @@ const Products = () => {
     setGaneshDrawerOpen(prev => !prev);
   }, []);
 
-  // Loading states (keeping existing functionality)
   if (seasonLoading || (isGaneshSeason && ganeshLoading)) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
@@ -778,123 +754,61 @@ const Products = () => {
 
   return (
     <>
-      {/* Inject custom styles */}
       <style dangerouslySetInnerHTML={{ __html: customStyles }} />
       
       <div className="products-container">
         <div className="products-main-wrapper">
-          {/* Header Section - Season Aware (keeping existing functionality) */}
-          <ProductsHeader 
-            isGaneshSeason={isGaneshSeason}
-            isMobile={isMobile}
-            totalCount={isGaneshSeason ? ganeshTotalCount : totalCount}
-            hyderabadCount={hyderabadCount}
-          />
-
-          {/* Search and Filter Bar - Show for both seasons but with different filter buttons */}
-          <div style={{ marginBottom: '32px' }}>
-            {isGaneshSeason ? (
-              <Card
-                className="search-filter-card"
-                style={{
-                  borderRadius: '12px',
-                  background: `linear-gradient(135deg, rgba(255,255,255,0.9) 0%, ${terracottaColors.backgroundLight}30 100%)`,
-                  backdropFilter: 'blur(10px)',
-                  border: `1px solid ${terracottaColors.ganesh}20`,
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+          {/* NEW: Mobile Ganesh Header (instead of full ProductsHeader) */}
+          {isGaneshSeason && isMobile && (
+            <div className="mobile-ganesh-header">
+              <Title 
+                level={2} 
+                style={{ 
+                  margin: 0,
+                  background: `linear-gradient(135deg, ${terracottaColors.ganesh} 0%, #FFB74D 100%)`,
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  fontSize: '18px',
+                  fontWeight: 700
                 }}
-                bodyStyle={{ padding: isMobile ? '16px' : '24px' }}
               >
-                <Row gutter={[16, 16]} align="middle">
-                  {/* Search */}
-                  <Col xs={24} sm={24} md={12} lg={14}>
-                    <Input
-                      size="large"
-                      placeholder="Search Ganesh idols..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      prefix={<SearchOutlined style={{ color: terracottaColors.ganesh }} />}
-                      suffix={searchQuery && (
-                        <Button 
-                          type="text" 
-                          size="small" 
-                          icon={<CloseOutlined />}
-                          onClick={() => setSearchQuery('')}
-                        />
-                      )}
-                      style={{
-                        borderRadius: '8px',
-                        borderColor: `${terracottaColors.ganesh}30`,
-                      }}
-                    />
-                  </Col>
+                🕉️ Ganesh Festival Collection
+              </Title>
+            </div>
+          )}
 
-                  {/* Ganesh Filter Controls */}
-                  <Col xs={24} sm={24} md={12} lg={10}>
-                    <Space wrap style={{ width: '100%', justifyContent: isMobile ? 'center' : 'flex-end' }}>
-                      {/* Mobile Filter Button */}
-                      {isMobile && (
-                        <Button
-                          type="primary"
-                          icon={<FilterOutlined />}
-                          onClick={handleGaneshDrawerToggle}
-                          style={{ 
-                            borderRadius: '8px',
-                            backgroundColor: terracottaColors.ganesh,
-                            borderColor: terracottaColors.ganesh,
-                          }}
-                        >
-                          Ganesh Filters
-                        </Button>
-                      )}
+          {/* Desktop Header for non-mobile */}
+          {(!isMobile || !isGaneshSeason) && (
+            <ProductsHeader 
+              isGaneshSeason={isGaneshSeason}
+              isMobile={isMobile}
+              totalCount={isGaneshSeason ? ganeshTotalCount : totalCount}
+              hyderabadCount={hyderabadCount}
+            />
+          )}
 
-                      {/* Quick Category Buttons */}
-                      <Button
-                        type={categoryFilter === 'traditional' ? "primary" : "default"}
-                        onClick={() => setCategoryFilter(categoryFilter === 'traditional' ? 'all' : 'traditional')}
-                        style={{ 
-                          borderRadius: '8px',
-                          borderColor: '#8E24AA',
-                          color: categoryFilter === 'traditional' ? 'white' : '#8E24AA',
-                          backgroundColor: categoryFilter === 'traditional' ? '#8E24AA' : 'transparent',
-                        }}
-                      >
-                        {isSmallScreen ? '🏛️' : '🏛️ Traditional'}
-                      </Button>
+          {/* NEW: Carousel for Ganesh Season */}
+          {isGaneshSeason && (
+            <GaneshCarousel 
+              isMobile={isMobile} 
+              onPotteryClick={handlePotteryPrebook}
+            />
+          )}
 
-                      <Button
-                        type={categoryFilter === 'modern' ? "primary" : "default"}
-                        onClick={() => setCategoryFilter(categoryFilter === 'modern' ? 'all' : 'modern')}
-                        style={{ 
-                          borderRadius: '8px',
-                          borderColor: '#1976D2',
-                          color: categoryFilter === 'modern' ? 'white' : '#1976D2',
-                          backgroundColor: categoryFilter === 'modern' ? '#1976D2' : 'transparent',
-                        }}
-                      >
-                        {isSmallScreen ? '⭐' : '⭐ Modern'}
-                      </Button>
-
-                      {/* Results Count */}
-                      <Tag
-                        icon={<AppstoreOutlined />}
-                        style={{
-                          backgroundColor: `${terracottaColors.ganesh}15`,
-                          color: terracottaColors.ganesh,
-                          border: 'none',
-                          padding: '8px 16px',
-                          borderRadius: '8px',
-                          fontWeight: 600
-                        }}
-                      >
-                        {filteredGaneshIdols.length} Idols
-                        {isGaneshSearching && ' (searching...)'}
-                      </Tag>
-                    </Space>
-                  </Col>
-                </Row>
-              </Card>
-            ) : (
+          {/* NEW: Compact Search and Filter for Ganesh Season */}
+          {isGaneshSeason ? (
+            <CompactSearchFilter
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              filteredGaneshIdols={filteredGaneshIdols}
+              isGaneshSearching={isGaneshSearching}
+              handleGaneshDrawerToggle={handleGaneshDrawerToggle}
+              isMobile={isMobile}
+            />
+          ) : (
+            /* Regular Search and Filter Bar for Non-Ganesh Season */
+            <div style={{ marginBottom: '32px' }}>
               <SearchFilterBar
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
@@ -906,12 +820,12 @@ const Products = () => {
                 isMobile={isMobile}
                 isSmallScreen={isSmallScreen}
               />
-            )}
-          </div>
+            </div>
+          )}
 
-          {/* Main Content (keeping existing functionality) */}
+          {/* Main Content */}
           <Row gutter={[24, 0]}>
-            {/* Desktop Filter Panel - Based on season */}
+            {/* Desktop Filter Panel */}
             {!isMobile && (
               <Col span={6}>
                 <div className="products-filter-sidebar">
@@ -964,17 +878,9 @@ const Products = () => {
                     isGaneshSeason={isGaneshSeason}
                   />
                 ) : isGaneshSeason ? (
-                  // Ganesh Season Layout with Custom Pottery Image
+                  // UPDATED: Ganesh Season Layout - Start directly with Ganesh idols
                   <Row gutter={[16, 16]}>
-                    {/* First Card: Pottery Coming Soon with Custom Image */}
-                    <Col {...productGridCols}>
-                      <PotteryComingSoonCard 
-                        onClick={handlePotteryPrebook}
-                        customPotteryImage={CUSTOM_POTTERY_IMAGE}
-                      />
-                    </Col>
-
-                    {/* Ganesh Idols with Enhanced Mobile Image Height */}
+                    {/* Ganesh Idols - Natural display, no special styling */}
                     {filteredGaneshIdols.map((idol) => (
                       <Col {...productGridCols} key={idol.id}>
                         <GaneshIdolCard
@@ -1027,7 +933,6 @@ const Products = () => {
                     )}
                   </Row>
                 ) : filteredProducts.length === 0 ? (
-                  // Empty state for regular products
                   <EmptyState 
                     handleResetFilters={handleResetFilters}
                     isGaneshSeason={isGaneshSeason}
@@ -1035,7 +940,6 @@ const Products = () => {
                     ganeshLoading={ganeshLoading}
                   />
                 ) : (
-                  // Regular products grid
                   <Row gutter={[16, 16]}>
                     {filteredProducts.map((product) => (
                       <Col 
@@ -1059,7 +963,7 @@ const Products = () => {
           </Row>
         </div>
 
-        {/* Mobile Filter Drawer - Based on season */}
+        {/* Mobile Filter Drawer */}
         {isGaneshSeason ? (
           <Drawer
             title="Ganesh Idol Filters"
@@ -1114,7 +1018,7 @@ const Products = () => {
           </Drawer>
         )}
 
-        {/* Quantity Modal (keeping existing functionality) */}
+        {/* Quantity Modal */}
         {modalOpen && selectedProduct && (
           <QuantityModal
             open={modalOpen}
@@ -1124,7 +1028,7 @@ const Products = () => {
           />
         )}
 
-        {/* Performance Debug (Development only) */}
+        {/* Performance Debug */}
         {process.env.NODE_ENV === 'development' && (
           <div
             style={{
