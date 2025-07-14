@@ -1,4 +1,4 @@
-// Create this file: client/src/pages/productscomponents/GaneshFilterPanel.js
+// client/src/pages/productscomponents/GaneshFilterPanel.js
 import React, { memo } from 'react';
 import {
   Typography,
@@ -239,3 +239,4 @@ GaneshFilterPanel.displayName = 'GaneshFilterPanel';
 
 export default GaneshFilterPanel;
 export { terracottaColors, formatPrice };
+
