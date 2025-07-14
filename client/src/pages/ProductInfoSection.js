@@ -1,4 +1,4 @@
-// ProductInfoSection.jsx - FINAL VERSION WITH T&C MODAL AND FORMATTED DESCRIPTIONS
+// ProductInfoSection.jsx - FIXED VERSION WITH ORIGINAL DESCRIPTIONS
 import React, { useState, useMemo, memo, useCallback } from 'react';
 import {
   Card,
@@ -129,34 +129,125 @@ const customStyles = {
   },
 };
 
-// UPDATED: Helper function to format description into bullet points
+// IMPROVED: Enhanced function to format description into bullet points
 const formatDescriptionAsPoints = (description) => {
-  if (!description) return [];
+  if (!description || typeof description !== 'string') return [];
 
-  // Split by common delimiters like periods, semicolons, or line breaks
-  const points = description
-    .split(/[.;]|\n/)
-    .map(point => point.trim())
-    .filter(point => point.length > 10) // Filter out very short segments
-    .map(point => {
-      // Remove leading dashes or bullets if they exist
-      return point.replace(/^[-•*]\s*/, '').trim();
-    })
-    .filter(point => point.length > 0);
-
-  // If we get very few points, try splitting by commas for shorter segments
-  if (points.length <= 2) {
-    const alternativePoints = description
-      .split(/,|\n/)
+  // First, clean up the description
+  let cleanedDescription = description.trim();
+  
+  // Remove common prefixes that might not be useful
+  cleanedDescription = cleanedDescription.replace(/^(description:|about:|features:|details:)/i, '').trim();
+  
+  // Try different splitting methods
+  let points = [];
+  
+  // Method 1: Split by line breaks first (most reliable)
+  if (cleanedDescription.includes('\n')) {
+    points = cleanedDescription
+      .split('\n')
       .map(point => point.trim())
       .filter(point => point.length > 5)
-      .map(point => point.replace(/^[-•*]\s*/, '').trim())
+      .map(point => point.replace(/^[-•*\d+\.\)\]]\s*/, '').trim())
       .filter(point => point.length > 0);
-
-    return alternativePoints.length > points.length ? alternativePoints : points;
   }
-
-  return points;
+  
+  // Method 2: If no line breaks, try splitting by periods
+  if (points.length <= 1) {
+    points = cleanedDescription
+      .split(/\.\s+/)
+      .map(point => point.trim())
+      .filter(point => point.length > 10)
+      .map(point => {
+        // Remove leading bullets or numbers
+        let cleaned = point.replace(/^[-•*\d+\.\)\]]\s*/, '').trim();
+        // Ensure it ends properly
+        if (cleaned && !cleaned.match(/[.!?]$/)) {
+          cleaned += '.';
+        }
+        return cleaned;
+      })
+      .filter(point => point.length > 5);
+  }
+  
+  // Method 3: If still no good split, try semicolons or commas for longer text
+  if (points.length <= 1 && cleanedDescription.length > 100) {
+    const delimiters = [';', ','];
+    for (const delimiter of delimiters) {
+      if (cleanedDescription.includes(delimiter)) {
+        points = cleanedDescription
+          .split(delimiter)
+          .map(point => point.trim())
+          .filter(point => point.length > 15)
+          .map(point => {
+            let cleaned = point.replace(/^[-•*\d+\.\)\]]\s*/, '').trim();
+            if (cleaned && !cleaned.match(/[.!?]$/)) {
+              cleaned += '.';
+            }
+            return cleaned;
+          })
+          .filter(point => point.length > 5);
+        
+        if (points.length > 1) break;
+      }
+    }
+  }
+  
+  // Method 4: If we still have just one long point, try to break it into logical chunks
+  if (points.length <= 1 && cleanedDescription.length > 50) {
+    // Look for common sentence starters or phrases that indicate new points
+    const sentenceStarters = [
+      /\b(Made from|Created with|Features|Includes|Perfect for|Ideal for|Great for|Excellent|Handcrafted|Traditional|Each|This)/gi
+    ];
+    
+    let workingText = cleanedDescription;
+    for (const regex of sentenceStarters) {
+      const matches = [...workingText.matchAll(regex)];
+      if (matches.length > 1) {
+        // Split at these points
+        const splitPoints = matches.map(match => match.index).slice(1);
+        let currentIndex = 0;
+        points = [];
+        
+        splitPoints.forEach(splitIndex => {
+          const chunk = workingText.substring(currentIndex, splitIndex).trim();
+          if (chunk.length > 10) {
+            points.push(chunk.replace(/^[-•*\d+\.\)\]]\s*/, '').trim());
+          }
+          currentIndex = splitIndex;
+        });
+        
+        // Add the last chunk
+        const lastChunk = workingText.substring(currentIndex).trim();
+        if (lastChunk.length > 10) {
+          points.push(lastChunk.replace(/^[-•*\d+\.\)\]]\s*/, '').trim());
+        }
+        
+        if (points.length > 1) break;
+      }
+    }
+  }
+  
+  // If all methods fail, return the original text as a single point
+  if (points.length === 0) {
+    points = [cleanedDescription];
+  }
+  
+  // Final cleanup: ensure each point is properly formatted
+  return points
+    .map(point => {
+      let cleaned = point.trim();
+      // Capitalize first letter
+      if (cleaned.length > 0) {
+        cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+      }
+      // Ensure proper ending
+      if (cleaned && !cleaned.match(/[.!?]$/)) {
+        cleaned += '.';
+      }
+      return cleaned;
+    })
+    .filter(point => point.length > 3);
 };
 
 // Quantity Selector Component
@@ -791,11 +882,11 @@ const PoojaKitModal = memo(({ open, onClose, product }) => {
   );
 });
 
-// Main Product Info Component - UPDATED WITH ANIMATED GIFT ICON AND FORMATTED DESCRIPTIONS
+// Main Product Info Component - FIXED TO USE ORIGINAL DESCRIPTION
 const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, isInWishlist }) => {
   const [quantity, setQuantity] = useState(1);
   const [termsModalOpen, setTermsModalOpen] = useState(false);
-  const [poojaKitModalOpen, setPoojaKitModalOpen] = useState(false); // NEW STATE
+  const [poojaKitModalOpen, setPoojaKitModalOpen] = useState(false);
   const screens = useBreakpoint();
 
   const { originalPrice, discount } = useMemo(() => {
@@ -830,27 +921,32 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
     return { status: 'success', icon: <CheckCircleOutlined />, text: 'In Stock', color: colors.success };
   }, [product]);
 
-  // UPDATED: Format description as bullet points
+  // FIXED: Always use original description and format as bullet points
   const formattedDescriptionPoints = useMemo(() => {
+    // Always try to use the original product description first
+    if (product.description && product.description.trim()) {
+      const points = formatDescriptionAsPoints(product.description);
+      if (points.length > 0) {
+        return points;
+      }
+    }
+
+    // If Ganesh idol and no description, provide default points
     if (product.isGaneshIdol) {
       return [
-        'Beautifully handcrafted Ganga Clay Ganesh idol made by skilled artisans using traditional techniques',
-        'Made from sacred Ganga Clay sourced from the holy Ganges',
-        'Each idol is unique and can be customized according to your preferences for size, design, and finishing',
-        'Includes complete Pooja kit with organic materials',
-        'Eco-friendly Visarjan solution with plant sapling included'
+        'Beautifully handcrafted Ganesh idol made by skilled artisans using traditional techniques.',
+        'Made from sacred Ganga Clay sourced from the holy Ganges river.',
+        'Each idol is unique and can be customized according to your preferences.',
+        'Includes complete Pooja kit with organic materials for authentic celebration.',
+        'Eco-friendly Visarjan solution with plant sapling for responsible celebration.'
       ];
     }
 
-    if (product.description) {
-      const points = formatDescriptionAsPoints(product.description);
-      return points.length > 0 ? points : [product.description];
-    }
-
+    // Default points for regular products when no description
     return [
-      'Premium quality product crafted with attention to detail using traditional methods',
-      'Each piece is carefully made to ensure durability and aesthetic appeal',
-      'Natural variations in color and texture make each piece unique'
+      'Premium quality product crafted with attention to detail using traditional methods.',
+      'Each piece is carefully made to ensure durability and aesthetic appeal.',
+      'Natural variations in color and texture make each piece unique and special.'
     ];
   }, [product.description, product.isGaneshIdol]);
 
@@ -1060,7 +1156,7 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
 
             {/* Icons Row - T&C and Gift */}
             <Space size="small">
-              {/* NEW: Animated Gift Icon - Only for Ganesh Idols */}
+              {/* Animated Gift Icon - Only for Ganesh Idols */}
               {product.isGaneshIdol && (
                 <Tooltip title="Complete Pooja Kit Included! Click to see what's inside 🎁">
                   <Button
@@ -1136,11 +1232,18 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
           </Text>
         </div>
 
-        {/* UPDATED: Product Description with Bullet Points */}
+        {/* FIXED: Product Description with Bullet Points - Using Original Description */}
         <div style={{ marginBottom: '20px' }}>
           <Title level={5} style={{ color: colors.text, marginBottom: '12px' }}>
             {product.isGaneshIdol ? 'About This Sacred Ganesh Idol' : 'Product Description'}
           </Title>
+
+          {/* Debug: Show if original description exists */}
+          {process.env.NODE_ENV === 'development' && (
+            <div style={{ fontSize: '10px', color: '#999', marginBottom: '8px' }}>
+              Original Description: {product.description ? 'Available' : 'Not Available'}
+            </div>
+          )}
 
           {/* Display formatted description as bullet points */}
           <List
@@ -1368,7 +1471,7 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
         product={product}
       />
 
-      {/* NEW: Pooja Kit Modal */}
+      {/* Pooja Kit Modal */}
       <PoojaKitModal
         open={poojaKitModalOpen}
         onClose={() => setPoojaKitModalOpen(false)}
@@ -1378,29 +1481,34 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
   );
 });
 
-// FINAL Optimized Product Description Component - UPDATED WITH BULLET POINTS
+// FINAL Optimized Product Description Component - FIXED WITH ORIGINAL DESCRIPTION
 const ProductDescription = memo(({ product }) => {
-  // UPDATED: Format description as bullet points
+  // FIXED: Always use original description and format as bullet points
   const formattedDescriptionPoints = useMemo(() => {
+    // Always try to use the original product description first
+    if (product.description && product.description.trim()) {
+      const points = formatDescriptionAsPoints(product.description);
+      if (points.length > 0) {
+        return points;
+      }
+    }
+
+    // If Ganesh idol and no description, provide default points
     if (product.isGaneshIdol) {
       return [
-        'Beautifully handcrafted Ganga Clay Ganesh idol made by skilled artisans using traditional techniques passed down through generations',
-        'Made from sacred Ganga Clay sourced directly from the holy Ganges River, each idol carries spiritual significance and environmental consciousness',
-        'Every piece is unique and can be completely customized according to your preferences for size, design, finishing, and decorative elements',
-        'Includes complete Pooja kit with organic materials for authentic celebration',
-        'Eco-friendly Visarjan solution with plant sapling for responsible environmental stewardship'
+        'Beautifully handcrafted Ganga Clay Ganesh idol made by skilled artisans using traditional techniques passed down through generations.',
+        'Made from sacred Ganga Clay sourced directly from the holy Ganges River, each idol carries spiritual significance and environmental consciousness.',
+        'Every piece is unique and can be completely customized according to your preferences for size, design, finishing, and decorative elements.',
+        'Includes complete Pooja kit with organic materials for authentic celebration.',
+        'Eco-friendly Visarjan solution with plant sapling for responsible environmental stewardship.'
       ];
     }
 
-    if (product.description) {
-      const points = formatDescriptionAsPoints(product.description);
-      return points.length > 0 ? points : [product.description];
-    }
-
+    // Default for regular products when no description
     return [
-      'This premium quality product is crafted with meticulous attention to detail using time-honored traditional methods',
-      'Each piece is carefully made by skilled artisans to ensure exceptional durability, functionality, and aesthetic appeal',
-      'The natural variations in color, texture, and finish make each item unique, adding distinctive character to your collection'
+      'This premium quality product is crafted with meticulous attention to detail using time-honored traditional methods.',
+      'Each piece is carefully made by skilled artisans to ensure exceptional durability, functionality, and aesthetic appeal.',
+      'The natural variations in color, texture, and finish make each item unique, adding distinctive character to your collection.'
     ];
   }, [product.description, product.isGaneshIdol]);
 
@@ -1425,7 +1533,15 @@ const ProductDescription = memo(({ product }) => {
           {product.isGaneshIdol ? '🕉️ About This Sacred Ganesh Idol' : '📋 Detailed Product Information'}
         </Title>
 
-        {/* UPDATED: Extended Description as Bullet Points */}
+        {/* Debug: Show if original description exists */}
+        {process.env.NODE_ENV === 'development' && (
+          <div style={{ fontSize: '12px', color: '#999', marginBottom: '16px', textAlign: 'center' }}>
+            Original Description: {product.description ? 'Available' : 'Not Available'} | 
+            Length: {product.description ? product.description.length : 0} characters
+          </div>
+        )}
+
+        {/* FIXED: Extended Description as Bullet Points - Using Original Description */}
         <div style={{ marginBottom: '24px' }}>
           <List
             size="small"
@@ -1584,12 +1700,11 @@ const ProductDescription = memo(({ product }) => {
   );
 });
 
-// Enhanced Mobile Actions Component
+// Enhanced Mobile Actions Component - Fixed
 const MobileActions = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, isInWishlist }) => {
   const [quantity, setQuantity] = useState(1);
   const [modalVisible, setModalVisible] = useState(false);
   const [actionType, setActionType] = useState('cart');
-  const [termsModalOpen, setTermsModalOpen] = useState(false);
 
   const handleAddToCart = () => {
     if (!product.isGaneshIdol && product.stock === 0) return;
@@ -1807,13 +1922,6 @@ const MobileActions = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, 
           )}
         </Space>
       </Modal>
-
-      {/* Terms & Conditions Modal for Mobile */}
-      <TermsModal
-        open={termsModalOpen}
-        onClose={() => setTermsModalOpen(false)}
-        product={product}
-      />
     </>
   );
 });
@@ -2060,7 +2168,6 @@ MobileActions.displayName = 'MobileActions';
 ServiceFeatures.displayName = 'ServiceFeatures';
 PoojaKitDisplay.displayName = 'PoojaKitDisplay';
 GreenerVisarjanDisplay.displayName = 'GreenerVisarjanDisplay';
-
 
 export default ProductInfo;
 export { MobileActions, ServiceFeatures, ProductDescription };

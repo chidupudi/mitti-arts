@@ -198,12 +198,7 @@ export const GaneshIdolCard = memo(({
           >
             ₹{price.toLocaleString()}
           </Title>
-          <Text 
-            type="secondary" 
-            style={{ fontSize: isMobile ? '11px' : '12px' }}
-          >
-            Advance: ₹{Math.round(price * (idol.advancePercentage || 25) / 100).toLocaleString()} ({idol.advancePercentage || 25}%)
-          </Text>
+         
         </div>
 
         {/* Specifications */}
@@ -225,20 +220,8 @@ export const GaneshIdolCard = memo(({
           )}
         </Space>
 
-        {/* Estimated Time */}
-        {idol.estimatedDays && (
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '4px',
-            marginBottom: '12px'
-          }}>
-            <CalendarOutlined style={{ fontSize: isMobile ? '11px' : '12px', color: terracottaColors.success }} />
-            <Text style={{ fontSize: isMobile ? '11px' : '12px', color: terracottaColors.success, fontWeight: 600 }}>
-              Ready in {idol.estimatedDays} days
-            </Text>
-          </div>
-        )}
+        
+        
       </div>
 
       {/* Card Actions */}

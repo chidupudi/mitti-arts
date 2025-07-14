@@ -1,4 +1,4 @@
-// ProductTabs.jsx - Enhanced with Ganesh Idol Features and Formatted Descriptions
+// ProductTabs.jsx - FIXED VERSION WITH ORIGINAL DESCRIPTIONS
 import React, { memo, useMemo } from 'react';
 import {
   Card,
@@ -63,34 +63,125 @@ const customStyles = {
   },
 };
 
-// UPDATED: Helper function to format description into bullet points
+// IMPROVED: Enhanced function to format description into bullet points (same as ProductInfoSection)
 const formatDescriptionAsPoints = (description) => {
-  if (!description) return [];
+  if (!description || typeof description !== 'string') return [];
+
+  // First, clean up the description
+  let cleanedDescription = description.trim();
   
-  // Split by common delimiters like periods, semicolons, or line breaks
-  const points = description
-    .split(/[.;]|\n/)
-    .map(point => point.trim())
-    .filter(point => point.length > 10) // Filter out very short segments
-    .map(point => {
-      // Remove leading dashes or bullets if they exist
-      return point.replace(/^[-•*]\s*/, '').trim();
-    })
-    .filter(point => point.length > 0);
+  // Remove common prefixes that might not be useful
+  cleanedDescription = cleanedDescription.replace(/^(description:|about:|features:|details:)/i, '').trim();
   
-  // If we get very few points, try splitting by commas for shorter segments
-  if (points.length <= 2) {
-    const alternativePoints = description
-      .split(/,|\n/)
+  // Try different splitting methods
+  let points = [];
+  
+  // Method 1: Split by line breaks first (most reliable)
+  if (cleanedDescription.includes('\n')) {
+    points = cleanedDescription
+      .split('\n')
       .map(point => point.trim())
       .filter(point => point.length > 5)
-      .map(point => point.replace(/^[-•*]\s*/, '').trim())
+      .map(point => point.replace(/^[-•*\d+\.\)\]]\s*/, '').trim())
       .filter(point => point.length > 0);
-    
-    return alternativePoints.length > points.length ? alternativePoints : points;
   }
   
-  return points;
+  // Method 2: If no line breaks, try splitting by periods
+  if (points.length <= 1) {
+    points = cleanedDescription
+      .split(/\.\s+/)
+      .map(point => point.trim())
+      .filter(point => point.length > 10)
+      .map(point => {
+        // Remove leading bullets or numbers
+        let cleaned = point.replace(/^[-•*\d+\.\)\]]\s*/, '').trim();
+        // Ensure it ends properly
+        if (cleaned && !cleaned.match(/[.!?]$/)) {
+          cleaned += '.';
+        }
+        return cleaned;
+      })
+      .filter(point => point.length > 5);
+  }
+  
+  // Method 3: If still no good split, try semicolons or commas for longer text
+  if (points.length <= 1 && cleanedDescription.length > 100) {
+    const delimiters = [';', ','];
+    for (const delimiter of delimiters) {
+      if (cleanedDescription.includes(delimiter)) {
+        points = cleanedDescription
+          .split(delimiter)
+          .map(point => point.trim())
+          .filter(point => point.length > 15)
+          .map(point => {
+            let cleaned = point.replace(/^[-•*\d+\.\)\]]\s*/, '').trim();
+            if (cleaned && !cleaned.match(/[.!?]$/)) {
+              cleaned += '.';
+            }
+            return cleaned;
+          })
+          .filter(point => point.length > 5);
+        
+        if (points.length > 1) break;
+      }
+    }
+  }
+  
+  // Method 4: If we still have just one long point, try to break it into logical chunks
+  if (points.length <= 1 && cleanedDescription.length > 50) {
+    // Look for common sentence starters or phrases that indicate new points
+    const sentenceStarters = [
+      /\b(Made from|Created with|Features|Includes|Perfect for|Ideal for|Great for|Excellent|Handcrafted|Traditional|Each|This)/gi
+    ];
+    
+    let workingText = cleanedDescription;
+    for (const regex of sentenceStarters) {
+      const matches = [...workingText.matchAll(regex)];
+      if (matches.length > 1) {
+        // Split at these points
+        const splitPoints = matches.map(match => match.index).slice(1);
+        let currentIndex = 0;
+        points = [];
+        
+        splitPoints.forEach(splitIndex => {
+          const chunk = workingText.substring(currentIndex, splitIndex).trim();
+          if (chunk.length > 10) {
+            points.push(chunk.replace(/^[-•*\d+\.\)\]]\s*/, '').trim());
+          }
+          currentIndex = splitIndex;
+        });
+        
+        // Add the last chunk
+        const lastChunk = workingText.substring(currentIndex).trim();
+        if (lastChunk.length > 10) {
+          points.push(lastChunk.replace(/^[-•*\d+\.\)\]]\s*/, '').trim());
+        }
+        
+        if (points.length > 1) break;
+      }
+    }
+  }
+  
+  // If all methods fail, return the original text as a single point
+  if (points.length === 0) {
+    points = [cleanedDescription];
+  }
+  
+  // Final cleanup: ensure each point is properly formatted
+  return points
+    .map(point => {
+      let cleaned = point.trim();
+      // Capitalize first letter
+      if (cleaned.length > 0) {
+        cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+      }
+      // Ensure proper ending
+      if (cleaned && !cleaned.match(/[.!?]$/)) {
+        cleaned += '.';
+      }
+      return cleaned;
+    })
+    .filter(point => point.length > 3);
 };
 
 // Product Tabs Component
@@ -282,29 +373,34 @@ const ProductTabs = memo(({ product }) => {
     },
   ];
 
-  // UPDATED: Format description as bullet points
+  // FIXED: Format description as bullet points - Always use original description
   const formattedDescriptionPoints = useMemo(() => {
+    // Always try to use the original product description first
+    if (product.description && product.description.trim()) {
+      const points = formatDescriptionAsPoints(product.description);
+      if (points.length > 0) {
+        return points;
+      }
+    }
+
+    // If Ganesh idol and no description, provide default points
     if (product.isGaneshIdol) {
       return [
-        'Experience the divine presence of Lord Ganesha with our beautifully handcrafted idols made from sacred Ganga Clay',
-        'Each piece represents the perfect harmony of traditional craftsmanship, spiritual authenticity, and environmental consciousness',
-        'Our skilled artisans, who have perfected their techniques over generations, create each idol with love and devotion using pure Ganga Clay sourced from the sacred Ganges',
-        'By choosing our idols, you\'re not just bringing home a beautiful deity, but also supporting local artisan communities and preserving traditional Indian heritage crafts',
-        'Every idol comes with a complete Pooja kit, reflecting our commitment to natural and sustainable living, ensuring your celebration is both authentic and pure'
+        'Experience the divine presence of Lord Ganesha with our beautifully handcrafted idols made from sacred Ganga Clay.',
+        'Each piece represents the perfect harmony of traditional craftsmanship, spiritual authenticity, and environmental consciousness.',
+        'Our skilled artisans, who have perfected their techniques over generations, create each idol with love and devotion using pure Ganga Clay sourced from the sacred Ganges.',
+        'By choosing our idols, you\'re not just bringing home a beautiful deity, but also supporting local artisan communities and preserving traditional Indian heritage crafts.',
+        'Every idol comes with a complete Pooja kit, reflecting our commitment to natural and sustainable living, ensuring your celebration is both authentic and pure.'
       ];
     }
 
-    if (product.description) {
-      const points = formatDescriptionAsPoints(product.description);
-      return points.length > 0 ? points : [product.description];
-    }
-
+    // Default for regular products when no description
     return [
-      `The ${product.name} represents the perfect blend of traditional craftsmanship and modern design`,
-      'Each piece is carefully handcrafted by skilled artisans who have perfected their techniques over generations',
-      'Made from premium quality materials, this product ensures durability while maintaining aesthetic appeal',
-      'The natural variations in color and texture make each piece unique, adding character to your collection',
-      'Whether you\'re looking to enhance your daily routine or searching for the perfect gift, this product combines functionality with timeless beauty that will be appreciated for years to come'
+      `The ${product.name} represents the perfect blend of traditional craftsmanship and modern design.`,
+      'Each piece is carefully handcrafted by skilled artisans who have perfected their techniques over generations.',
+      'Made from premium quality materials, this product ensures durability while maintaining aesthetic appeal.',
+      'The natural variations in color and texture make each piece unique, adding character to your collection.',
+      'Whether you\'re looking to enhance your daily routine or searching for the perfect gift, this product combines functionality with timeless beauty that will be appreciated for years to come.'
     ];
   }, [product.description, product.isGaneshIdol, product.name]);
 
@@ -317,10 +413,18 @@ const ProductTabs = memo(({ product }) => {
               {product.isGaneshIdol ? 'Sacred Ganesh Idol with Complete Celebration Kit' : 'Product Description'}
             </Title>
             
+            {/* Debug: Show if original description exists */}
+            {process.env.NODE_ENV === 'development' && (
+              <div style={{ fontSize: '12px', color: '#999', marginBottom: '16px' }}>
+                Original Description: {product.description ? 'Available' : 'Not Available'} | 
+                Length: {product.description ? product.description.length : 0} characters
+              </div>
+            )}
+            
             {product.isGaneshIdol ? (
               // Ganesh Idol Description
               <>
-                {/* UPDATED: Display description as formatted bullet points */}
+                {/* FIXED: Display description as formatted bullet points using original description */}
                 <div style={{ marginBottom: '24px' }}>
                   <List
                     size="small"
@@ -532,7 +636,7 @@ const ProductTabs = memo(({ product }) => {
             ) : (
               // Regular Product Description
               <>
-                {/* UPDATED: Display description as formatted bullet points */}
+                {/* FIXED: Display description as formatted bullet points using original description */}
                 <div style={{ marginBottom: '24px' }}>
                   <List
                     size="small"
