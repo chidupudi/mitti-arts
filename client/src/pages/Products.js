@@ -189,6 +189,12 @@ const useProducts = () => {
         const productsArr = [];
         querySnapshot.forEach((doc) => {
           const data = doc.data();
+          // Add default video URL for Ganesh products if no videos exist
+          const isGaneshProduct = data.category?.toLowerCase().includes('ganesh');
+          const defaultVideo = isGaneshProduct && !data.videos?.length 
+            ? ['https://res.cloudinary.com/dca26n68n/video/upload/v1752666125/WhatsApp_Video_2025-07-16_at_16.59.19_1e4b237f_nmnceg.mp4']
+            : [];
+          
           productsArr.push({
             id: doc.id,
             ...data,
@@ -196,7 +202,7 @@ const useProducts = () => {
             stock: Number(data.stock) || 0,
             rating: Number(data.rating) || 4.2,
             reviews: Number(data.reviews) || 156,
-            imgUrl: data.images?.[0] || data.imgUrl || '',
+            media: [...(data.images || []), ...(data.videos || []), ...defaultVideo],
             hyderabadOnly: data.hyderabadOnly || false,
             isFeatured: data.isFeatured || false,
             hidden: data.hidden || false,

@@ -149,7 +149,7 @@ export const GaneshIdolCard = memo(({
           alt={idol.name}
           style={{
             width: '100%',
-            height: imageHeight, // Dynamic height based on screen size
+            height: imageHeight,
             objectFit: 'cover',
             transition: 'transform 0.3s ease',
           }}

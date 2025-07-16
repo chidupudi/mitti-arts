@@ -196,9 +196,26 @@ const useProductData = (productId, code) => {
             const data = docSnap.data();
             
             // ENHANCED: Process all media (images + videos) together
-            const allMedia = processAllMedia(data.images || []);
+            const combinedSources = [...(data.images || []), ...(data.videos || [])];
+            const allMedia = processAllMedia(combinedSources);
             const imageMedia = allMedia.filter(item => item.type === 'image');
             const videoMedia = allMedia.filter(item => item.type === 'video');
+
+            // Ensure default Ganesh video is added as last media item
+            const DEFAULT_GANESH_VIDEO = 'https://res.cloudinary.com/dca26n68n/video/upload/v1752666125/WhatsApp_Video_2025-07-16_at_16.59.19_1e4b237f_nmnceg.mp4';
+            const hasDefaultVideo = videoMedia.some(v => v.src === DEFAULT_GANESH_VIDEO);
+            if (!hasDefaultVideo) {
+              const defaultVideoObj = {
+                id: 'video_default',
+                type: 'video',
+                src: DEFAULT_GANESH_VIDEO,
+                thumbnail: `${DEFAULT_GANESH_VIDEO}#t=1`,
+                title: 'Product Video',
+                index: allMedia.length,
+              };
+              videoMedia.push(defaultVideoObj);
+              allMedia.push(defaultVideoObj);
+            }
             
             // Convert Ganesh idol data to product-like structure
             const idolData = {
@@ -231,8 +248,8 @@ const useProductData = (productId, code) => {
             const data = docSnap.data();
             
             // ENHANCED: Process all media for regular products too
-            const productImages = data.images || (data.imgUrl ? [data.imgUrl] : []);
-            const allMedia = processAllMedia(productImages);
+            const productSources = [...(data.images || (data.imgUrl ? [data.imgUrl] : [])), ...(data.videos || [])];
+            const allMedia = processAllMedia(productSources);
             const imageMedia = allMedia.filter(item => item.type === 'image');
             const videoMedia = allMedia.filter(item => item.type === 'video');
             

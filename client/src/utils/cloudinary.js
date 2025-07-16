@@ -1,13 +1,12 @@
-// Updated cloudinary.js - Adding video support to existing file
+// Updated cloudinary.js - Enhanced with video support and proper detection
 const CLOUDINARY_CLOUD_NAME = "dca26n68n";
 const CLOUDINARY_API_KEY = "524321917376112";
-const CLOUDINARY_UPLOAD_PRESET = "mitti_arts"; // Note: preset names are usually lowercase
+const CLOUDINARY_UPLOAD_PRESET = "mitti_arts";
 const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/upload`;
 
 // EXISTING: Image upload function
 export const uploadToCloudinary = async (file) => {
   try {
-    // Validate file before upload
     validateImageFile(file);
 
     const formData = new FormData();
@@ -34,10 +33,10 @@ export const uploadToCloudinary = async (file) => {
   }
 };
 
-// UPDATED: Image validation - increased to 10MB and added BMP support
+// UPDATED: Image validation - increased to 10MB
 export const validateImageFile = (file) => {
   const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'];
-  const maxSize = 10 * 1024 * 1024; // 10MB (increased from 5MB)
+  const maxSize = 10 * 1024 * 1024; // 10MB
 
   if (!validTypes.includes(file.type)) {
     throw new Error('Invalid file type. Please upload a JPEG, PNG, GIF, WebP, or BMP image.');
@@ -76,7 +75,7 @@ export const validateVideoFile = (file) => {
   return true;
 };
 
-// NEW: Video upload function
+// NEW: Video upload function (FIXED - with proper type)
 export const uploadVideoToCloudinary = async (file, options = {}) => {
   try {
     // Validate video file before upload
@@ -87,7 +86,7 @@ export const uploadVideoToCloudinary = async (file, options = {}) => {
     formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
     formData.append('resource_type', 'video'); // Specify video resource type
     
-    // Video-specific options
+    // Video-specific options (only allowed parameters for unsigned upload)
     if (options.quality) {
       formData.append('quality', options.quality); // auto, best, good, low
     }
@@ -95,10 +94,6 @@ export const uploadVideoToCloudinary = async (file, options = {}) => {
     if (options.format) {
       formData.append('format', options.format); // mp4, webm, mov, etc.
     }
-    
-    // Generate thumbnail at specific time (default: 1 second)
-    const thumbnailTime = options.thumbnailTime || 1;
-    formData.append('eager', `c_fill,h_300,w_400/so_${thumbnailTime}`);
     
     // Video optimization settings
     formData.append('video_codec', 'h264'); // Optimize for web
@@ -120,17 +115,35 @@ export const uploadVideoToCloudinary = async (file, options = {}) => {
     const data = await response.json();
     console.log('Video upload successful:', data);
     
-    // Return structured video data
+    // Generate thumbnail URL manually (since we can't use eager with unsigned upload)
+    const thumbnailTime = options.thumbnailTime || 2;
+    const thumbnailUrl = generateVideoThumbnailUrl(data.public_id, {
+      width: 400,
+      height: 300,
+      time: thumbnailTime
+    });
+    
+    // Return structured video data with proper type
     return {
+      type: 'video', // Important for counting and detection
       id: data.public_id,
       src: data.secure_url,
-      thumbnail: data.eager && data.eager.length > 0 ? data.eager[0].secure_url : generateVideoThumbnailUrl(data.public_id),
+      thumbnail: thumbnailUrl,
+      title: `Video ${Date.now()}`,
       duration: data.duration ? formatDuration(data.duration) : null,
       format: data.format,
       width: data.width,
       height: data.height,
       size: data.bytes,
       created_at: data.created_at,
+      uploadedAt: new Date().toISOString(),
+      // Add multiple quality URLs for responsive video
+      qualities: {
+        auto: data.secure_url,
+        low: `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/video/upload/q_auto:low/${data.public_id}.${data.format}`,
+        good: `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/video/upload/q_auto:good/${data.public_id}.${data.format}`,
+        best: `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/video/upload/q_auto:best/${data.public_id}.${data.format}`
+      }
     };
   } catch (error) {
     console.error('Error uploading video to Cloudinary:', error);
@@ -152,7 +165,6 @@ export const getVideoMetadata = (file) => {
         aspectRatio: video.videoWidth / video.videoHeight
       });
       
-      // Clean up
       window.URL.revokeObjectURL(video.src);
     };
     
@@ -170,7 +182,7 @@ export const generateVideoThumbnailUrl = (publicId, options = {}) => {
   const {
     width = 400,
     height = 300,
-    time = 1, // Time in seconds
+    time = 1,
     format = 'jpg'
   } = options;
   
@@ -191,9 +203,97 @@ export const formatDuration = (seconds) => {
   }
 };
 
-// EXISTING: Media validation (enhanced to include videos)
+// ENHANCED: Media type detection
+export const getMediaType = (file) => {
+  if (!file || !file.type) return 'unknown';
+  
+  if (file.type.startsWith('image/')) return 'image';
+  if (file.type.startsWith('video/')) return 'video';
+  return 'unknown';
+};
+
+// ENHANCED: Video URL detection with Cloudinary support
+export const isVideoUrl = (url) => {
+  if (!url || typeof url !== 'string') return false;
+  
+  const videoExtensions = ['.mp4', '.webm', '.ogg', '.avi', '.mov', '.wmv', '.flv', '.3gp'];
+  const videoIndicators = [
+    '/video/upload/',
+    'video/upload',
+    'resource_type=video',
+    '/v_',
+    'cloudinary.com/video',
+    'res.cloudinary.com/video'
+  ];
+  const lowerUrl = url.toLowerCase();
+  
+  // Check for video file extensions
+  const hasVideoExtension = videoExtensions.some(ext => lowerUrl.includes(ext));
+  
+  // Check for Cloudinary video indicators
+  const hasVideoIndicator = videoIndicators.some(indicator => lowerUrl.includes(indicator));
+  
+  return hasVideoExtension || hasVideoIndicator;
+};
+
+// ENHANCED: Count images (exclude video objects and URLs)
+export const countImages = (mediaArray) => {
+  if (!Array.isArray(mediaArray)) return 0;
+  return mediaArray.filter(item => {
+    if (!item) return false;
+    
+    // If it's an object, check the type property
+    if (typeof item === 'object') {
+      return item.type === 'image';
+    }
+    
+    // If it's a string, check if it's NOT a video URL
+    if (typeof item === 'string' && item.trim() !== '') {
+      return !isVideoUrl(item);
+    }
+    
+    return false;
+  }).length;
+};
+
+// ENHANCED: Count videos (include video objects and video URLs)
+export const countVideos = (mediaArray) => {
+  if (!Array.isArray(mediaArray)) return 0;
+  return mediaArray.filter(item => {
+    if (!item) return false;
+    
+    // If it's an object, check the type property
+    if (typeof item === 'object') {
+      return item.type === 'video';
+    }
+    
+    // If it's a string, check if it's a video URL
+    if (typeof item === 'string' && item.trim() !== '') {
+      return isVideoUrl(item);
+    }
+    
+    return false;
+  }).length;
+};
+
+// NEW: Helper function to get media type from item
+export const getMediaTypeFromItem = (item) => {
+  if (!item) return 'unknown';
+  
+  if (typeof item === 'object') {
+    return item.type || 'unknown';
+  }
+  
+  if (typeof item === 'string') {
+    return isVideoUrl(item) ? 'video' : 'image';
+  }
+  
+  return 'unknown';
+};
+
+// NEW: Media validation for mixed upload
 export const validateMediaFile = (file) => {
-  const imageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+  const imageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'];
   const videoTypes = [
     'video/mp4', 'video/webm', 'video/ogg', 'video/avi', 
     'video/mov', 'video/wmv', 'video/flv', 'video/3gp'
@@ -204,43 +304,11 @@ export const validateMediaFile = (file) => {
   } else if (videoTypes.includes(file.type)) {
     return validateVideoFile(file);
   } else {
-    throw new Error('Invalid file type. Please upload an image (JPEG, PNG, GIF, WebP) or video (MP4, WebM, OGG, AVI, MOV, WMV, FLV, 3GP) file.');
+    throw new Error('Invalid file type. Please upload an image (JPEG, PNG, GIF, WebP, BMP) or video (MP4, WebM, OGG, AVI, MOV, WMV, FLV, 3GP) file.');
   }
 };
 
-// EXISTING: Utility functions (keeping existing ones)
-export const countImages = (mediaArray) => {
-  if (!Array.isArray(mediaArray)) return 0;
-  return mediaArray.filter(item => 
-    typeof item === 'string' || 
-    (typeof item === 'object' && item?.type === 'image')
-  ).length;
-};
-
-export const countVideos = (mediaArray) => {
-  if (!Array.isArray(mediaArray)) return 0;
-  return mediaArray.filter(item => 
-    typeof item === 'object' && item?.type === 'video'
-  ).length;
-};
-
-export const getMediaType = (file) => {
-  if (!file || !file.type) return 'unknown';
-  
-  if (file.type.startsWith('image/')) return 'image';
-  if (file.type.startsWith('video/')) return 'video';
-  return 'unknown';
-};
-
-export const isVideoUrl = (url) => {
-  if (!url || typeof url !== 'string') return false;
-  
-  const videoExtensions = ['.mp4', '.webm', '.ogg', '.avi', '.mov', '.wmv', '.flv', '.3gp'];
-  const lowerUrl = url.toLowerCase();
-  
-  return videoExtensions.some(ext => lowerUrl.includes(ext));
-};
-
+// ENHANCED: Upload constraints validation
 export const validateUploadConstraints = (files) => {
   if (!Array.isArray(files)) {
     files = [files];
@@ -251,6 +319,8 @@ export const validateUploadConstraints = (files) => {
     maxTotalSize: 500 * 1024 * 1024, // 500MB total
     maxImageSize: 10 * 1024 * 1024, // 10MB per image
     maxVideoSize: 100 * 1024 * 1024, // 100MB per video
+    maxVideos: 5,
+    maxImages: 8
   };
   
   if (files.length > constraints.maxFiles) {
@@ -258,18 +328,32 @@ export const validateUploadConstraints = (files) => {
   }
   
   let totalSize = 0;
+  let videoCount = 0;
+  let imageCount = 0;
   
   for (const file of files) {
     totalSize += file.size;
     
     const mediaType = getMediaType(file);
     
-    if (mediaType === 'image' && file.size > constraints.maxImageSize) {
-      throw new Error(`Image "${file.name}" is too large. Maximum ${constraints.maxImageSize / (1024 * 1024)}MB per image.`);
+    if (mediaType === 'image') {
+      imageCount++;
+      if (file.size > constraints.maxImageSize) {
+        throw new Error(`Image "${file.name}" is too large. Maximum ${constraints.maxImageSize / (1024 * 1024)}MB per image.`);
+      }
+      if (imageCount > constraints.maxImages) {
+        throw new Error(`Too many images. Maximum ${constraints.maxImages} images allowed.`);
+      }
     }
     
-    if (mediaType === 'video' && file.size > constraints.maxVideoSize) {
-      throw new Error(`Video "${file.name}" is too large. Maximum ${constraints.maxVideoSize / (1024 * 1024)}MB per video.`);
+    if (mediaType === 'video') {
+      videoCount++;
+      if (file.size > constraints.maxVideoSize) {
+        throw new Error(`Video "${file.name}" is too large. Maximum ${constraints.maxVideoSize / (1024 * 1024)}MB per video.`);
+      }
+      if (videoCount > constraints.maxVideos) {
+        throw new Error(`Too many videos. Maximum ${constraints.maxVideos} videos allowed.`);
+      }
     }
   }
   
@@ -278,4 +362,28 @@ export const validateUploadConstraints = (files) => {
   }
   
   return true;
+};
+
+// NEW: Helper to check if media array is mixed (has both images and videos)
+export const hasMixedMedia = (mediaArray) => {
+  const imageCount = countImages(mediaArray);
+  const videoCount = countVideos(mediaArray);
+  return imageCount > 0 && videoCount > 0;
+};
+
+// NEW: Get media statistics
+export const getMediaStats = (mediaArray) => {
+  const imageCount = countImages(mediaArray);
+  const videoCount = countVideos(mediaArray);
+  const totalCount = imageCount + videoCount;
+  
+  return {
+    totalCount,
+    imageCount,
+    videoCount,
+    hasMixed: imageCount > 0 && videoCount > 0,
+    hasImages: imageCount > 0,
+    hasVideos: videoCount > 0,
+    isEmpty: totalCount === 0
+  };
 };

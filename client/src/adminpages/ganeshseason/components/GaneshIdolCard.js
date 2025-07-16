@@ -1,4 +1,4 @@
-// client/src/adminpages/ganeshseason/components/GaneshIdolCard.js
+// client/src/adminpages/ganeshseason/components/GaneshIdolCard.js - FIXED
 import React from 'react';
 import { 
   Card, 
@@ -28,8 +28,9 @@ import {
   ColumnHeightOutlined,
   DashboardOutlined,
   BgColorsOutlined,
+  PlayCircleOutlined,
+  VideoCameraOutlined,
 } from '@ant-design/icons';
-import { isVideoUrl } from '../../../utils/cloudinary';
 
 const { Text, Title } = Typography;
 const { Meta } = Card;
@@ -57,13 +58,15 @@ const GaneshIdolCard = ({
       default: return '#FF8F00';
     }
   };
-const calculateAdvanceAmount = (price) => {
-  if (!price) return 0;
-  if (price >= 8000 && price <= 10000) return 2000;
-  if (price > 10000 && price <= 15000) return 2500;
-  if (price > 15000) return 3000;
-  return 2000; // Default
-};
+
+  const calculateAdvanceAmount = (price) => {
+    if (!price) return 0;
+    if (price >= 8000 && price <= 10000) return 2000;
+    if (price > 10000 && price <= 15000) return 2500;
+    if (price > 15000) return 3000;
+    return 2000; // Default
+  };
+
   const getAvailabilityColor = (availability) => {
     switch (availability) {
       case 'available': return 'success';
@@ -72,6 +75,58 @@ const calculateAdvanceAmount = (price) => {
       default: return 'default';
     }
   };
+
+  // FIXED: Get primary media (works with current data structure)
+  const getPrimaryMedia = () => {
+    // Check videos first (video objects with type property)
+    if (idol.videos && Array.isArray(idol.videos)) {
+      const validVideos = idol.videos.filter(video => video && (video.src || video.url));
+      if (validVideos.length > 0) {
+        const video = validVideos[0];
+        return {
+          type: 'video',
+          url: video.src || video.url,
+          thumbnail: video.thumbnail,
+          title: video.title || 'Primary Video'
+        };
+      }
+    }
+    
+    // Check images (string URLs)
+    if (idol.images && Array.isArray(idol.images)) {
+      const validImages = idol.images.filter(img => img && img !== 'loading' && typeof img === 'string');
+      if (validImages.length > 0) {
+        return {
+          type: 'image',
+          url: validImages[0],
+          title: 'Primary Image'
+        };
+      }
+    }
+    
+    return null;
+  };
+
+  // FIXED: Get media statistics (works with current data structure)
+  const getMediaStats = () => {
+    let images = 0;
+    let videos = 0;
+    
+    // Count images (string URLs)
+    if (idol.images && Array.isArray(idol.images)) {
+      images = idol.images.filter(img => img && img !== 'loading' && typeof img === 'string').length;
+    }
+    
+    // Count videos (objects with src/url)
+    if (idol.videos && Array.isArray(idol.videos)) {
+      videos = idol.videos.filter(video => video && (video.src || video.url)).length;
+    }
+    
+    return { images, videos, total: images + videos };
+  };
+
+  const primaryMedia = getPrimaryMedia();
+  const mediaStats = getMediaStats();
 
   const cardStyle = {
     height: '100%',
@@ -82,8 +137,6 @@ const calculateAdvanceAmount = (price) => {
     transition: 'all 0.3s ease',
     background: idol.hidden ? 'rgba(255, 193, 7, 0.05)' : 'white',
   };
-
-
 
   return (
     <Badge.Ribbon 
@@ -96,30 +149,63 @@ const calculateAdvanceAmount = (price) => {
         hoverable
         cover={
           <div style={{ position: 'relative', height: '220px' }}>
-            {idol.images && idol.images.length > 0 && idol.images[0] ? (
-              (() => {
-                const primaryMedia = idol.images[0];
-                const isVideo = isVideoUrl(primaryMedia);
-                
-                return isVideo ? (
-                  <video
-                    src={primaryMedia}
-                    style={{ 
-                      width: '100%', 
-                      height: '220px', 
-                      objectFit: 'cover' 
-                    }}
-                    controls={false}
-                    muted
-                    loop
-                    onMouseEnter={(e) => e.target.play()}
-                    onMouseLeave={(e) => e.target.pause()}
-                    poster={primaryMedia} // Fallback for video poster
-                  />
+            {primaryMedia ? (
+              <>
+                {primaryMedia.type === 'video' ? (
+                  <div style={{ position: 'relative', width: '100%', height: '220px' }}>
+                    <img
+                      src={primaryMedia.thumbnail || primaryMedia.url}
+                      alt={primaryMedia.title || idol.name}
+                      style={{ 
+                        width: '100%', 
+                        height: '220px', 
+                        objectFit: 'cover' 
+                      }}
+                      onError={(e) => {
+                        e.target.style.backgroundColor = '#FFF3E0';
+                        e.target.style.display = 'flex';
+                        e.target.style.alignItems = 'center';
+                        e.target.style.justifyContent = 'center';
+                        e.target.innerHTML = '🎥';
+                      }}
+                    />
+                    
+                    {/* Video Play Overlay */}
+                    <div style={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      color: 'white',
+                      fontSize: '48px',
+                      textShadow: '0 2px 8px rgba(0,0,0,0.7)',
+                      pointerEvents: 'none'
+                    }}>
+                      <PlayCircleOutlined />
+                    </div>
+
+                    {/* Video Badge */}
+                    <div style={{
+                      position: 'absolute',
+                      top: '8px',
+                      left: '8px',
+                      background: 'rgba(231, 76, 60, 0.9)',
+                      color: 'white',
+                      padding: '4px 8px',
+                      borderRadius: '6px',
+                      fontSize: '11px',
+                      fontWeight: 'bold',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}>
+                      ▶️ VIDEO
+                    </div>
+                  </div>
                 ) : (
                   <Image
-                    src={primaryMedia}
-                    alt={idol.name}
+                    src={primaryMedia.url}
+                    alt={primaryMedia.title || idol.name}
                     style={{ 
                       width: '100%', 
                       height: '220px', 
@@ -127,8 +213,8 @@ const calculateAdvanceAmount = (price) => {
                     }}
                     preview={false}
                   />
-                );
-              })()
+                )}
+              </>
             ) : (
               <div
                 style={{
@@ -144,26 +230,6 @@ const calculateAdvanceAmount = (price) => {
                   <PictureOutlined style={{ fontSize: '48px', marginBottom: '8px' }} />
                   <div>🕉️ No Media</div>
                 </div>
-              </div>
-            )}
-            
-            {/* Video indicator for primary media */}
-            {idol.images?.[0] && isVideoUrl(idol.images[0]) && (
-              <div style={{
-                position: 'absolute',
-                top: '8px',
-                left: '8px',
-                background: 'rgba(231, 76, 60, 0.9)',
-                color: 'white',
-                padding: '4px 8px',
-                borderRadius: '6px',
-                fontSize: '11px',
-                fontWeight: 'bold',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px'
-              }}>
-                ▶️ VIDEO
               </div>
             )}
             
@@ -268,8 +334,8 @@ const calculateAdvanceAmount = (price) => {
           }
         />
 
-        {/* Price Range */}
-                 <div style={{ 
+        {/* Price */}
+        <div style={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center', 
@@ -283,7 +349,7 @@ const calculateAdvanceAmount = (price) => {
               Fixed Price
             </Text>
           </div>
-                  <Text style={{ 
+          <Text style={{ 
             fontSize: '11px', 
             color: '#4CAF50', 
             fontWeight: 'bold',
@@ -377,50 +443,53 @@ const calculateAdvanceAmount = (price) => {
           </div>
         )}
 
-        {/* Media Count Display */}
-        {idol.images && idol.images.length > 0 && (
+        {/* FIXED: Media Count Display - works with current data structure */}
+        {mediaStats.total > 0 && (
           <div style={{ marginTop: '12px' }}>
             <Text strong style={{ fontSize: '12px', color: '#E65100', marginBottom: '6px', display: 'block' }}>
               Media:
             </Text>
             <Space wrap size="small">
-              {(() => {
-                const imageCount = (idol.images || []).filter(img => img && !isVideoUrl(img)).length;
-                const videoCount = (idol.images || []).filter(img => img && isVideoUrl(img)).length;
-                
-                return (
-                  <>
-                    {imageCount > 0 && (
-                      <Tag 
-                        size="small"
-                        style={{ 
-                          fontSize: '10px',
-                          background: '#E3F2FD',
-                          color: '#1976D2',
-                          border: '1px solid #90CAF9',
-                          borderRadius: '4px'
-                        }}
-                      >
-                        📷 {imageCount} image{imageCount !== 1 ? 's' : ''}
-                      </Tag>
-                    )}
-                    {videoCount > 0 && (
-                      <Tag 
-                        size="small"
-                        style={{ 
-                          fontSize: '10px',
-                          background: '#FFEBEE',
-                          color: '#D32F2F',
-                          border: '1px solid #FFCDD2',
-                          borderRadius: '4px'
-                        }}
-                      >
-                        ▶️ {videoCount} video{videoCount !== 1 ? 's' : ''}
-                      </Tag>
-                    )}
-                  </>
-                );
-              })()}
+              {mediaStats.images > 0 && (
+                <Tag 
+                  size="small"
+                  style={{ 
+                    fontSize: '10px',
+                    background: '#E3F2FD',
+                    color: '#1976D2',
+                    border: '1px solid #90CAF9',
+                    borderRadius: '4px'
+                  }}
+                >
+                  📷 {mediaStats.images} image{mediaStats.images !== 1 ? 's' : ''}
+                </Tag>
+              )}
+              {mediaStats.videos > 0 && (
+                <Tag 
+                  size="small"
+                  style={{ 
+                    fontSize: '10px',
+                    background: '#FFEBEE',
+                    color: '#D32F2F',
+                    border: '1px solid #FFCDD2',
+                    borderRadius: '4px'
+                  }}
+                >
+                  ▶️ {mediaStats.videos} video{mediaStats.videos !== 1 ? 's' : ''}
+                </Tag>
+              )}
+              <Tag 
+                size="small"
+                style={{ 
+                  fontSize: '10px',
+                  background: '#F3E5F5',
+                  color: '#7B1FA2',
+                  border: '1px solid #CE93D8',
+                  borderRadius: '4px'
+                }}
+              >
+                📁 {mediaStats.total} total
+              </Tag>
             </Space>
           </div>
         )}
