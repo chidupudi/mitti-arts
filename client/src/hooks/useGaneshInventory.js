@@ -215,6 +215,7 @@ export const useGaneshInventory = () => {
       const updatedFields = {
         hidden: !idol.hidden,
         updatedAt: new Date()
+        
       };
 
       const idolRef = doc(db, 'ganeshIdols', id);
