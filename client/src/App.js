@@ -1,4 +1,4 @@
-// client/src/App.js - Updated and Optimized
+// client/src/App.js - Updated with Scrolling Banner
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react';
@@ -16,6 +16,7 @@ import Footer from './components/Footer';
 import ScrollToTop from './components/ScrollToTop';
 import SSLErrorHandler from './components/SSLErrorHandler';
 import NotFound from './components/NotFound';
+import ScrollingBanner from './components/ScrollingBanner'; // Add this import
 
 // Lazy load components for better performance
 const Welcome = lazy(() => import('./pages/Welcome'));
@@ -48,7 +49,6 @@ const AdminSidebar = lazy(() => import('./adminpages/components/AdminSidebar'));
 const GaneshInventory = lazy(() => import('./adminpages/ganeshseason/GaneshInventory'));
 const GaneshLeads = lazy(() => import('./adminpages/ganeshseason/GaneshLeads'));
 const GaneshOrders = lazy(() => import('./adminpages/ganeshseason/GaneshOrders'));
-//const GaneshIdolDetail = lazy(() => import('./pages/GaneshIdolDetail'));
 
 // Create responsive theme with terracotta colors
 const responsiveTheme = createTheme({
@@ -234,6 +234,12 @@ const AdminLayoutContent = ({ children }) => {
         }}
       >
         <Header />
+        {/* Add Scrolling Banner below Header */}
+        <ScrollingBanner 
+          message="📅 Book before Aug 7th to get 15% OFF! 🎨 Get Mitti Arts Alive with your order! 🌟"
+          height="42px"
+          speed={22}
+        />
         <Box sx={{ 
           flexGrow: 1,
           width: '100%',
@@ -263,6 +269,12 @@ const RegularLayoutContent = ({ children }) => {
       maxWidth: '100vw',
     }}>
       <Header />
+      {/* Add Scrolling Banner below Header */}
+      <ScrollingBanner 
+        message="📅 Book before Aug 7th to get 15% OFF! 🎨 Get Mitti Arts Alive with your order! 🌟"
+        height="42px"
+        speed={22}
+      />
       <Box 
         component="main"
         sx={{ 
@@ -326,15 +338,12 @@ const App = () => {
                 <Routes>
                   {/* Public Routes */}
                   <Route path="/" element={<Welcome />} />
-                  {/* <Route path="/products" element={<Products />} /> */}
-                  {/* <Route path="/product/:id" element={<ProductDetail />} /> */}
                   <Route path="/about" element={<About />} />
                   <Route path="/policies" element={<Policies />} />
                   <Route path="/contactus" element={<ContactUs />} />
                   
                   {/* Ganesh Idol Detail Route */}
-                 {/* Ganesh Idol Detail Route */}
-<Route path="/ganesh-idol/:id" element={<ProductDetail />} />
+                  <Route path="/ganesh-idol/:id" element={<ProductDetail />} />
                   
                   {/* Authentication Routes */}
                   <Route path="/auth" element={<AuthForm />} />
