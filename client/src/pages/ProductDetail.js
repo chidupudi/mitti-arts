@@ -625,14 +625,7 @@ const ProductDetail = () => {
   return (
     <div style={customStyles.container}>
       {/* NEW: Enhanced Back Button */}
-      <Button
-        icon={<ArrowLeftOutlined />}
-        onClick={handleBackToProducts}
-        style={customStyles.backButton}
-      >
-        Back to Products
-      </Button>
-
+      
       {/* Main Product Section */}
       <Row gutter={[24, 24]}>
         {/* ENHANCED: Image Gallery with Video Support - 60% width on desktop */}
