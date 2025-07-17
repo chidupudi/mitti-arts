@@ -1,4 +1,4 @@
-// pages/Products.js - Updated with Carousel and Mobile Layout
+// pages/Products.js - Updated with scroll position management
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Row,
@@ -21,7 +21,7 @@ import {
   AppstoreOutlined,
   TrophyOutlined
 } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from '../Firebase/Firebase';
 import { collection, getDocs, query, where, deleteDoc, doc, addDoc } from 'firebase/firestore';
@@ -29,6 +29,7 @@ import { collection, getDocs, query, where, deleteDoc, doc, addDoc } from 'fireb
 // Import season hook and cart utilities
 import { useSeason } from '../hooks/useSeason';
 import { addToCartSafe } from '../utils/cartUtility';
+import useScrollPosition from '../hooks/useScrollPosition'; // NEW: Import scroll position hook
 
 // Import components from productscomponents directory
 import FilterPanel from './productscomponents/FilterPanel';
@@ -506,12 +507,16 @@ const useGaneshIdolFilter = (ganeshIdols, searchQuery, filters) => {
 // Main Products Component
 const Products = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const screens = useBreakpoint();
   
   const isMobile = !screens.md;
   const isSmallScreen = !screens.sm;
   
   const { currentSeason, isGaneshSeason, loading: seasonLoading } = useSeason();
+  
+  // NEW: Add scroll position management
+  const { restoreScrollPosition } = useScrollPosition('productsScrollPosition');
   
   const [user, setUser] = useState(null);
   const [priceRange, setPriceRange] = useState([1, 5000]);
@@ -566,6 +571,26 @@ const Products = () => {
     return unsubscribe;
   }, []);
 
+  // NEW: Restore scroll position when returning from product detail
+  useEffect(() => {
+    // Check if we're coming from a product detail page
+    const fromProductDetail = sessionStorage.getItem('returnFromProductDetail');
+    
+    if (fromProductDetail === 'true') {
+      console.log('Returning from product detail, attempting to restore scroll position');
+      
+      // Clear the flag
+      sessionStorage.removeItem('returnFromProductDetail');
+      
+      // Restore scroll position after a short delay to ensure DOM is loaded
+      const timer = setTimeout(() => {
+        restoreScrollPosition();
+      }, 200);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [location.pathname, restoreScrollPosition]);
+
   const getProductGridCols = () => {
     if (!screens.sm) return { xs: 24 };
     if (!screens.md) return { xs: 24, sm: 12 };
@@ -581,9 +606,26 @@ const Products = () => {
     message[type](content);
   }, []);
 
+  // UPDATED: Enhanced product click handler with scroll position tracking
   const handleProductClick = useCallback((id, code) => {
     console.log('Product clicked:', { id, code });
+    
+    // Mark that we're going to a product detail page
+    sessionStorage.setItem('returnFromProductDetail', 'true');
+    
+    // Navigate to product detail
     navigate(`/product/${id}?code=${code}`);
+  }, [navigate]);
+
+  // UPDATED: Enhanced Ganesh idol click handler
+  const handleGaneshIdolClick = useCallback((idolId) => {
+    console.log('Ganesh idol clicked:', idolId);
+    
+    // Mark that we're going to a product detail page
+    sessionStorage.setItem('returnFromProductDetail', 'true');
+    
+    // Navigate to Ganesh idol detail
+    navigate(`/ganesh-idol/${idolId}`);
   }, [navigate]);
 
   // UPDATED: Pottery handler now redirects to contact
@@ -621,10 +663,6 @@ const Products = () => {
       }
     });
   }, [user, showMessage, navigate]);
-
-  const handleGaneshIdolClick = useCallback((idolId) => {
-    navigate(`/ganesh-idol/${idolId}`);
-  }, [navigate]);
 
   const handleAddToCart = useCallback(async (product) => {
     if (product.hidden || product.stock === 0) {

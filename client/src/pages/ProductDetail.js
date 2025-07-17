@@ -1,4 +1,4 @@
-// Updated ProductDetail.jsx - FINAL VERSION WITH ALL ENHANCEMENTS
+// Updated ProductDetail.jsx - WITH SCROLL POSITION MANAGEMENT
 import React, {
   useEffect,
   useState,
@@ -38,6 +38,7 @@ import ProductTabs from './ProductTabs'; // Enhanced with formatted descriptions
 
 // Import the FIXED cart utilities
 import { addToCartSafe } from '../utils/cartUtility';
+import useScrollPosition from '../hooks/useScrollPosition'; // NEW: Import scroll position hook
 
 const { Title } = Typography;
 const { useBreakpoint } = Grid;
@@ -86,6 +87,20 @@ const customStyles = {
     fontWeight: 600,
     height: '48px',
     fontSize: '16px',
+  },
+  // NEW: Back button styles
+  backButton: {
+    backgroundColor: 'transparent',
+    borderColor: colors.primary,
+    color: colors.primary,
+    borderRadius: '8px',
+    fontWeight: 600,
+    height: '40px',
+    fontSize: '14px',
+    marginBottom: '24px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
   },
 };
 
@@ -424,12 +439,15 @@ const ProductDetailSkeleton = () => (
   </div>
 );
 
-// Main ProductDetail Component - ENHANCED
+// Main ProductDetail Component - ENHANCED WITH SCROLL MANAGEMENT
 const ProductDetail = () => {
   const { id } = useParams();
   const { search } = useLocation();
   const navigate = useNavigate();
   const screens = useBreakpoint();
+
+  // NEW: Add scroll position management
+  const { saveScrollPosition } = useScrollPosition('productsScrollPosition');
 
   const code = new URLSearchParams(search).get('code');
   const { product, loading, error } = useProductData(id, code);
@@ -444,6 +462,15 @@ const ProductDetail = () => {
     });
     return unsubscribe;
   }, []);
+
+  // NEW: Enhanced back navigation handler
+  const handleBackToProducts = useCallback(() => {
+    // Mark that we're returning from product detail
+    sessionStorage.setItem('returnFromProductDetail', 'true');
+    
+    // Navigate back to products
+    navigate('/products');
+  }, [navigate]);
 
   // Existing handlers (unchanged)
   const handleAddToCart = useCallback(async (product, quantity) => {
@@ -581,7 +608,7 @@ const ProductDetail = () => {
           <Button
             type="primary"
             size="large"
-            onClick={() => navigate('/products')}
+            onClick={handleBackToProducts}
             style={customStyles.primaryButton}
           >
             Browse Products
@@ -597,8 +624,14 @@ const ProductDetail = () => {
 
   return (
     <div style={customStyles.container}>
-      {/* Back Button */}
-      
+      {/* NEW: Enhanced Back Button */}
+      <Button
+        icon={<ArrowLeftOutlined />}
+        onClick={handleBackToProducts}
+        style={customStyles.backButton}
+      >
+        Back to Products
+      </Button>
 
       {/* Main Product Section */}
       <Row gutter={[24, 24]}>
