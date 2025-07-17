@@ -653,7 +653,7 @@ const ProductDetail = () => {
       {/* Service Features */}
       <ServiceFeatures product={product} />
 
-      {/* ENHANCED: Product Details Tabs with Video Information */}
+      ENHANCED: Product Details Tabs with Video Information
       <ProductTabs 
         product={product}
         hasVideos={product.videos && product.videos.length > 0} // ENHANCED: Pass video flag

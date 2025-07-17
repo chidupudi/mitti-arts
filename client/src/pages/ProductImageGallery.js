@@ -1,4 +1,4 @@
-// Enhanced ProductImageGallery.jsx - Supports both images and videos - UPDATED: Mobile zoom button removed
+// Enhanced ProductImageGallery.jsx - Mobile Optimized Layout
 import React, { useState, useMemo, useEffect, memo } from 'react';
 import { Card, Image, Button, Tabs, Badge, Typography, Grid, Space, Tooltip } from 'antd';
 import { 
@@ -57,9 +57,10 @@ const customStyles = {
     textShadow: '0 2px 8px rgba(0,0,0,0.6)',
     transition: 'all 0.3s ease',
   },
-  mediaThumbnail: {
-    width: '80px',
-    height: '80px',
+  // UPDATED: Responsive thumbnail sizes
+  mediaThumbnail: (isMobile) => ({
+    width: isMobile ? '60px' : '80px',
+    height: isMobile ? '60px' : '80px',
     borderRadius: '8px',
     overflow: 'hidden',
     cursor: 'pointer',
@@ -70,7 +71,7 @@ const customStyles = {
     justifyContent: 'center',
     background: '#f8f9fa',
     position: 'relative',
-  },
+  }),
 };
 
 // Enhanced Media Gallery Component
@@ -174,7 +175,7 @@ const ProductImageGallery = memo(({
   const VideoThumbnailCard = ({ video, index, isSelected }) => (
     <div
       style={{
-        ...customStyles.mediaThumbnail,
+        ...customStyles.mediaThumbnail(isMobile),
         border: isSelected 
           ? `3px solid ${colors.primary}` 
           : `2px solid ${colors.divider}`,
@@ -207,12 +208,15 @@ const ProductImageGallery = memo(({
           flexDirection: 'column',
         }}
       >
-        <VideoCameraOutlined style={{ fontSize: '24px', marginBottom: '4px' }} />
-        <Text style={{ color: 'white', fontSize: '10px' }}>Video</Text>
+        <VideoCameraOutlined style={{ fontSize: isMobile ? '18px' : '24px', marginBottom: '4px' }} />
+        <Text style={{ color: 'white', fontSize: isMobile ? '8px' : '10px' }}>Video</Text>
       </div>
       
       {/* Play Icon Overlay */}
-      <div style={customStyles.playOverlay}>
+      <div style={{
+        ...customStyles.playOverlay,
+        fontSize: isMobile ? '20px' : '32px'
+      }}>
         <PlayCircleOutlined />
       </div>
       
@@ -220,13 +224,13 @@ const ProductImageGallery = memo(({
       {video.duration && (
         <div style={{
           position: 'absolute',
-          bottom: '4px',
-          right: '4px',
+          bottom: '2px',
+          right: '2px',
           background: 'rgba(0,0,0,0.7)',
           color: 'white',
-          padding: '2px 4px',
-          borderRadius: '4px',
-          fontSize: '10px',
+          padding: '1px 3px',
+          borderRadius: '3px',
+          fontSize: isMobile ? '8px' : '10px',
         }}>
           {video.duration}
         </div>
@@ -238,7 +242,7 @@ const ProductImageGallery = memo(({
   const ImageThumbnailCard = ({ image, index, isSelected }) => (
     <div
       style={{
-        ...customStyles.mediaThumbnail,
+        ...customStyles.mediaThumbnail(isMobile),
         border: isSelected 
           ? `3px solid ${colors.primary}` 
           : `2px solid ${colors.divider}`,
@@ -257,7 +261,7 @@ const ProductImageGallery = memo(({
       />
       
       {/* Primary Image Badge */}
-      {index === 0 && activeTab === 'images' && (
+      {index === 0 && activeTab === 'images' && !isMobile && (
         <div style={{
           position: 'absolute',
           bottom: '4px',
@@ -289,7 +293,7 @@ const ProductImageGallery = memo(({
     return (
       <Card style={customStyles.imageCard} bodyStyle={{ padding: '16px' }}>
         <div style={{ 
-          height: '400px',
+          height: isMobile ? '400px' : '400px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -304,15 +308,16 @@ const ProductImageGallery = memo(({
   }
 
   return (
-    <Card style={customStyles.imageCard} bodyStyle={{ padding: '16px' }}>
-      {/* Main Media Display */}
+    <Card style={customStyles.imageCard} bodyStyle={{ padding: isMobile ? '12px' : '16px' }}>
+      {/* Main Media Display - UPDATED: Larger height on mobile */}
       <div style={{ 
         position: 'relative',
-        marginBottom: '16px',
+        marginBottom: isMobile ? '12px' : '16px',
         borderRadius: '12px',
         overflow: 'hidden',
         background: '#f8f9fa',
-        height: isMobile ? '300px' : '500px',
+        // UPDATED: Increased mobile height from 300px to 450px for better aspect ratio
+        height: isMobile ? '450px' : '500px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -355,7 +360,7 @@ const ProductImageGallery = memo(({
             </div>
           </div>
         ) : selectedMedia && selectedMedia.type === 'image' ? (
-          // Image display with UPDATED STYLING - NO MOBILE ZOOM BUTTON
+          // Image display - NO ZOOM BUTTON ON MOBILE
           <>
             <Image
               src={selectedMedia.src}
@@ -363,15 +368,15 @@ const ProductImageGallery = memo(({
               style={{ 
                 maxWidth: '100%',
                 maxHeight: '100%',
-                objectFit: 'contain', // UPDATED: Changed to contain to show full image
+                objectFit: 'contain',
                 borderRadius: '8px',
                 width: 'auto',
                 height: 'auto',
               }}
               preview={false}
-              onClick={() => setPreviewVisible(true)}
+              onClick={() => !isMobile && setPreviewVisible(true)}
             />
-            {/* UPDATED: Zoom button only shown on desktop/tablet, NOT on mobile */}
+            {/* Zoom button only on desktop */}
             {!isMobile && (
               <Button
                 type="primary"
@@ -414,7 +419,7 @@ const ProductImageGallery = memo(({
               style={{ 
                 maxWidth: '100%',
                 maxHeight: '100%',
-                objectFit: 'contain', // UPDATED: Changed to contain to show full video thumbnail
+                objectFit: 'contain',
                 borderRadius: '8px',
               }}
               onError={(e) => {
@@ -450,7 +455,7 @@ const ProductImageGallery = memo(({
               left: '50%',
               transform: 'translate(-50%, -50%)',
               color: 'white',
-              fontSize: '64px',
+              fontSize: isMobile ? '48px' : '64px',
               textShadow: '0 4px 16px rgba(0,0,0,0.8)',
               transition: 'all 0.3s ease',
               animation: 'pulse 2s infinite',
@@ -466,19 +471,19 @@ const ProductImageGallery = memo(({
               right: '16px',
               background: 'rgba(0,0,0,0.8)',
               color: 'white',
-              padding: '12px',
+              padding: isMobile ? '8px' : '12px',
               borderRadius: '8px',
               backdropFilter: 'blur(8px)',
             }}>
-              <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+              <div style={{ fontWeight: 'bold', marginBottom: '4px', fontSize: isMobile ? '12px' : '14px' }}>
                 📹 {selectedMedia.title}
               </div>
               {selectedMedia.duration && (
-                <div style={{ fontSize: '12px', opacity: 0.9 }}>
+                <div style={{ fontSize: isMobile ? '10px' : '12px', opacity: 0.9 }}>
                   Duration: {selectedMedia.duration}
                 </div>
               )}
-              <div style={{ fontSize: '11px', opacity: 0.8, marginTop: '4px' }}>
+              <div style={{ fontSize: isMobile ? '9px' : '11px', opacity: 0.8, marginTop: '4px' }}>
                 Click to play video
               </div>
             </div>
@@ -492,13 +497,13 @@ const ProductImageGallery = memo(({
         )}
       </div>
 
-      {/* Media Navigation Tabs */}
-      {(mediaItems.images.length > 0 && mediaItems.videos.length > 0) && (
+      {/* UPDATED: Media Navigation Tabs - HIDDEN ON MOBILE */}
+      {!isMobile && (mediaItems.images.length > 0 && mediaItems.videos.length > 0) && (
         <Tabs 
           activeKey={activeTab} 
           onChange={handleTabChange}
           style={{ marginBottom: '16px' }}
-          size={isMobile ? 'small' : 'default'}
+          size="default"
         >
           <TabPane 
             tab={
@@ -536,12 +541,12 @@ const ProductImageGallery = memo(({
         </Tabs>
       )}
 
-      {/* Thumbnail Strip */}
+      {/* UPDATED: Thumbnail Strip - Smaller thumbnails on mobile */}
       <div style={{ 
         display: 'flex',
-        gap: '8px',
+        gap: isMobile ? '6px' : '8px',
         overflowX: 'auto',
-        padding: '8px 0',
+        padding: isMobile ? '6px 0' : '8px 0',
         scrollbarWidth: 'thin',
       }}>
         {currentMediaList.map((media, index) => {
@@ -573,8 +578,8 @@ const ProductImageGallery = memo(({
         })}
       </div>
 
-      {/* Media Info */}
-      {selectedMedia && (
+      {/* UPDATED: Media Info - Simplified on mobile */}
+      {selectedMedia && !isMobile && (
         <div style={{ marginTop: '12px', textAlign: 'center' }}>
           <Text type="secondary" style={{ fontSize: '12px' }}>
             {selectedMedia.title} • {selectedMedia.type === 'video' ? 'Video' : 'Image'}
@@ -583,8 +588,8 @@ const ProductImageGallery = memo(({
         </div>
       )}
 
-      {/* Image Preview Modal */}
-      {selectedMedia && selectedMedia.type === 'image' && (
+      {/* Image Preview Modal - Only on desktop */}
+      {!isMobile && selectedMedia && selectedMedia.type === 'image' && (
         <Image
           style={{ display: 'none' }}
           src={selectedMedia.src}

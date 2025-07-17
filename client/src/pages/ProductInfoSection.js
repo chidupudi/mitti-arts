@@ -1349,7 +1349,7 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
   );
 });
 
-// Enhanced Mobile Actions Component - Fixed and Simplified
+// Simple Mobile Actions Component - Single Line Layout
 const MobileActions = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, isInWishlist }) => {
   const [quantity, setQuantity] = useState(1);
   const [modalVisible, setModalVisible] = useState(false);
@@ -1391,102 +1391,94 @@ const MobileActions = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, 
         boxShadow: '0 -4px 16px rgba(0,0,0,0.08)',
         zIndex: 1000,
       }}>
-        <Space size="small" style={{ width: '100%', justifyContent: 'center' }}>
+        {/* Single Row Layout: Price + Button + Phone */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          width: '100%',
+        }}>
+          
+          {/* Price Display */}
+          <div style={{ minWidth: 'fit-content' }}>
+            <Text 
+              strong 
+              style={{ 
+                fontSize: '18px', 
+                color: product.isGaneshIdol ? colors.ganesh : colors.primary,
+                fontWeight: 700,
+                whiteSpace: 'nowrap'
+              }}
+            >
+              ₹{product.price?.toLocaleString()}
+            </Text>
+          </div>
+
+          {/* Main Action Button */}
           {product.isGaneshIdol ? (
-            <>
-              <Button
-                type="primary"
-                size="middle"
-                icon={<GiftOutlined />}
-                onClick={handleAddToCart}
-                style={{
-                  background: `linear-gradient(135deg, ${colors.ganesh} 0%, #FFB74D 100%)`,
-                  borderColor: colors.ganesh,
-                  flex: 1,
-                  height: '40px',
-                  borderRadius: '8px',
-                  fontWeight: 600,
-                  fontSize: '14px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                Show Interest
-              </Button>
-              
-              <Button
-                size="middle"
-                icon={<PhoneOutlined />}
-                onClick={() => window.location.href = '/contactus'}
-                style={{
-                  borderColor: colors.secondary,
-                  color: colors.secondary,
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '8px',
-                  marginLeft: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '16px',
-                }}
-              />
-            </>
+            <Button
+              type="primary"
+              size="middle"
+              icon={<GiftOutlined />}
+              onClick={handleAddToCart}
+              style={{
+                background: `linear-gradient(135deg, ${colors.ganesh} 0%, #FFB74D 100%)`,
+                borderColor: colors.ganesh,
+                flex: 1,
+                height: '44px',
+                borderRadius: '8px',
+                fontWeight: 600,
+                fontSize: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              Show Interest
+            </Button>
           ) : (
-            <>
-              <Button
-                type="primary"
-                size="middle"
-                icon={<ShoppingCartOutlined />}
-                onClick={handleAddToCart}
-                disabled={product.stock === 0}
-                style={{
-                  backgroundColor: colors.primary,
-                  borderColor: colors.primary,
-                  flex: 1,
-                  height: '40px',
-                  borderRadius: '8px',
-                  fontWeight: 600,
-                  fontSize: '14px',
-                }}
-              >
-                {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
-              </Button>
-              
-              <Button
-                size="middle"
-                icon={isInWishlist ? <HeartFilled /> : <HeartOutlined />}
-                onClick={() => onToggleWishlist(product)}
-                style={{
-                  borderColor: colors.divider,
-                  color: isInWishlist ? colors.error : colors.textSecondary,
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '8px',
-                  marginLeft: '6px',
-                }}
-              />
-              
-              <Button
-                size="middle"
-                icon={<PhoneOutlined />}
-                onClick={() => window.location.href = '/contactus'}
-                style={{
-                  borderColor: colors.secondary,
-                  color: colors.secondary,
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '8px',
-                  marginLeft: '6px',
-                }}
-              />
-            </>
+            <Button
+              type="primary"
+              size="middle"
+              icon={<ShoppingCartOutlined />}
+              onClick={handleAddToCart}
+              disabled={product.stock === 0}
+              style={{
+                backgroundColor: colors.primary,
+                borderColor: colors.primary,
+                flex: 1,
+                height: '44px',
+                borderRadius: '8px',
+                fontWeight: 600,
+                fontSize: '14px',
+              }}
+            >
+              {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
+            </Button>
           )}
-        </Space>
+          
+          {/* Phone Button */}
+          <Button
+            size="middle"
+            icon={<PhoneOutlined />}
+            onClick={() => window.location.href = '/contactus'}
+            style={{
+              borderColor: colors.secondary,
+              color: colors.secondary,
+              width: '44px',
+              height: '44px',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '16px',
+              flexShrink: 0
+            }}
+          />
+        </div>
       </div>
 
-      {/* Action Modal */}
+      {/* Action Modal - Simple Version */}
       <Modal
         title={product.isGaneshIdol
           ? 'Show Interest in Ganesh Idol'
