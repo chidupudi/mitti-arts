@@ -598,20 +598,7 @@ const ProductDetail = () => {
   return (
     <div style={customStyles.container}>
       {/* Back Button */}
-      <Button
-        icon={<ArrowLeftOutlined />}
-        onClick={() => navigate(-1)}
-        style={{
-          marginBottom: '24px',
-          color: colors.primary,
-          borderColor: colors.primary,
-          fontWeight: 600,
-          borderRadius: '8px',
-          height: '40px',
-        }}
-      >
-        {product.isGaneshIdol ? 'Back to Ganesh Collection' : 'Back to Products'}
-      </Button>
+      
 
       {/* Main Product Section */}
       <Row gutter={[24, 24]}>
