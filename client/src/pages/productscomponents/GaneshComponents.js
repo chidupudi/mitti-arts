@@ -6,12 +6,10 @@ import {
   Button,
   Tag,
   Space,
-  Alert,
   Grid,
 } from 'antd';
 import {
   GiftOutlined,
-  CalendarOutlined,
   TrophyOutlined,
   NotificationOutlined,
 } from '@ant-design/icons';
@@ -37,13 +35,28 @@ const terracottaColors = {
   ganesh: '#FF8F00',
 };
 
-// Ganesh Idol Card Component with Mobile-Responsive Image Height
+// NEW: Discount calculation helper
+const calculateGaneshDiscount = (originalPrice) => {
+  const discountPercentage = 15; // 15% off for Ganesh products
+  const discountAmount = Math.round(originalPrice * discountPercentage / 100);
+  const discountedPrice = originalPrice - discountAmount;
+ 
+  return {
+    originalPrice,
+    discountedPrice,
+    discountPercentage,
+    discountAmount,
+    hasDiscount: true
+  };
+};
+
+
+// Ganesh Idol Card Component with 15% Discount
 export const GaneshIdolCard = memo(({ 
   idol, 
   onShowInterest,
   onProductClick
 }) => {
-  const [imageLoaded, setImageLoaded] = useState(false);
   const [imageSrc, setImageSrc] = useState(idol.imgUrl || 'https://via.placeholder.com/300x220/FF8F00/FFFFFF?text=Ganesh+Idol');
   const screens = useBreakpoint();
   
@@ -58,8 +71,9 @@ export const GaneshIdolCard = memo(({
   const imageHeight = getImageHeight();
   const isMobile = !screens.sm;
   
-  const price = idol.price || 15000;
-  const advanceAmount = Math.round(price * (idol.advancePercentage || 25) / 100);
+  // NEW: Calculate discount for Ganesh idol
+  const originalPrice = idol.price || 15000;
+  const priceInfo = calculateGaneshDiscount(originalPrice);
 
   const handleCardClick = (e) => {
     if (e.target.closest('.ant-btn') || 
@@ -123,12 +137,31 @@ export const GaneshIdolCard = memo(({
         {getCategoryIcon(idol.category)} {idol.category}
       </Tag>
 
-      {/* Customizable Badge */}
+      {/* NEW: 15% OFF Badge */}
+      <Tag
+        style={{
+          position: 'absolute',
+          top: '12px',
+          right: '12px',
+          zIndex: 2,
+          backgroundColor: '#E91E63',
+          color: 'white',
+          border: 'none',
+          fontWeight: 'bold',
+          fontSize: isMobile ? '11px' : '12px',
+          padding: '4px 8px',
+          borderRadius: '6px',
+        }}
+      >
+        15% OFF
+      </Tag>
+
+      {/* Customizable Badge - moved down due to discount badge */}
       {idol.customizable && (
         <Tag
           style={{
             position: 'absolute',
-            top: '12px',
+            top: '46px', // Moved down to avoid overlap
             right: '12px',
             zIndex: 2,
             backgroundColor: '#9C27B0',
@@ -153,7 +186,6 @@ export const GaneshIdolCard = memo(({
             objectFit: 'cover',
             transition: 'transform 0.3s ease',
           }}
-          onLoad={() => setImageLoaded(true)}
           onError={() => setImageSrc('https://via.placeholder.com/300x320/FF8F00/FFFFFF?text=Ganesh+Idol')}
         />
       </div>
@@ -186,19 +218,58 @@ export const GaneshIdolCard = memo(({
           {idol.description || 'Beautiful handcrafted Ganesh idol for your festivities'}
         </Text>
 
-        {/* Price Range */}
+        {/* NEW: Updated Price Section with Discount */}
         <div style={{ marginBottom: '12px' }}>
-          <Title 
-            level={5} 
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            {/* Discounted Price - Main Price */}
+            <Title 
+              level={5} 
+              style={{ 
+                margin: 0,
+                color: terracottaColors.ganesh,
+                fontSize: isMobile ? '18px' : '20px'
+              }}
+            >
+              ₹{priceInfo.discountedPrice.toLocaleString()}
+            </Title>
+            
+            {/* Original Price - Strikethrough */}
+            <Text 
+              delete 
+              type="secondary" 
+              style={{ 
+                fontSize: isMobile ? '14px' : '16px',
+                color: terracottaColors.textSecondary
+              }}
+            >
+              ₹{priceInfo.originalPrice.toLocaleString()}
+            </Text>
+            
+            {/* Discount Badge */}
+            <Tag 
+              color="error" 
+              style={{ 
+                fontSize: isMobile ? '10px' : '11px', 
+                fontWeight: 600,
+                margin: 0
+              }}
+            >
+              15% OFF
+            </Tag>
+          </div>
+          
+          {/* Savings Amount */}
+          <Text 
             style={{ 
-              margin: 0,
-              color: terracottaColors.ganesh,
-              fontSize: isMobile ? '16px' : '18px'
+              display: 'block',
+              fontSize: isMobile ? '11px' : '12px',
+              color: '#4CAF50',
+              fontWeight: 600,
+              marginTop: '4px'
             }}
           >
-            ₹{price.toLocaleString()}
-          </Title>
-         
+            You save ₹{priceInfo.discountAmount.toLocaleString()}!
+          </Text>
         </div>
 
         {/* Specifications */}
@@ -219,9 +290,6 @@ export const GaneshIdolCard = memo(({
             </Tag>
           )}
         </Space>
-
-        
-        
       </div>
 
       {/* Card Actions */}
@@ -400,7 +468,6 @@ export const PotteryComingSoonCard = memo(({ onClick, customPotteryImage }) => {
             </Text>
           </Space>
         </div>
-
         
       </div>
 
@@ -448,4 +515,4 @@ export default {
   PotteryComingSoonCard
 };
 
-export { terracottaColors };
+export { terracottaColors, calculateGaneshDiscount };
