@@ -1,4 +1,4 @@
-// Updated ProductDetail.jsx - WITH SCROLL POSITION MANAGEMENT
+// Updated ProductDetail.jsx - WITH MODIFIED SHOW INTEREST AND TERMS DISPLAY
 import React, {
   useEffect,
   useState,
@@ -34,7 +34,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 // Import helper components - UPDATED VERSIONS
 import ProductImageGallery from './ProductImageGallery'; // Enhanced with video support and mobile fixes
 import ProductInfo, { MobileActions, ServiceFeatures } from './ProductInfoSection'; // Enhanced with formatted descriptions
-import ProductTabs from './ProductTabs'; // Enhanced with formatted descriptions
+// import ProductTabs from './ProductTabs'; // COMMENTED OUT - Enhanced with formatted descriptions
 
 // Import the FIXED cart utilities
 import { addToCartSafe } from '../utils/cartUtility';
@@ -479,7 +479,7 @@ const ProductDetail = () => {
       return;
     }
 
-    // Special handling for Ganesh idols
+    // Special handling for Ganesh idols - MODIFIED: NO LOGIN CHECK
     if (product.isGaneshIdol) {
       navigate('/ganesh-order-summary', {
         state: {
@@ -526,13 +526,9 @@ const ProductDetail = () => {
     }
   }, [user, navigate]);
 
+  // MODIFIED: Show Interest handler - NO LOGIN CHECK
   const handleBuyNow = useCallback(async (product, quantity) => {
-    if (!user) {
-      navigate('/auth');
-      return;
-    }
-
-    // Special handling for Ganesh idols
+    // Special handling for Ganesh idols - MODIFIED: NO LOGIN CHECK
     if (product.isGaneshIdol) {
       navigate('/ganesh-order-summary', {
         state: {
@@ -557,6 +553,11 @@ const ProductDetail = () => {
           }
         }
       });
+      return;
+    }
+
+    if (!user) {
+      navigate('/auth');
       return;
     }
 
@@ -653,11 +654,13 @@ const ProductDetail = () => {
       {/* Service Features */}
       <ServiceFeatures product={product} />
 
-      ENHANCED: Product Details Tabs with Video Information
+      {/* COMMENTED OUT: Product Details Tabs with Video Information */}
+      {/*
       <ProductTabs 
         product={product}
         hasVideos={product.videos && product.videos.length > 0} // ENHANCED: Pass video flag
       />
+      */}
 
       {/* Mobile Actions Bar */}
       {screens.xs && (

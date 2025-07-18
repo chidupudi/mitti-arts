@@ -1,4 +1,4 @@
-// ProductInfoSection.jsx - UPDATED WITH 15% GANESH DISCOUNT
+// ProductInfoSection.jsx - UPDATED WITH TERMS BELOW DESCRIPTION AND REMOVED MODAL
 import React, { useState, useMemo, memo, useCallback } from 'react';
 import {
   Card,
@@ -118,6 +118,14 @@ const customStyles = {
     padding: '20px',
     border: `1px solid ${colors.primary}20`,
   },
+  // NEW: Terms section styles
+  termsSection: {
+    background: `linear-gradient(135deg, ${colors.ganesh}08 0%, rgba(255,255,255,0.8) 100%)`,
+    borderRadius: '12px',
+    border: `2px solid ${colors.ganesh}20`,
+    padding: '24px',
+    marginTop: '24px',
+  },
 };
 
 // ENHANCED: Updated function to handle introductory text properly (unchanged)
@@ -217,7 +225,8 @@ const formatDescriptionWithIntro = (description) => {
   return { introduction, points };
 };
 
-// Terms & Conditions Modal Component (unchanged for brevity - same as before)
+// COMMENTED OUT: Terms & Conditions Modal Component
+/*
 const TermsModal = memo(({ open, onClose, product }) => {
   const ganeshTerms = [
     {
@@ -380,6 +389,133 @@ const TermsModal = memo(({ open, onClose, product }) => {
         </div>
       </div>
     </Modal>
+  );
+});
+*/
+
+// NEW: Terms & Conditions Section Component (to be displayed below description)
+const TermsSection = memo(({ product }) => {
+  const ganeshTerms = [
+    {
+      title: "🕉️ HANDCRAFTED UNIQUENESS",
+      points: [
+        "Each Ganesh idol is handcrafted by skilled artisans - small variations in eyes, bindi, and details make each piece unique.",
+        "Made from pure Ganga clay - minimal hairline cracks are natural characteristics, not defects.",
+        "Size may vary by 1-2 inches due to natural clay properties and drying conditions."
+      ]
+    },
+    {
+      title: "🚚 DELIVERY & HANDLING", 
+      points: [
+        "Handle with care - Never lift by hands or trunk, always support the main body.",
+        "For idols 3+ feet: You must arrange 3-4 people to assist our delivery team.",
+        "Delivery: Monday-Sunday, 11 AM to 11 PM. Large idols need scheduled delivery."
+      ]
+    },
+    {
+      title: "⏰ CANCELLATION POLICY",
+      points: [
+        "24-hour window: Full refund if cancelled within 24 hours of booking.",
+        "After 24 hours: No cancellations or refunds due to custom production start.",
+        "Please confirm all requirements before ordering."
+      ]
+    }
+  ];
+
+  if (!product.isGaneshIdol) return null;
+
+  return (
+    <div style={customStyles.termsSection}>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        marginBottom: '20px',
+        color: colors.ganesh,
+        fontSize: '18px',
+        fontWeight: 600
+      }}>
+        <FileTextOutlined style={{ fontSize: '20px' }} />
+        Important: Ganesh Idol Terms & Conditions
+      </div>
+
+      <Alert
+        message="Please Read Before Ordering"
+        description="Custom Ganesh idols have specific terms due to their handcrafted nature and delivery requirements."
+        type="warning"
+        showIcon
+        style={{
+          marginBottom: '20px',
+          backgroundColor: `${colors.warning}10`,
+          border: `1px solid ${colors.warning}30`
+        }}
+      />
+
+      {ganeshTerms.map((section, sectionIndex) => (
+        <div key={sectionIndex} style={{ marginBottom: '20px' }}>
+          <Title level={5} style={{
+            color: colors.ganesh,
+            marginBottom: '12px',
+            fontSize: '16px',
+            fontWeight: 600
+          }}>
+            {section.title}
+          </Title>
+          <List
+            size="small"
+            dataSource={section.points}
+            renderItem={(point, index) => (
+              <List.Item style={{
+                padding: '6px 0',
+                border: 'none',
+                alignItems: 'flex-start'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', width: '100%' }}>
+                  <CheckCircleOutlined style={{
+                    color: colors.ganesh,
+                    fontSize: '14px',
+                    marginTop: '2px',
+                    flexShrink: 0
+                  }} />
+                  <Text style={{
+                    fontSize: '14px',
+                    lineHeight: '1.5',
+                    color: colors.text,
+                    flex: 1
+                  }}>
+                    {point}
+                  </Text>
+                </div>
+              </List.Item>
+            )}
+          />
+        </div>
+      ))}
+
+      <div style={{
+        marginTop: '20px',
+        padding: '16px',
+        borderRadius: '8px',
+        backgroundColor: `${colors.ganesh}08`,
+        border: `1px solid ${colors.ganesh}20`,
+        textAlign: 'center'
+      }}>
+        <Text strong style={{
+          display: 'block',
+          marginBottom: '8px',
+          color: colors.text,
+          fontSize: '15px'
+        }}>
+          Questions? Contact us:
+        </Text>
+        <Text style={{
+          color: colors.ganesh,
+          fontWeight: 600
+        }}>
+          📞 +91-7382150250 | ✉️ mittiarts0@gmail.com
+        </Text>
+      </div>
+    </div>
   );
 });
 
@@ -613,9 +749,10 @@ const PoojaKitModal = memo(({ open, onClose, product }) => {
   );
 });
 
-// MAIN PRODUCT INFO COMPONENT - UPDATED WITH DISCOUNT LOGIC
+// MAIN PRODUCT INFO COMPONENT - UPDATED WITH TERMS SECTION AND REMOVED MODAL
 const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, isInWishlist }) => {
-  const [termsModalOpen, setTermsModalOpen] = useState(false);
+  // COMMENTED OUT: Terms modal state
+  // const [termsModalOpen, setTermsModalOpen] = useState(false);
   const [poojaKitModalOpen, setPoojaKitModalOpen] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const screens = useBreakpoint();
@@ -715,18 +852,7 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
           <Space wrap size="middle">
             {product.isGaneshIdol ? (
               <>
-                <Tag
-                  icon={<GiftOutlined />}
-                  color="#FF6B35"
-                  style={{
-                    fontWeight: 600,
-                    padding: '4px 12px',
-                    borderRadius: '6px',
-                    fontSize: '14px'
-                  }}
-                >
-                  Custom Made
-                </Tag>
+                
                 <Tag
                   icon={<EnvironmentOutlined />}
                   color="#4CAF50"
@@ -917,7 +1043,8 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
                         />
                       </Tooltip>
 
-                      {/* T&C Icon */}
+                      {/* COMMENTED OUT: T&C Icon */}
+                      {/*
                       <Tooltip title="Important Ganesh Idol Terms">
                         <Button
                           type="text"
@@ -938,6 +1065,7 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
                           }}
                         />
                       </Tooltip>
+                      */}
                     </>
                   )}
                 </Space>
@@ -1217,12 +1345,17 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
         
       </Card>
 
-      {/* Terms & Conditions Modal */}
+      {/* NEW: Terms & Conditions Section (displayed below description for Ganesh products) */}
+      <TermsSection product={product} />
+
+      {/* COMMENTED OUT: Terms & Conditions Modal */}
+      {/*
       <TermsModal
         open={termsModalOpen}
         onClose={() => setTermsModalOpen(false)}
         product={product}
       />
+      */}
 
       {/* Pooja Kit Modal */}
       <PoojaKitModal
@@ -1523,7 +1656,8 @@ const ServiceFeatures = memo(({ product }) => {
 
 // Set display names
 ProductInfo.displayName = 'ProductInfo';
-TermsModal.displayName = 'TermsModal';
+// COMMENTED OUT: TermsModal.displayName = 'TermsModal';
+TermsSection.displayName = 'TermsSection';
 PoojaKitModal.displayName = 'PoojaKitModal';
 MobileActions.displayName = 'MobileActions';
 ServiceFeatures.displayName = 'ServiceFeatures';
