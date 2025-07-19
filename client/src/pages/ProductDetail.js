@@ -1,4 +1,4 @@
-// Updated ProductDetail.jsx - WITH MODIFIED SHOW INTEREST AND TERMS DISPLAY
+// Updated ProductDetail.jsx - WITH ENHANCED NAVIGATION AND SCROLL MANAGEMENT
 import React, {
   useEffect,
   useState,
@@ -38,7 +38,7 @@ import ProductInfo, { MobileActions, ServiceFeatures } from './ProductInfoSectio
 
 // Import the FIXED cart utilities
 import { addToCartSafe } from '../utils/cartUtility';
-import useScrollPosition from '../hooks/useScrollPosition'; // NEW: Import scroll position hook
+import useScrollPosition from '../hooks/useScrollPosition'; // ENHANCED: Import enhanced scroll position hook
 
 const { Title } = Typography;
 const { useBreakpoint } = Grid;
@@ -88,19 +88,21 @@ const customStyles = {
     height: '48px',
     fontSize: '16px',
   },
-  // NEW: Back button styles
+  // ENHANCED: Updated back button styles with better UX
   backButton: {
     backgroundColor: 'transparent',
     borderColor: colors.primary,
     color: colors.primary,
     borderRadius: '8px',
     fontWeight: 600,
-    height: '40px',
+    height: '44px',
     fontSize: '14px',
     marginBottom: '24px',
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
+    transition: 'all 0.3s ease',
+    boxShadow: `0 2px 8px ${colors.primary}15`,
   },
 };
 
@@ -439,15 +441,20 @@ const ProductDetailSkeleton = () => (
   </div>
 );
 
-// Main ProductDetail Component - ENHANCED WITH SCROLL MANAGEMENT
+// Main ProductDetail Component - ENHANCED WITH SMART NAVIGATION
 const ProductDetail = () => {
   const { id } = useParams();
   const { search } = useLocation();
   const navigate = useNavigate();
   const screens = useBreakpoint();
 
-  // NEW: Add scroll position management
-  const { saveScrollPosition } = useScrollPosition('productsScrollPosition');
+  // ENHANCED: Add enhanced scroll position management
+  const { 
+    saveScrollPosition, 
+    getCurrentScrollPosition,
+    hasSavedPosition,
+    scrollToTop 
+  } = useScrollPosition('productsScrollPosition');
 
   const code = new URLSearchParams(search).get('code');
   const { product, loading, error } = useProductData(id, code);
@@ -463,17 +470,110 @@ const ProductDetail = () => {
     return unsubscribe;
   }, []);
 
-  // NEW: Enhanced back navigation handler
+  // ENHANCED: Smart back navigation handler with multiple fallback options
   const handleBackToProducts = useCallback(() => {
-    // Mark that we're returning from product detail
-    sessionStorage.setItem('returnFromProductDetail', 'true');
+    console.log('🔙 Back button clicked');
     
-    // Navigate back to products
-    navigate('/products');
-  }, [navigate]);
+    // Method 1: Check if we have saved scroll position (most reliable indicator of where user came from)
+    const hasScrollData = hasSavedPosition();
+    
+    // Method 2: Check navigation history and sessionStorage flags
+    const fromProductDetail = sessionStorage.getItem('returnFromProductDetail');
+    const navigationSource = sessionStorage.getItem('navigationSource') || 'direct';
+    
+    console.log('Navigation context:', {
+      hasScrollData,
+      fromProductDetail,
+      navigationSource,
+      historyLength: window.history.length,
+      canGoBack: window.history.length > 1
+    });
 
-  // Existing handlers (unchanged)
+    // Save current product detail position (in case user wants to come back)
+    const currentPosition = getCurrentScrollPosition();
+    sessionStorage.setItem('productDetailScrollPosition', JSON.stringify(currentPosition));
+    
+    // Determine the best navigation method
+    if (hasScrollData || fromProductDetail === 'true' || navigationSource === 'products') {
+      // User came from products page - restore their session
+      console.log('✅ Returning to products page with state restoration');
+      
+      // Set flag for products page to restore state
+      sessionStorage.setItem('returnFromProductDetail', 'true');
+      
+      // Navigate back to products
+      navigate('/products');
+    } else if (window.history.length > 1 && navigationSource !== 'direct') {
+      // User has history and didn't arrive directly - use browser back
+      console.log('🔄 Using browser back navigation');
+      
+      // Set fallback flag in case browser back doesn't work
+      sessionStorage.setItem('returnFromProductDetail', 'true');
+      
+      // Try browser back first
+      window.history.back();
+      
+      // Fallback timer in case history.back() doesn't work
+      setTimeout(() => {
+        if (window.location.pathname.includes('/product') || window.location.pathname.includes('/ganesh-idol')) {
+          console.log('⚠️ Browser back failed, using navigate fallback');
+          navigate('/products');
+        }
+      }, 1000);
+    } else {
+      // Fresh visit or direct access - go to products home
+      console.log('🏠 Fresh visit - navigating to products home');
+      
+      // Clear any stale data and start fresh
+      sessionStorage.removeItem('returnFromProductDetail');
+      sessionStorage.removeItem('navigationSource');
+      
+      // Go to products page and scroll to top
+      navigate('/products');
+      
+      // Ensure we scroll to top after navigation
+      setTimeout(() => {
+        scrollToTop({ smooth: true, clearSaved: true });
+      }, 100);
+    }
+  }, [navigate, hasSavedPosition, getCurrentScrollPosition, scrollToTop]);
+
+  // ENHANCED: Set navigation source when component mounts
+  useEffect(() => {
+    // Only set navigation source if not already set
+    if (!sessionStorage.getItem('navigationSource')) {
+      const referrer = document.referrer;
+      if (referrer.includes('/products')) {
+        sessionStorage.setItem('navigationSource', 'products');
+      } else if (referrer.includes(window.location.origin)) {
+        sessionStorage.setItem('navigationSource', 'internal');
+      } else {
+        sessionStorage.setItem('navigationSource', 'direct');
+      }
+    }
+
+    // Clean up on unmount
+    return () => {
+      // Don't clear navigation source here - let it persist for back navigation
+    };
+  }, []);
+
+  // ENHANCED: Auto-scroll to top when product changes (for direct navigation between products)
+  useEffect(() => {
+    if (product && !sessionStorage.getItem('returnFromProductDetail')) {
+      // Only scroll to top if this is a fresh product view (not returning from products)
+      const timer = setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [product?.id]);
+
+  // Existing handlers (unchanged but with enhanced logging)
   const handleAddToCart = useCallback(async (product, quantity) => {
+    console.log('🛒 Add to cart:', { product: product.name, quantity });
+    
     if (!user) {
       navigate('/auth');
       return;
@@ -528,6 +628,8 @@ const ProductDetail = () => {
 
   // MODIFIED: Show Interest handler - NO LOGIN CHECK
   const handleBuyNow = useCallback(async (product, quantity) => {
+    console.log('⚡ Buy now:', { product: product.name, quantity });
+    
     // Special handling for Ganesh idols - MODIFIED: NO LOGIN CHECK
     if (product.isGaneshIdol) {
       navigate('/ganesh-order-summary', {
@@ -619,13 +721,23 @@ const ProductDetail = () => {
     );
   }
 
-  // ENHANCED: Log video data for debugging
-  console.log('Product videos:', product.videos);
-  console.log('Product images:', product.images);
-
   return (
     <div style={customStyles.container}>
-      {/* NEW: Enhanced Back Button */}
+      {/* ENHANCED: Smart Back Button with better UX */}
+      <Button
+        icon={<ArrowLeftOutlined />}
+        onClick={handleBackToProducts}
+        style={{
+          ...customStyles.backButton,
+          ':hover': {
+            backgroundColor: `${colors.primary}08`,
+            borderColor: colors.primaryDark,
+            transform: 'translateX(-2px)',
+          }
+        }}
+      >
+        {hasSavedPosition() ? 'Back to Products' : 'Browse Products'}
+      </Button>
       
       {/* Main Product Section */}
       <Row gutter={[24, 24]}>
@@ -653,14 +765,6 @@ const ProductDetail = () => {
 
       {/* Service Features */}
       <ServiceFeatures product={product} />
-
-      {/* COMMENTED OUT: Product Details Tabs with Video Information */}
-      {/*
-      <ProductTabs 
-        product={product}
-        hasVideos={product.videos && product.videos.length > 0} // ENHANCED: Pass video flag
-      />
-      */}
 
       {/* Mobile Actions Bar */}
       {screens.xs && (

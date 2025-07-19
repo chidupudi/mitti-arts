@@ -1,4 +1,4 @@
-// pages/Products.js - Updated with height filter integration
+// pages/Products.js - Updated with filter state persistence
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Row,
@@ -50,6 +50,54 @@ import {
 
 const { useBreakpoint } = Grid;
 const { Title, Text } = Typography;
+
+// NEW: Enhanced filter state management
+const FILTER_STATE_KEY = 'productsFilterState';
+const GANESH_FILTER_STATE_KEY = 'ganeshFilterState';
+
+// NEW: Save filter state to sessionStorage
+const saveFilterState = (isGaneshSeason, filterState) => {
+  const key = isGaneshSeason ? GANESH_FILTER_STATE_KEY : FILTER_STATE_KEY;
+  try {
+    sessionStorage.setItem(key, JSON.stringify({
+      ...filterState,
+      timestamp: Date.now()
+    }));
+    console.log('Filter state saved:', filterState);
+  } catch (error) {
+    console.error('Error saving filter state:', error);
+  }
+};
+
+// NEW: Load filter state from sessionStorage
+const loadFilterState = (isGaneshSeason) => {
+  const key = isGaneshSeason ? GANESH_FILTER_STATE_KEY : FILTER_STATE_KEY;
+  try {
+    const saved = sessionStorage.getItem(key);
+    if (saved) {
+      const parsedState = JSON.parse(saved);
+      // Check if state is not too old (24 hours)
+      const isStale = Date.now() - parsedState.timestamp > 24 * 60 * 60 * 1000;
+      if (!isStale) {
+        console.log('Filter state loaded:', parsedState);
+        return parsedState;
+      }
+    }
+  } catch (error) {
+    console.error('Error loading filter state:', error);
+  }
+  return null;
+};
+
+// NEW: Clear filter state
+const clearFilterState = (isGaneshSeason) => {
+  const key = isGaneshSeason ? GANESH_FILTER_STATE_KEY : FILTER_STATE_KEY;
+  try {
+    sessionStorage.removeItem(key);
+  } catch (error) {
+    console.error('Error clearing filter state:', error);
+  }
+};
 
 // Enhanced custom styles with mobile-first approach
 const customStyles = `
@@ -414,7 +462,7 @@ const useProductSearch = (products, searchQuery, filters) => {
   }, [products, searchQuery, filters.priceRange, filters.sortBy, filters.hyderabadOnly]);
 };
 
-// UPDATED: Enhanced useGaneshIdolFilter with height filtering
+// Enhanced useGaneshIdolFilter with height filtering
 const useGaneshIdolFilter = (ganeshIdols, searchQuery, filters, heightFilter) => {
   return useMemo(() => {
     let filtered = [...ganeshIdols];
@@ -444,7 +492,7 @@ const useGaneshIdolFilter = (ganeshIdols, searchQuery, filters, heightFilter) =>
       filtered = filtered.filter(idol => idol.customizable);
     }
 
-    // NEW: Height filtering logic
+    // Height filtering logic
     if (heightFilter) {
       const heightOptions = {
         '3ft': [3, 3.5],
@@ -539,9 +587,11 @@ const Products = () => {
   
   const { currentSeason, isGaneshSeason, loading: seasonLoading } = useSeason();
   
-  const { restoreScrollPosition } = useScrollPosition('productsScrollPosition');
+  const { restoreScrollPosition, saveScrollPosition } = useScrollPosition('productsScrollPosition');
   
   const [user, setUser] = useState(null);
+  
+  // Regular products filter states
   const [priceRange, setPriceRange] = useState([1, 5000]);
   const [sortBy, setSortBy] = useState('relevance');
   const [searchQuery, setSearchQuery] = useState('');
@@ -550,13 +600,12 @@ const Products = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
 
+  // Ganesh products filter states
   const [ganeshPriceRange, setGaneshPriceRange] = useState([5000, 50000]);
   const [ganeshSortBy, setGaneshSortBy] = useState('priceLowToHigh');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [customizableOnly, setCustomizableOnly] = useState(false);
   const [ganeshDrawerOpen, setGaneshDrawerOpen] = useState(false);
-  
-  // NEW: Height filter state
   const [selectedHeightFilter, setSelectedHeightFilter] = useState(null);
 
   const { products, loading: productsLoading, error: productsError } = useProducts();
@@ -584,12 +633,50 @@ const Products = () => {
     isSearching 
   } = useProductSearch(products, searchQuery, searchParams);
 
-  // UPDATED: Include height filter in Ganesh idol filtering
   const {
     idols: filteredGaneshIdols,
     totalCount: ganeshTotalCount,
     isSearching: isGaneshSearching
   } = useGaneshIdolFilter(ganeshIdols, searchQuery, ganeshFilterParams, selectedHeightFilter);
+
+  // NEW: Effect to restore filter state when returning from product detail
+  useEffect(() => {
+    const fromProductDetail = sessionStorage.getItem('returnFromProductDetail');
+    
+    if (fromProductDetail === 'true') {
+      console.log('Returning from product detail, restoring state...');
+      
+      // Load and restore filter state
+      const savedState = loadFilterState(isGaneshSeason);
+      if (savedState) {
+        if (isGaneshSeason) {
+          // Restore Ganesh filter state
+          if (savedState.ganeshPriceRange) setGaneshPriceRange(savedState.ganeshPriceRange);
+          if (savedState.ganeshSortBy) setGaneshSortBy(savedState.ganeshSortBy);
+          if (savedState.categoryFilter) setCategoryFilter(savedState.categoryFilter);
+          if (savedState.customizableOnly !== undefined) setCustomizableOnly(savedState.customizableOnly);
+          if (savedState.selectedHeightFilter) setSelectedHeightFilter(savedState.selectedHeightFilter);
+          if (savedState.searchQuery) setSearchQuery(savedState.searchQuery);
+        } else {
+          // Restore regular products filter state
+          if (savedState.priceRange) setPriceRange(savedState.priceRange);
+          if (savedState.sortBy) setSortBy(savedState.sortBy);
+          if (savedState.hyderabadOnly !== undefined) setHyderabadOnly(savedState.hyderabadOnly);
+          if (savedState.searchQuery) setSearchQuery(savedState.searchQuery);
+        }
+      }
+      
+      // Clear the return flag
+      sessionStorage.removeItem('returnFromProductDetail');
+      
+      // Restore scroll position after a short delay to allow for rendering
+      const timer = setTimeout(() => {
+        restoreScrollPosition();
+      }, 300);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [location.pathname, restoreScrollPosition, isGaneshSeason]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -597,22 +684,6 @@ const Products = () => {
     });
     return unsubscribe;
   }, []);
-
-  useEffect(() => {
-    const fromProductDetail = sessionStorage.getItem('returnFromProductDetail');
-    
-    if (fromProductDetail === 'true') {
-      console.log('Returning from product detail, attempting to restore scroll position');
-      
-      sessionStorage.removeItem('returnFromProductDetail');
-      
-      const timer = setTimeout(() => {
-        restoreScrollPosition();
-      }, 200);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [location.pathname, restoreScrollPosition]);
 
   const getProductGridCols = () => {
     if (!screens.sm) return { xs: 24 };
@@ -628,21 +699,59 @@ const Products = () => {
     message[type](content);
   }, []);
 
+  // NEW: Enhanced navigation handlers that save state
   const handleProductClick = useCallback((id, code) => {
     console.log('Product clicked:', { id, code });
     
+    // Save current scroll position
+    saveScrollPosition();
+    
+    // Save current filter state
+    const currentState = isGaneshSeason ? {
+      ganeshPriceRange,
+      ganeshSortBy,
+      categoryFilter,
+      customizableOnly,
+      selectedHeightFilter,
+      searchQuery
+    } : {
+      priceRange,
+      sortBy,
+      hyderabadOnly,
+      searchQuery
+    };
+    
+    saveFilterState(isGaneshSeason, currentState);
+    
+    // Set the return flag
     sessionStorage.setItem('returnFromProductDetail', 'true');
     
     navigate(`/product/${id}?code=${code}`);
-  }, [navigate]);
+  }, [navigate, isGaneshSeason, ganeshPriceRange, ganeshSortBy, categoryFilter, customizableOnly, selectedHeightFilter, searchQuery, priceRange, sortBy, hyderabadOnly, saveScrollPosition]);
 
   const handleGaneshIdolClick = useCallback((idolId) => {
     console.log('Ganesh idol clicked:', idolId);
     
+    // Save current scroll position
+    saveScrollPosition();
+    
+    // Save current filter state for Ganesh season
+    const currentState = {
+      ganeshPriceRange,
+      ganeshSortBy,
+      categoryFilter,
+      customizableOnly,
+      selectedHeightFilter,
+      searchQuery
+    };
+    
+    saveFilterState(true, currentState);
+    
+    // Set the return flag
     sessionStorage.setItem('returnFromProductDetail', 'true');
     
     navigate(`/ganesh-idol/${idolId}`);
-  }, [navigate]);
+  }, [navigate, ganeshPriceRange, ganeshSortBy, categoryFilter, customizableOnly, selectedHeightFilter, searchQuery, saveScrollPosition]);
 
   const handlePotteryPrebook = useCallback(() => {
     navigate('/contact');
@@ -785,16 +894,19 @@ const Products = () => {
     setSortBy('relevance');
     setSearchQuery('');
     setHyderabadOnly(false);
+    // Clear saved filter state
+    clearFilterState(false);
   }, []);
 
-  // UPDATED: Include height filter reset
   const handleGaneshResetFilters = useCallback(() => {
     setGaneshPriceRange([5000, 50000]);
     setGaneshSortBy('priceLowToHigh'); 
     setCategoryFilter('all');
     setCustomizableOnly(false);
     setSearchQuery('');
-    setSelectedHeightFilter(null); // NEW: Reset height filter
+    setSelectedHeightFilter(null);
+    // Clear saved filter state
+    clearFilterState(true);
   }, []);
 
   const handleDrawerToggle = useCallback(() => {
@@ -857,7 +969,7 @@ const Products = () => {
             />
           )}
 
-          {/* UPDATED: Compact Search and Filter for Ganesh Season with Height Filters */}
+          {/* Compact Search and Filter for Ganesh Season with Height Filters */}
           {isGaneshSeason ? (
             <CompactSearchFilter
               searchQuery={searchQuery}
@@ -865,8 +977,8 @@ const Products = () => {
               filteredGaneshIdols={filteredGaneshIdols}
               isGaneshSearching={isGaneshSearching}
               handleGaneshDrawerToggle={handleGaneshDrawerToggle}
-              selectedHeightFilter={selectedHeightFilter}        // NEW
-              setSelectedHeightFilter={setSelectedHeightFilter}  // NEW
+              selectedHeightFilter={selectedHeightFilter}
+              setSelectedHeightFilter={setSelectedHeightFilter}
               isMobile={isMobile}
             />
           ) : (
@@ -1112,6 +1224,8 @@ const Products = () => {
             ) : (
               <>Products: {filteredProducts.length} | Total: {totalCount} | Season: Normal</>
             )}
+            <br />
+            Filters: {isGaneshSeason ? 'Ganesh' : 'Regular'} | Saved: {sessionStorage.getItem(isGaneshSeason ? GANESH_FILTER_STATE_KEY : FILTER_STATE_KEY) ? 'Yes' : 'No'}
           </div>
         )}
       </div>
