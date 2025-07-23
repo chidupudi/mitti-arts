@@ -28,7 +28,7 @@ const carouselSlides = [
     title: '🏺 All Pottery Collection',
     subtitle: 'Coming Soon After Ganesh Festival',
     description: 'Handcrafted clay products, eco-friendly cookware',
-    redirectTo: '/contact'
+    redirectTo: '/contactus'
   },
   {
     type: 'ganesh',

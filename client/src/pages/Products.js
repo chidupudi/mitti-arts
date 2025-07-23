@@ -754,7 +754,7 @@ const Products = () => {
   }, [navigate, ganeshPriceRange, ganeshSortBy, categoryFilter, customizableOnly, selectedHeightFilter, searchQuery, saveScrollPosition]);
 
   const handlePotteryPrebook = useCallback(() => {
-    navigate('/contact');
+    navigate('/contactus');
   }, [navigate]);
 
   const handleShowInterest = useCallback((idol) => {
