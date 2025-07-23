@@ -1016,7 +1016,7 @@ const PaymentStatusPage = () => {
                   variant="text"
                   size="small"
                   sx={{ mt: 1, color: theme.palette.primary.main }}
-                  onClick={() => navigate('/contact-us')}
+                  onClick={() => navigate('/contactus')}
                 >
                   Contact Support
                 </Button>
