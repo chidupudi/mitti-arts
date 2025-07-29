@@ -1,4 +1,4 @@
-// Enhanced AddGaneshIdolDialog.js - Focused on video upload functionality
+// client/src/adminpages/ganeshseason/components/AddGaneshIdolDialog.js - UPDATED for ImageKit
 import React, { useState } from 'react';
 import {
   Modal,
@@ -34,13 +34,14 @@ import {
   CheckCircleOutlined,
 } from '@ant-design/icons';
 
+// UPDATED: Import ImageKit utilities instead of Cloudinary
 import { 
-  uploadToCloudinary, 
+  uploadToImageKit, 
   validateImageFile,
-  uploadVideoToCloudinary,
+  uploadVideoToImageKit,
   validateVideoFile,
-  getVideoMetadata,
-} from '../../../utils/cloudinary';
+  testImageKitConnection,
+} from '../../../utils/imagekit';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -65,11 +66,17 @@ const AddGaneshIdolDialog = ({
     form.setFieldsValue({ [field]: value });
   };
 
-  // CORE: Handle media upload (images and videos)
+  // UPDATED: Handle media upload with ImageKit
   const handleMediaUpload = async (e, index, mediaType) => {
     try {
       const file = e.target.files[0];
       if (!file) return;
+
+      console.log(`🚀 Starting ${mediaType} upload:`, {
+        fileName: file.name,
+        fileSize: `${(file.size / (1024 * 1024)).toFixed(2)}MB`,
+        fileType: file.type
+      });
 
       // Validation based on media type
       if (mediaType === 'image') {
@@ -98,53 +105,62 @@ const AddGaneshIdolDialog = ({
         handleChange('videos', newVideos);
       }
 
-      // Progress simulation
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => ({
-          ...prev,
-          [index]: Math.min((prev[index] || 0) + Math.random() * 20, 85)
-        }));
-      }, 300);
-
       let uploadResult;
       
       if (mediaType === 'image') {
-        uploadResult = await uploadToCloudinary(file);
+        // Upload image to ImageKit
+        uploadResult = await uploadToImageKit(file, {
+          fileName: `ganesh_image_${Date.now()}_${index}`,
+          folder: '/images/ganesh-idols',
+          tags: ['ganesh', 'idol', 'mittiarts'],
+          onProgress: (progress) => {
+            const percent = Math.round((progress.loaded / progress.total) * 100);
+            setUploadProgress({ [index]: percent });
+          }
+        });
         
-        // Update images array
+        // Update images array with ImageKit URL
         const updatedImages = [...(idol.images || Array(8).fill(''))];
-        updatedImages[index] = uploadResult;
+        updatedImages[index] = uploadResult.url;
         handleChange('images', updatedImages);
         
       } else if (mediaType === 'video') {
-        uploadResult = await uploadVideoToCloudinary(file, {
-          quality: 'auto',
-          thumbnailTime: 2
+        // Upload video to ImageKit
+        uploadResult = await uploadVideoToImageKit(file, {
+          fileName: `ganesh_video_${Date.now()}_${index}`,
+          folder: '/videos/ganesh-idols',
+          title: `${idol.name || 'Ganesh Idol'} - Video ${index + 1}`,
+          tags: ['ganesh', 'idol', 'video', 'mittiarts'],
+          onProgress: (progress) => {
+            const percent = Math.round((progress.loaded / progress.total) * 100);
+            setUploadProgress({ [`video_${index}`]: percent });
+          }
         });
         
-        // Update videos array
+        // Update videos array with ImageKit data
         const updatedVideos = [...(idol.videos || Array(3).fill(null))];
         updatedVideos[index] = {
+          type: 'video',
           url: uploadResult.src,
+          src: uploadResult.src,
           thumbnail: uploadResult.thumbnail,
-          title: `${idol.name || 'Ganesh Idol'} - Video ${index + 1}`,
-          duration: uploadResult.duration,
+          title: uploadResult.title,
+          fileId: uploadResult.fileId,
           format: uploadResult.format,
           size: uploadResult.size,
-          uploadedAt: new Date().toISOString()
+          uploadedAt: uploadResult.uploadedAt
         };
         handleChange('videos', updatedVideos);
       }
 
       // Complete progress
-      clearInterval(progressInterval);
       setUploadProgress({ [index]: 100 });
 
       // Success animation
       setUploadSuccess({ [index]: true });
       setTimeout(() => setUploadSuccess({}), 1000);
 
-      message.success(`${mediaType === 'video' ? 'Video' : 'Image'} uploaded successfully!`);
+      message.success(`${mediaType === 'video' ? 'Video' : 'Image'} uploaded successfully to ImageKit!`);
       
     } catch (error) {
       console.error('Error uploading media:', error);
@@ -196,6 +212,20 @@ const AddGaneshIdolDialog = ({
     handleChange('features', updatedFeatures);
   };
 
+  // Test ImageKit connection
+  const handleTestConnection = async () => {
+    try {
+      const result = await testImageKitConnection();
+      if (result.success) {
+        message.success('✅ ImageKit connection successful!');
+      } else {
+        message.error(`❌ ImageKit connection failed: ${result.error}`);
+      }
+    } catch (error) {
+      message.error(`❌ ImageKit connection test failed: ${error.message}`);
+    }
+  };
+
   // Image Upload Component
   const ImageUploadCard = ({ index }) => {
     const imageUrl = idol.images?.[index];
@@ -221,7 +251,7 @@ const AddGaneshIdolDialog = ({
         {isLoading ? (
           <div style={{ textAlign: 'center' }}>
             <LoadingOutlined style={{ fontSize: '32px', color: '#FF8F00' }} />
-            <div style={{ marginTop: '8px', color: '#FF8F00', fontSize: '12px' }}>Uploading...</div>
+            <div style={{ marginTop: '8px', color: '#FF8F00', fontSize: '12px' }}>Uploading to ImageKit...</div>
             <Progress percent={progress} size="small" style={{ marginTop: '8px', width: '60px' }} />
           </div>
         ) : imageUrl ? (
@@ -258,8 +288,8 @@ const AddGaneshIdolDialog = ({
         ) : (
           <div style={{ textAlign: 'center' }}>
             <CloudUploadOutlined style={{ fontSize: '32px', color: '#FF8F00' }} />
-            <div style={{ marginTop: 8, color: '#FF6F00' }}>Upload Image</div>
-            <div style={{ marginTop: 4, fontSize: '10px', color: '#999' }}>Max 10MB</div>
+            <div style={{ marginTop: 8, color: '#FF6F00' }}>Upload to ImageKit</div>
+            <div style={{ marginTop: 4, fontSize: '10px', color: '#999' }}>Max 20MB</div>
           </div>
         )}
         
@@ -299,7 +329,7 @@ const AddGaneshIdolDialog = ({
         {isLoading ? (
           <div style={{ textAlign: 'center' }}>
             <LoadingOutlined style={{ fontSize: '32px', color: '#FF8F00' }} />
-            <div style={{ marginTop: '8px', color: '#FF8F00', fontSize: '12px' }}>Uploading video...</div>
+            <div style={{ marginTop: '8px', color: '#FF8F00', fontSize: '12px' }}>Uploading to ImageKit...</div>
             {videoData?.filename && (
               <div style={{ marginTop: '4px', fontSize: '10px', color: '#666' }}>{videoData.filename}</div>
             )}
@@ -325,7 +355,7 @@ const AddGaneshIdolDialog = ({
               background: 'rgba(0,0,0,0.7)', color: 'white', padding: '4px 8px',
               borderRadius: '4px', fontSize: '10px'
             }}>
-              <div>{videoData.duration || 'Video'}</div>
+              <div>ImageKit Video</div>
             </div>
 
             {index === 0 && (
@@ -357,7 +387,7 @@ const AddGaneshIdolDialog = ({
         ) : (
           <div style={{ textAlign: 'center' }}>
             <VideoCameraOutlined style={{ fontSize: '32px', color: '#FF8F00' }} />
-            <div style={{ marginTop: 8, color: '#FF8F00' }}>Upload Video</div>
+            <div style={{ marginTop: 8, color: '#FF8F00' }}>Upload to ImageKit</div>
             <div style={{ marginTop: 4, fontSize: '10px', color: '#999' }}>Max 100MB</div>
           </div>
         )}
@@ -379,6 +409,14 @@ const AddGaneshIdolDialog = ({
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <PlusOutlined style={{ color: '#FF8F00' }} />
           <span style={{ color: '#E65100' }}>🕉️ Add New Ganesh Idol</span>
+          <Button 
+            size="small" 
+            type="link" 
+            onClick={handleTestConnection}
+            style={{ marginLeft: 'auto' }}
+          >
+            Test ImageKit
+          </Button>
         </div>
       }
       open={open}
@@ -399,6 +437,20 @@ const AddGaneshIdolDialog = ({
       ]}
     >
       <Form form={form} layout="vertical" style={{ marginTop: '16px' }}>
+        
+        {/* ImageKit Connection Status */}
+        <Alert
+          message="Using ImageKit CDN"
+          description="Images and videos will be uploaded to ImageKit.io for optimized delivery and transformations."
+          type="info"
+          style={{ marginBottom: '16px' }}
+          icon={<CloudUploadOutlined />}
+          action={
+            <Button size="small" type="link" onClick={handleTestConnection}>
+              Test Connection
+            </Button>
+          }
+        />
         
         {/* Basic Information */}
         <Card title={<Space><CrownOutlined style={{ color: '#FF8F00' }} /><span style={{ color: '#E65100' }}>Basic Information</span></Space>} style={{ marginBottom: '16px' }}>
@@ -483,10 +535,11 @@ const AddGaneshIdolDialog = ({
           </Space>
         </Card>
 
-        {/* Media Upload */}
-        <Card title={<Space><PictureOutlined style={{ color: '#9C27B0' }} /><span>Media Gallery</span></Space>} style={{ marginBottom: '16px' }}>
+        {/* Media Upload with ImageKit */}
+        <Card title={<Space><PictureOutlined style={{ color: '#9C27B0' }} /><span>Media Gallery - ImageKit CDN</span></Space>} style={{ marginBottom: '16px' }}>
           <Alert
-            message="Upload up to 8 images and 3 videos. First media will be primary display."
+            message="Upload to ImageKit"
+            description="Upload high-quality images (max 20MB) and videos (max 100MB). Files will be automatically optimized and delivered via ImageKit CDN."
             type="info"
             style={{ marginBottom: '16px' }}
             icon={<InfoCircleOutlined />}
@@ -494,7 +547,7 @@ const AddGaneshIdolDialog = ({
           
           {/* Images */}
           <div style={{ marginBottom: '24px' }}>
-            <Title level={5}>Images (Max 8)</Title>
+            <Title level={5}>Images (Max 8) - ImageKit</Title>
             <Row gutter={[16, 16]}>
               {Array.from({ length: 8 }).map((_, index) => (
                 <Col span={6} key={index}>
@@ -506,7 +559,7 @@ const AddGaneshIdolDialog = ({
 
           {/* Videos */}
           <div>
-            <Title level={5}>Videos (Max 3)</Title>
+            <Title level={5}>Videos (Max 3) - ImageKit</Title>
             <Row gutter={[16, 16]}>
               {Array.from({ length: 3 }).map((_, index) => (
                 <Col span={8} key={index}>

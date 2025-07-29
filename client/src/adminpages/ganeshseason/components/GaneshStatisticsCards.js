@@ -1,3 +1,4 @@
+// Updated GaneshStatisticsCards.js with ImageKit utilities
 import React from 'react';
 import { Row, Col, Card, Typography, Avatar, Statistic } from 'antd';
 import {
@@ -14,7 +15,8 @@ import {
   PictureOutlined,
   WarningOutlined,
 } from '@ant-design/icons';
-import { countVideos, countImages } from '../../../utils/cloudinary';
+// UPDATED: Import from ImageKit utils instead of Cloudinary
+import { countVideos, countImages } from '../../../utils/imagekit';
 
 const { Title, Text } = Typography;
 
@@ -189,7 +191,7 @@ const GaneshStatisticsCards = ({ statistics }) => {
     }
   ];
 
-  // FIXED: Added the missing ganeshBusinessStats array
+  // Business stats remain the same
   const ganeshBusinessStats = [
     {
       title: 'Active Leads',
@@ -325,7 +327,7 @@ const GaneshStatisticsCards = ({ statistics }) => {
         </Row>
       </div>
 
-      {/* NEW: Media Statistics Section */}
+      {/* Media Statistics Section */}
       <div style={{ marginBottom: '32px' }}>
         <Title level={4} style={{ marginBottom: '16px', color: '#E91E63', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <PictureOutlined /> Media & Content Statistics

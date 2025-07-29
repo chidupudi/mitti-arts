@@ -4,7 +4,8 @@
   "description": "MittiArts serverless API functions",
   "main": "index.js",
   "dependencies": {
-    "nodemailer": "^6.10.1"
+    "nodemailer": "^6.10.1",
+    "imagekit": "^5.2.0"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

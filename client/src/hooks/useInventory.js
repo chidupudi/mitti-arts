@@ -1,3 +1,4 @@
+// hooks/useInventory.js - Updated to use ImageKit
 import { useState, useEffect, useCallback } from 'react';
 import { db } from '../Firebase/Firebase';
 import { 
@@ -8,7 +9,7 @@ import {
   updateDoc,
   doc 
 } from 'firebase/firestore';
-import { uploadToCloudinary, validateImageFile } from '../utils/cloudinary';
+import { uploadToImageKit, validateImageFile } from '../utils/imagekit';
 
 export const useInventory = () => {
   // Data states
@@ -276,7 +277,7 @@ export const useInventory = () => {
     }
   }, [editProduct, showSnackbar]);
 
-  // Image upload handler
+  // Image upload handler - UPDATED to use ImageKit
   const handleImageUpload = useCallback(async (e, index, isEdit = false) => {
     try {
       const file = e.target.files[0];
@@ -303,7 +304,8 @@ export const useInventory = () => {
         }));
       }
 
-      const imageUrl = await uploadToCloudinary(file);
+      // UPDATED: Use ImageKit instead of Cloudinary
+      const imageUrl = await uploadToImageKit(file, '/products');
 
       if (isEdit) {
         setEditProduct(prev => {

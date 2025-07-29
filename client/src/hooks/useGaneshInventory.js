@@ -1,4 +1,4 @@
-// client/src/hooks/useGaneshInventory.js - FIXED VERSION with proper video support
+// hooks/useGaneshInventory.js - Updated to use ImageKit
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { db } from '../Firebase/Firebase';
 import { 
@@ -10,8 +10,8 @@ import {
   doc
 } from 'firebase/firestore';
 
-// Import media utility functions
-import { countVideos, countImages } from '../utils/cloudinary';
+// Import media utility functions from ImageKit
+import { countVideos, countImages } from '../utils/imagekit';
 
 export const useGaneshInventory = () => {
   // Data states

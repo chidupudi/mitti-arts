@@ -1,4 +1,4 @@
-// Enhanced EditGaneshIdolDialog.js - Updated with animations and video support
+// Updated EditGaneshIdolDialog.js with ImageKit integration
 import React, { useState, useEffect } from 'react';
 import {
   Modal,
@@ -42,11 +42,11 @@ import {
   PictureOutlined,
 } from '@ant-design/icons';
 
-// FIXED: Import Cloudinary utilities with ES6 imports
+// UPDATED: Import from ImageKit utils instead of Cloudinary
 import { 
-  uploadToCloudinary, 
+  uploadToImageKit, 
   validateImageFile,
-  uploadVideoToCloudinary,
+  uploadVideoToImageKit,
   validateVideoFile,
   validateMediaFile, 
   isVideoUrl, 
@@ -55,7 +55,7 @@ import {
   formatDuration,
   countVideos,
   countImages
-} from '../../../utils/cloudinary';
+} from '../../../utils/imagekit';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -148,11 +148,11 @@ const EditGaneshIdolDialog = ({
   const [uploadingIndex, setUploadingIndex] = useState(null);
   const [uploadingVideoIndex, setUploadingVideoIndex] = useState(null);
   
-  // NEW: Enhanced upload progress states
+  // Enhanced upload progress states
   const [uploadProgress, setUploadProgress] = useState({});
   const [uploadSuccess, setUploadSuccess] = useState({});
   
-  // NEW: Video-related states
+  // Video-related states
   const [videoMetadata, setVideoMetadata] = useState({});
   const [videoUploadProgress, setVideoUploadProgress] = useState({});
 
@@ -183,7 +183,7 @@ const EditGaneshIdolDialog = ({
     onChange('features', updatedFeatures);
   };
 
-  // ENHANCED: Handle image upload with better animations
+  // UPDATED: Handle image upload with ImageKit
   const handleImageChange = async (e, index) => {
     try {
       const file = e.target.files[0];
@@ -191,7 +191,7 @@ const EditGaneshIdolDialog = ({
 
       // Validate file before upload
       if (file.type.startsWith('image/')) {
-        validateImageFile(file); // This now uses 10MB limit
+        validateImageFile(file);
       } else {
         throw new Error('Invalid file type. Please upload an image file.');
       }
@@ -212,8 +212,8 @@ const EditGaneshIdolDialog = ({
         }));
       }, 200);
 
-      // Upload to cloudinary
-      const mediaUrl = await uploadToCloudinary(file);
+      // UPDATED: Upload to ImageKit
+      const mediaUrl = await uploadToImageKit(file, '/ganesh-idols');
 
       // Complete progress
       clearInterval(progressInterval);
@@ -246,7 +246,7 @@ const EditGaneshIdolDialog = ({
     }
   };
 
-  // ENHANCED: Handle video upload with progress tracking
+  // UPDATED: Handle video upload with ImageKit
   const handleVideoChange = async (e, index) => {
     try {
       const file = e.target.files[0];
@@ -280,10 +280,10 @@ const EditGaneshIdolDialog = ({
         }));
       }, 300);
 
-      // Upload video to Cloudinary
-      const videoData = await uploadVideoToCloudinary(file, {
-        quality: 'auto',
-        thumbnailTime: 2 // Generate thumbnail at 2 seconds
+      // UPDATED: Upload video to ImageKit
+      const videoData = await uploadVideoToImageKit(file, {
+        folder: '/ganesh-videos',
+        thumbnailTime: 2
       });
 
       // Complete progress
@@ -351,7 +351,7 @@ const EditGaneshIdolDialog = ({
     onChange('images', newImages);
   };
 
-  // NEW: Remove video
+  // Remove video
   const removeVideo = (index) => {
     const newVideos = [...(idol.videos || Array(5).fill(null))];
     newVideos[index] = null;
@@ -373,7 +373,7 @@ const EditGaneshIdolDialog = ({
     return 2000; // Default
   };
 
-  // ENHANCED: Video upload card component with animations
+  // Video upload card component with animations
   const VideoUploadCard = ({ index }) => {
     const videoData = idol.videos?.[index];
     const isLoading = uploadingVideoIndex === index || videoData?.loading;
@@ -552,7 +552,7 @@ const EditGaneshIdolDialog = ({
     );
   };
 
-  // ENHANCED: Image upload component with animations
+  // Image upload component with animations
   const ImageUploadCard = ({ index }) => {
     const mediaUrl = idol.images?.[index];
     const isLoading = uploadingIndex === index || mediaUrl === 'loading';
@@ -1018,7 +1018,7 @@ const EditGaneshIdolDialog = ({
             )}
           </Card>
 
-          {/* ENHANCED: Media Upload Section with Tabs */}
+          {/* Media Upload Section with Tabs */}
           <Card 
             title={
               <div style={{ 

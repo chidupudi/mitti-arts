@@ -28,6 +28,7 @@
     "firebase-admin": "^13.4.0",
     "framer-motion": "^12.11.3",
     "gsap": "^3.13.0",
+    "imagekit-javascript": "^4.0.1",
     "lucide-react": "^0.510.0",
     "moment": "^2.30.1",
     "nodemailer": "^7.0.3",
