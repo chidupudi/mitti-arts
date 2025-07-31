@@ -354,6 +354,7 @@ const App = () => {
                   <Route path="/login" element={<AuthForm />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
 
+
                   {/* User Routes */}
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/cart" element={<Cart />} />
