@@ -1,4 +1,5 @@
-// client/src/adminpages/ganeshseason/components/AddGaneshIdolDialog.js - UPDATED for ImageKit
+// client/src/adminpages/ganeshseason/components/AddGaneshIdolDialog.js
+// Updated with ImageKit Widget (Frontend-Only Solution)
 import React, { useState } from 'react';
 import {
   Modal,
@@ -16,7 +17,6 @@ import {
   Tag,
   Alert,
   message,
-  Progress,
 } from 'antd';
 import {
   PlusOutlined,
@@ -27,21 +27,17 @@ import {
   CrownOutlined,
   StarOutlined,
   FireOutlined,
-  LoadingOutlined,
   VideoCameraOutlined,
   PlayCircleOutlined,
   PictureOutlined,
-  CheckCircleOutlined,
 } from '@ant-design/icons';
 
-// UPDATED: Import ImageKit utilities instead of Cloudinary
+// Import ImageKit widget utilities
 import { 
-  uploadToImageKit, 
+  uploadWithImageKitWidget, 
   validateImageFile,
-  uploadVideoToImageKit,
-  validateVideoFile,
-  testImageKitConnection,
-} from '../../../utils/imagekit';
+  validateVideoFile 
+} from '../../../utils/imagekit-widget';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -57,129 +53,44 @@ const AddGaneshIdolDialog = ({
   const [form] = Form.useForm();
   const [features, setFeatures] = useState(idol.features || []);
   const [newFeature, setNewFeature] = useState('');
-  const [uploadingIndex, setUploadingIndex] = useState(null);
-  const [uploadProgress, setUploadProgress] = useState({});
-  const [uploadSuccess, setUploadSuccess] = useState({});
 
   const handleChange = (field, value) => {
     setIdol({ ...idol, [field]: value });
     form.setFieldsValue({ [field]: value });
   };
 
-  // UPDATED: Handle media upload with ImageKit
-  const handleMediaUpload = async (e, index, mediaType) => {
+  // Widget-based upload handler
+  const handleWidgetUpload = async (index, mediaType) => {
     try {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      console.log(`🚀 Starting ${mediaType} upload:`, {
-        fileName: file.name,
-        fileSize: `${(file.size / (1024 * 1024)).toFixed(2)}MB`,
-        fileType: file.type
-      });
-
-      // Validation based on media type
-      if (mediaType === 'image') {
-        validateImageFile(file);
-      } else if (mediaType === 'video') {
-        validateVideoFile(file);
-        
-        // Check video limit
-        const currentVideos = (idol.videos || []).filter(v => v && v.url).length;
-        if (currentVideos >= 3) {
-          throw new Error('Maximum 3 videos allowed per idol.');
-        }
-      }
-
-      setUploadingIndex(index);
-      setUploadProgress({ [index]: 0 });
-
-      // Update UI to show loading
-      if (mediaType === 'image') {
+      console.log('🚀 Opening ImageKit upload widget...');
+      
+      const result = await uploadWithImageKitWidget();
+      
+      console.log('✅ Upload completed:', result);
+      
+      if (mediaType === 'image' || result.type === 'image') {
         const newImages = [...(idol.images || Array(8).fill(''))];
-        newImages[index] = 'loading';
+        newImages[index] = result.url;
         handleChange('images', newImages);
+        message.success('Image uploaded successfully via ImageKit Widget!');
       } else {
         const newVideos = [...(idol.videos || Array(3).fill(null))];
-        newVideos[index] = { loading: true, filename: file.name };
-        handleChange('videos', newVideos);
-      }
-
-      let uploadResult;
-      
-      if (mediaType === 'image') {
-        // Upload image to ImageKit
-        uploadResult = await uploadToImageKit(file, {
-          fileName: `ganesh_image_${Date.now()}_${index}`,
-          folder: '/images/ganesh-idols',
-          tags: ['ganesh', 'idol', 'mittiarts'],
-          onProgress: (progress) => {
-            const percent = Math.round((progress.loaded / progress.total) * 100);
-            setUploadProgress({ [index]: percent });
-          }
-        });
-        
-        // Update images array with ImageKit URL
-        const updatedImages = [...(idol.images || Array(8).fill(''))];
-        updatedImages[index] = uploadResult.url;
-        handleChange('images', updatedImages);
-        
-      } else if (mediaType === 'video') {
-        // Upload video to ImageKit
-        uploadResult = await uploadVideoToImageKit(file, {
-          fileName: `ganesh_video_${Date.now()}_${index}`,
-          folder: '/videos/ganesh-idols',
-          title: `${idol.name || 'Ganesh Idol'} - Video ${index + 1}`,
-          tags: ['ganesh', 'idol', 'video', 'mittiarts'],
-          onProgress: (progress) => {
-            const percent = Math.round((progress.loaded / progress.total) * 100);
-            setUploadProgress({ [`video_${index}`]: percent });
-          }
-        });
-        
-        // Update videos array with ImageKit data
-        const updatedVideos = [...(idol.videos || Array(3).fill(null))];
-        updatedVideos[index] = {
+        newVideos[index] = {
           type: 'video',
-          url: uploadResult.src,
-          src: uploadResult.src,
-          thumbnail: uploadResult.thumbnail,
-          title: uploadResult.title,
-          fileId: uploadResult.fileId,
-          format: uploadResult.format,
-          size: uploadResult.size,
-          uploadedAt: uploadResult.uploadedAt
+          url: result.url,
+          src: result.url,
+          thumbnail: `${result.url}?tr=so-1.0`, // ImageKit thumbnail transformation
+          title: `Video ${index + 1}`,
+          fileId: result.fileId,
+          uploadedAt: new Date().toISOString()
         };
-        handleChange('videos', updatedVideos);
+        handleChange('videos', newVideos);
+        message.success('Video uploaded successfully via ImageKit Widget!');
       }
-
-      // Complete progress
-      setUploadProgress({ [index]: 100 });
-
-      // Success animation
-      setUploadSuccess({ [index]: true });
-      setTimeout(() => setUploadSuccess({}), 1000);
-
-      message.success(`${mediaType === 'video' ? 'Video' : 'Image'} uploaded successfully to ImageKit!`);
       
     } catch (error) {
-      console.error('Error uploading media:', error);
-      
-      // Reset on error
-      if (mediaType === 'image') {
-        const resetImages = [...(idol.images || Array(8).fill(''))];
-        resetImages[index] = '';
-        handleChange('images', resetImages);
-      } else {
-        const resetVideos = [...(idol.videos || Array(3).fill(null))];
-        resetVideos[index] = null;
-        handleChange('videos', resetVideos);
-      }
-      
-      message.error(error.message || `Failed to upload ${mediaType}`);
-    } finally {
-      setUploadingIndex(null);
-      setUploadProgress({});
+      console.error('Error with ImageKit widget upload:', error);
+      message.error(error.message || 'Upload failed');
     }
   };
 
@@ -212,26 +123,9 @@ const AddGaneshIdolDialog = ({
     handleChange('features', updatedFeatures);
   };
 
-  // Test ImageKit connection
-  const handleTestConnection = async () => {
-    try {
-      const result = await testImageKitConnection();
-      if (result.success) {
-        message.success('✅ ImageKit connection successful!');
-      } else {
-        message.error(`❌ ImageKit connection failed: ${result.error}`);
-      }
-    } catch (error) {
-      message.error(`❌ ImageKit connection test failed: ${error.message}`);
-    }
-  };
-
-  // Image Upload Component
-  const ImageUploadCard = ({ index }) => {
+  // Updated Upload Card Component for Widget
+  const ImageUploadCardWidget = ({ index }) => {
     const imageUrl = idol.images?.[index];
-    const isLoading = uploadingIndex === index || imageUrl === 'loading';
-    const progress = uploadProgress[index] || 0;
-    const isSuccess = uploadSuccess[index];
 
     return (
       <Card
@@ -239,37 +133,41 @@ const AddGaneshIdolDialog = ({
           height: '140px',
           border: '2px dashed #FFB74D',
           borderRadius: '8px',
-          cursor: !imageUrl ? 'pointer' : 'default',
+          cursor: 'pointer',
+          transition: 'all 0.3s ease',
         }}
-        bodyStyle={{ padding: 0, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        onClick={() => {
-          if (!imageUrl && !isLoading) {
-            document.getElementById(`image-upload-${index}`).click();
-          }
+        bodyStyle={{ 
+          padding: 0, 
+          height: '100%', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center' 
         }}
+        onClick={() => handleWidgetUpload(index, 'image')}
+        hoverable
       >
-        {isLoading ? (
-          <div style={{ textAlign: 'center' }}>
-            <LoadingOutlined style={{ fontSize: '32px', color: '#FF8F00' }} />
-            <div style={{ marginTop: '8px', color: '#FF8F00', fontSize: '12px' }}>Uploading to ImageKit...</div>
-            <Progress percent={progress} size="small" style={{ marginTop: '8px', width: '60px' }} />
-          </div>
-        ) : imageUrl ? (
+        {imageUrl ? (
           <div style={{ position: 'relative', width: '100%', height: '100%' }}>
             <img
               src={imageUrl}
               alt={`Ganesh Idol ${index + 1}`}
-              style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '6px' }}
+              style={{ 
+                width: '100%', 
+                height: '100%', 
+                objectFit: 'cover', 
+                borderRadius: '6px' 
+              }}
             />
-            {isSuccess && (
-              <CheckCircleOutlined style={{ position: 'absolute', top: '4px', right: '40px', color: '#52c41a', fontSize: '16px' }} />
-            )}
             <Button
               type="primary"
               danger
               size="small"
               icon={<DeleteOutlined />}
-              style={{ position: 'absolute', top: '4px', right: '4px' }}
+              style={{ 
+                position: 'absolute', 
+                top: '4px', 
+                right: '4px' 
+              }}
               onClick={(e) => {
                 e.stopPropagation();
                 removeMedia(index, 'image');
@@ -277,9 +175,15 @@ const AddGaneshIdolDialog = ({
             />
             {index === 0 && (
               <div style={{
-                position: 'absolute', bottom: '4px', left: '4px',
-                background: 'rgba(255, 143, 0, 0.9)', color: 'white',
-                padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold'
+                position: 'absolute',
+                bottom: '4px',
+                left: '4px',
+                background: 'rgba(255, 143, 0, 0.9)',
+                color: 'white',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                fontSize: '10px',
+                fontWeight: 'bold'
               }}>
                 PRIMARY
               </div>
@@ -288,28 +192,19 @@ const AddGaneshIdolDialog = ({
         ) : (
           <div style={{ textAlign: 'center' }}>
             <CloudUploadOutlined style={{ fontSize: '32px', color: '#FF8F00' }} />
-            <div style={{ marginTop: 8, color: '#FF6F00' }}>Upload to ImageKit</div>
-            <div style={{ marginTop: 4, fontSize: '10px', color: '#999' }}>Max 20MB</div>
+            <div style={{ marginTop: 8, color: '#FF6F00' }}>ImageKit Widget</div>
+            <div style={{ marginTop: 4, fontSize: '10px', color: '#999' }}>
+              Click to upload
+            </div>
           </div>
         )}
-        
-        <input
-          type="file"
-          id={`image-upload-${index}`}
-          style={{ display: 'none' }}
-          accept="image/*"
-          onChange={(e) => handleMediaUpload(e, index, 'image')}
-        />
       </Card>
     );
   };
 
-  // Video Upload Component
-  const VideoUploadCard = ({ index }) => {
+  // Video Upload Card Component for Widget
+  const VideoUploadCardWidget = ({ index }) => {
     const videoData = idol.videos?.[index];
-    const isLoading = uploadingIndex === `video_${index}` || videoData?.loading;
-    const progress = uploadProgress[`video_${index}`] || 0;
-    const isSuccess = uploadSuccess[`video_${index}`];
 
     return (
       <Card
@@ -317,67 +212,95 @@ const AddGaneshIdolDialog = ({
           height: '160px',
           border: '2px dashed #FF8F00',
           borderRadius: '8px',
-          cursor: !videoData ? 'pointer' : 'default',
+          cursor: 'pointer',
+          transition: 'all 0.3s ease',
         }}
-        bodyStyle={{ padding: 0, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        onClick={() => {
-          if (!videoData && !isLoading) {
-            document.getElementById(`video-upload-${index}`).click();
-          }
+        bodyStyle={{ 
+          padding: 0, 
+          height: '100%', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center' 
         }}
+        onClick={() => handleWidgetUpload(index, 'video')}
+        hoverable
       >
-        {isLoading ? (
-          <div style={{ textAlign: 'center' }}>
-            <LoadingOutlined style={{ fontSize: '32px', color: '#FF8F00' }} />
-            <div style={{ marginTop: '8px', color: '#FF8F00', fontSize: '12px' }}>Uploading to ImageKit...</div>
-            {videoData?.filename && (
-              <div style={{ marginTop: '4px', fontSize: '10px', color: '#666' }}>{videoData.filename}</div>
-            )}
-            <Progress percent={progress} size="small" style={{ marginTop: '8px', width: '80px' }} />
-          </div>
-        ) : videoData ? (
+        {videoData ? (
           <div style={{ position: 'relative', width: '100%', height: '100%' }}>
             <img
               src={videoData.thumbnail}
               alt={videoData.title || `Video ${index + 1}`}
-              style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '6px' }}
+              style={{ 
+                width: '100%', 
+                height: '100%', 
+                objectFit: 'cover', 
+                borderRadius: '6px' 
+              }}
+              onError={(e) => {
+                e.target.style.backgroundColor = '#f0f0f0';
+                e.target.style.display = 'flex';
+                e.target.style.alignItems = 'center';
+                e.target.style.justifyContent = 'center';
+                e.target.innerHTML = '🎥';
+              }}
             />
             
+            {/* Play Icon Overlay */}
             <div style={{
-              position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-              color: 'white', fontSize: '32px', textShadow: '0 2px 8px rgba(0,0,0,0.6)'
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              color: 'white',
+              fontSize: '32px',
+              textShadow: '0 2px 8px rgba(0,0,0,0.6)',
             }}>
               <PlayCircleOutlined />
             </div>
 
+            {/* Video Info */}
             <div style={{
-              position: 'absolute', bottom: '4px', left: '4px', right: '4px',
-              background: 'rgba(0,0,0,0.7)', color: 'white', padding: '4px 8px',
-              borderRadius: '4px', fontSize: '10px'
+              position: 'absolute',
+              bottom: '4px',
+              left: '4px',
+              right: '4px',
+              background: 'rgba(0,0,0,0.7)',
+              color: 'white',
+              padding: '4px 8px',
+              borderRadius: '4px',
+              fontSize: '10px',
             }}>
               <div>ImageKit Video</div>
             </div>
 
+            {/* Primary Video Badge */}
             {index === 0 && (
               <div style={{
-                position: 'absolute', top: '4px', left: '4px',
-                background: 'rgba(255, 143, 0, 0.9)', color: 'white',
-                padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold'
+                position: 'absolute',
+                top: '4px',
+                left: '4px',
+                background: 'rgba(255, 143, 0, 0.9)',
+                color: 'white',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                fontSize: '10px',
+                fontWeight: 'bold'
               }}>
                 PRIMARY
               </div>
             )}
 
-            {isSuccess && (
-              <CheckCircleOutlined style={{ position: 'absolute', top: '4px', right: '40px', color: '#52c41a', fontSize: '16px' }} />
-            )}
-
+            {/* Delete Button */}
             <Button
               type="primary"
               danger
               size="small"
               icon={<DeleteOutlined />}
-              style={{ position: 'absolute', top: '4px', right: '4px' }}
+              style={{
+                position: 'absolute',
+                top: '4px',
+                right: '4px',
+              }}
               onClick={(e) => {
                 e.stopPropagation();
                 removeMedia(index, 'video');
@@ -387,18 +310,12 @@ const AddGaneshIdolDialog = ({
         ) : (
           <div style={{ textAlign: 'center' }}>
             <VideoCameraOutlined style={{ fontSize: '32px', color: '#FF8F00' }} />
-            <div style={{ marginTop: 8, color: '#FF8F00' }}>Upload to ImageKit</div>
-            <div style={{ marginTop: 4, fontSize: '10px', color: '#999' }}>Max 100MB</div>
+            <div style={{ marginTop: 8, color: '#FF8F00' }}>ImageKit Widget</div>
+            <div style={{ marginTop: 4, fontSize: '10px', color: '#999' }}>
+              Click to upload video
+            </div>
           </div>
         )}
-        
-        <input
-          type="file"
-          id={`video-upload-${index}`}
-          style={{ display: 'none' }}
-          accept="video/*"
-          onChange={(e) => handleMediaUpload(e, `video_${index}`, 'video')}
-        />
       </Card>
     );
   };
@@ -408,29 +325,27 @@ const AddGaneshIdolDialog = ({
       title={
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <PlusOutlined style={{ color: '#FF8F00' }} />
-          <span style={{ color: '#E65100' }}>🕉️ Add New Ganesh Idol</span>
-          <Button 
-            size="small" 
-            type="link" 
-            onClick={handleTestConnection}
-            style={{ marginLeft: 'auto' }}
-          >
-            Test ImageKit
-          </Button>
+          <span style={{ color: '#E65100' }}>🕉️ Add New Ganesh Idol - ImageKit Widget</span>
         </div>
       }
       open={open}
       onCancel={onClose}
       width={1000}
       footer={[
-        <Button key="cancel" onClick={onClose} size="large">Cancel</Button>,
+        <Button key="cancel" onClick={onClose} size="large">
+          Cancel
+        </Button>,
         <Button 
           key="save" 
           type="primary" 
           icon={<SaveOutlined />}
           onClick={onSave}
           size="large"
-          style={{ background: 'linear-gradient(135deg, #FF8F00 0%, #FFB74D 100%)', border: 'none', fontWeight: '600' }}
+          style={{ 
+            background: 'linear-gradient(135deg, #FF8F00 0%, #FFB74D 100%)', 
+            border: 'none', 
+            fontWeight: '600' 
+          }}
         >
           🕉️ Add Ganesh Idol
         </Button>,
@@ -438,25 +353,32 @@ const AddGaneshIdolDialog = ({
     >
       <Form form={form} layout="vertical" style={{ marginTop: '16px' }}>
         
-        {/* ImageKit Connection Status */}
+        {/* ImageKit Widget Info */}
         <Alert
-          message="Using ImageKit CDN"
-          description="Images and videos will be uploaded to ImageKit.io for optimized delivery and transformations."
-          type="info"
+          message="Using ImageKit Upload Widget"
+          description="No backend authentication required! Click on upload areas to open the ImageKit widget. Supports images (20MB) and videos (100MB)."
+          type="success"
           style={{ marginBottom: '16px' }}
           icon={<CloudUploadOutlined />}
-          action={
-            <Button size="small" type="link" onClick={handleTestConnection}>
-              Test Connection
-            </Button>
-          }
         />
         
         {/* Basic Information */}
-        <Card title={<Space><CrownOutlined style={{ color: '#FF8F00' }} /><span style={{ color: '#E65100' }}>Basic Information</span></Space>} style={{ marginBottom: '16px' }}>
+        <Card 
+          title={
+            <Space>
+              <CrownOutlined style={{ color: '#FF8F00' }} />
+              <span style={{ color: '#E65100' }}>Basic Information</span>
+            </Space>
+          } 
+          style={{ marginBottom: '16px' }}
+        >
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item label={<Text strong>Idol Name *</Text>} name="name" rules={[{ required: true }]}>
+              <Form.Item 
+                label={<Text strong>Idol Name *</Text>} 
+                name="name" 
+                rules={[{ required: true }]}
+              >
                 <Input
                   value={idol.name}
                   onChange={e => handleChange('name', e.target.value)}
@@ -467,10 +389,28 @@ const AddGaneshIdolDialog = ({
             </Col>
             <Col span={12}>
               <Form.Item label={<Text strong>Category *</Text>} name="category">
-                <Select value={idol.category} onChange={value => handleChange('category', value)}>
-                  <Option value="traditional"><Space><CrownOutlined style={{ color: '#8E24AA' }} /> Traditional</Space></Option>
-                  <Option value="modern"><Space><StarOutlined style={{ color: '#1976D2' }} /> Modern</Space></Option>
-                  <Option value="premium"><Space><FireOutlined style={{ color: '#D32F2F' }} /> Premium</Space></Option>
+                <Select 
+                  value={idol.category} 
+                  onChange={value => handleChange('category', value)}
+                >
+                  <Option value="traditional">
+                    <Space>
+                      <CrownOutlined style={{ color: '#8E24AA' }} /> 
+                      Traditional
+                    </Space>
+                  </Option>
+                  <Option value="modern">
+                    <Space>
+                      <StarOutlined style={{ color: '#1976D2' }} /> 
+                      Modern
+                    </Space>
+                  </Option>
+                  <Option value="premium">
+                    <Space>
+                      <FireOutlined style={{ color: '#D32F2F' }} /> 
+                      Premium
+                    </Space>
+                  </Option>
                 </Select>
               </Form.Item>
             </Col>
@@ -489,7 +429,11 @@ const AddGaneshIdolDialog = ({
         <Card title="Pricing Details" style={{ marginBottom: '16px' }}>
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item label={<Text strong>Price (₹) *</Text>} name="price" rules={[{ required: true }]}>
+              <Form.Item 
+                label={<Text strong>Price (₹) *</Text>} 
+                name="price" 
+                rules={[{ required: true }]}
+              >
                 <InputNumber
                   style={{ width: '100%' }}
                   value={idol.price}
@@ -524,22 +468,40 @@ const AddGaneshIdolDialog = ({
               placeholder="Add a feature"
               onPressEnter={addFeature}
             />
-            <Button type="primary" icon={<PlusOutlined />} onClick={addFeature}>Add</Button>
+            <Button 
+              type="primary" 
+              icon={<PlusOutlined />} 
+              onClick={addFeature}
+            >
+              Add
+            </Button>
           </Space.Compact>
           <Space wrap>
             {features.map((feature, index) => (
-              <Tag key={index} closable onClose={() => removeFeature(feature)}>
+              <Tag 
+                key={index} 
+                closable 
+                onClose={() => removeFeature(feature)}
+              >
                 {feature}
               </Tag>
             ))}
           </Space>
         </Card>
 
-        {/* Media Upload with ImageKit */}
-        <Card title={<Space><PictureOutlined style={{ color: '#9C27B0' }} /><span>Media Gallery - ImageKit CDN</span></Space>} style={{ marginBottom: '16px' }}>
+        {/* Media Upload with ImageKit Widget */}
+        <Card 
+          title={
+            <Space>
+              <PictureOutlined style={{ color: '#9C27B0' }} />
+              <span>Media Gallery - ImageKit Widget</span>
+            </Space>
+          } 
+          style={{ marginBottom: '16px' }}
+        >
           <Alert
-            message="Upload to ImageKit"
-            description="Upload high-quality images (max 20MB) and videos (max 100MB). Files will be automatically optimized and delivered via ImageKit CDN."
+            message="ImageKit Upload Widget"
+            description="Click on any upload area to open the ImageKit widget. No backend authentication required!"
             type="info"
             style={{ marginBottom: '16px' }}
             icon={<InfoCircleOutlined />}
@@ -547,11 +509,11 @@ const AddGaneshIdolDialog = ({
           
           {/* Images */}
           <div style={{ marginBottom: '24px' }}>
-            <Title level={5}>Images (Max 8) - ImageKit</Title>
+            <Title level={5}>Images (Max 8) - Widget Upload</Title>
             <Row gutter={[16, 16]}>
               {Array.from({ length: 8 }).map((_, index) => (
                 <Col span={6} key={index}>
-                  <ImageUploadCard index={index} />
+                  <ImageUploadCardWidget index={index} />
                 </Col>
               ))}
             </Row>
@@ -559,11 +521,11 @@ const AddGaneshIdolDialog = ({
 
           {/* Videos */}
           <div>
-            <Title level={5}>Videos (Max 3) - ImageKit</Title>
+            <Title level={5}>Videos (Max 3) - Widget Upload</Title>
             <Row gutter={[16, 16]}>
               {Array.from({ length: 3 }).map((_, index) => (
                 <Col span={8} key={index}>
-                  <VideoUploadCard index={index} />
+                  <VideoUploadCardWidget index={index} />
                 </Col>
               ))}
             </Row>
