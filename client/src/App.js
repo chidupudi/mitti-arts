@@ -1,7 +1,6 @@
 // client/src/App.js - Updated with Scrolling Banner
 import React, { useState, useEffect, Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
-import { Analytics } from '@vercel/analytics/react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';import { Analytics } from '@vercel/analytics/react';
 import { Box, useTheme, useMediaQuery, CssBaseline, ThemeProvider, createTheme, CircularProgress } from '@mui/material';
 import { auth, db } from './Firebase/Firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -337,7 +336,7 @@ const App = () => {
               <Suspense fallback={<LoadingFallback />}>
                 <Routes>
                   {/* Public Routes */}
-                  <Route path="/" element={<Welcome />} />
+                   <Route path="/" element={<Navigate to="/products" replace />} />
                   <Route path="/about" element={<About />} />
                   <Route path="/policies" element={<Policies />} />
                   <Route path="/contactus" element={<ContactUs />} />
