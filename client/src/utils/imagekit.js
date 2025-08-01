@@ -1,135 +1,123 @@
-// client/src/utils/imagekit-widget.js
-// Complete frontend-only solution using ImageKit Upload Widget
-// Install: npm install imagekit-javascript
+// src/utils/imagekit.js
 
-// Simple frontend-only upload using ImageKit's upload widget
+import ImageKit from "imagekit-javascript";
+
+// Initialize ImageKit
+const imagekit = new ImageKit({
+  publicKey: "YOUR_PUBLIC_KEY", // Replace with your ImageKit public key
+  urlEndpoint: "https://ik.imagekit.io/mittiarts", // Your URL-endpoint
+  authenticationEndpoint: "https://your-server.com/auth" // Optional: for server-side security
+});
+
+/**
+ * Validates an image file based on type and size.
+ * @param {File} file - The file to validate.
+ */
+export const validateImageFile = (file) => {
+  if (!file.type.startsWith('image/')) {
+    throw new Error('Invalid file type. Please select an image.');
+  }
+  if (file.size > 20 * 1024 * 1024) { // 20MB
+    throw new Error('File size exceeds 20MB.');
+  }
+  return true;
+};
+
+/**
+ * Validates a video file based on type and size.
+ * @param {File} file - The file to validate.
+ */
+export const validateVideoFile = (file) => {
+  if (!file.type.startsWith('video/')) {
+    throw new Error('Invalid file type. Please select a video.');
+  }
+  if (file.size > 100 * 1024 * 1024) { // 100MB
+    throw new Error('File size exceeds 100MB.');
+  }
+  return true;
+};
+
+/**
+ * A simple direct upload function.
+ * @param {File} file - The file to upload.
+ * @param {object} options - Upload options (folder, tags, etc.).
+ * @returns {Promise<object>} - A promise that resolves with the upload result.
+ */
+export const simpleImageKitUpload = (file, options = {}) => {
+  return imagekit.upload({
+    file: file,
+    fileName: file.name,
+    ...options,
+  });
+};
+
+/**
+ * Opens the ImageKit Media Library Widget for uploading.
+ * @returns {Promise<object>} A promise that resolves with the first selected file's data.
+ */
 export const uploadWithImageKitWidget = () => {
   return new Promise((resolve, reject) => {
-    // Create ImageKit upload widget
-    const script = document.createElement('script');
-    script.src = 'https://upload-widget.imagekit.io/sdk/v1/bundle.js';
-    script.onload = () => {
-      const uploadWidget = window.ImageKitUploadWidget.create({
-        publicKey: "public_12/rKQGfyqwTYKoTiY0Aeo8fKqIJiY=",
-        urlEndpoint: "https://ik.imagekit.io/mittiarts",
-        
-        // Widget configuration
-        sources: ['local_file_system', 'url', 'camera'], // Allow local files, URLs, and camera
-        folder: '/images/ganesh-idols',
-        tags: ['ganesh', 'idol', 'mittiarts'],
-        useUniqueFileName: true,
-        
-        // Styling
-        modal: {
-          overlay: 'rgba(0, 0, 0, 0.8)',
-          background: '#ffffff',
-          borderRadius: '8px',
-          maxWidth: '600px'
-        },
-        
-        // File restrictions
-        accept: 'image/*,video/*',
-        maxFileSize: 20 * 1024 * 1024, // 20MB
-        
-        onSuccess: (result) => {
-          console.log('✅ ImageKit upload successful:', result);
-          resolve({
-            url: result.url,
-            fileId: result.fileId,
-            name: result.name,
-            type: result.fileType.startsWith('image/') ? 'image' : 'video',
-            size: result.size,
-            width: result.width,
-            height: result.height
-          });
-        },
-        
-        onError: (error) => {
-          console.error('❌ ImageKit upload error:', error);
-          reject(new Error(`Upload failed: ${error.message}`));
-        }
-      });
-      
-      // Open the upload widget
-      uploadWidget.open();
-    };
+    const scriptId = 'imagekit-media-library-widget-script';
     
+    // Check if the script is already loaded
+    if (document.getElementById(scriptId)) {
+      initializeWidget(resolve, reject);
+      return;
+    }
+
+    // Load the script dynamically
+    const script = document.createElement('script');
+    script.id = scriptId;
+    script.src = 'https://unpkg.com/imagekit-media-library-widget/dist/imagekit-media-library-widget.min.js';
+    script.async = true;
+
+    script.onload = () => {
+      initializeWidget(resolve, reject);
+    };
+
     script.onerror = () => {
       reject(new Error('Failed to load ImageKit upload widget'));
     };
-    
+
     document.head.appendChild(script);
   });
 };
 
-// Simple direct upload function (no authentication needed)
-export const simpleImageKitUpload = async (file) => {
+/**
+ * Helper to initialize the widget and handle callbacks.
+ */
+function initializeWidget(resolve, reject) {
   try {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('publicKey', 'public_12/rKQGfyqwTYKoTiY0Aeo8fKqIJiY=');
-    formData.append('folder', '/images/ganesh-idols');
-    formData.append('fileName', `ganesh_${Date.now()}_${file.name}`);
-    
-    const response = await fetch('https://upload.imagekit.io/api/v1/files/upload', {
-      method: 'POST',
-      body: formData
+    const mediaLibraryWidget = new window.IKMediaLibraryWidget({
+      container: '#media-library-container', // A temporary container is created
+      view: 'modal',
+      renderOpenButton: false, // We will open it programmatically
+      imagekit: imagekit, // Pass the initialized ImageKit instance
+      callback: (payload) => {
+        if (payload.event === 'close') {
+          // You can handle close event if needed
+        }
+        if (payload.event === 'insert') {
+          // Resolve with the first selected item
+          if (payload.data && payload.data.length > 0) {
+            resolve(payload.data[0]);
+          }
+        }
+      },
     });
-    
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Upload failed');
+
+    // We need a dummy container for the widget to attach to
+    let container = document.getElementById('media-library-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'media-library-container';
+      document.body.appendChild(container);
     }
     
-    const result = await response.json();
-    
-    return {
-      url: result.url,
-      fileId: result.fileId,
-      name: result.name
-    };
-    
+    // Open the widget programmatically
+    mediaLibraryWidget.open();
+
   } catch (error) {
-    console.error('Simple upload error:', error);
-    throw error;
+    reject(error);
   }
-};
-
-// Validation functions
-export const validateImageFile = (file) => {
-  const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'];
-  const maxSize = 20 * 1024 * 1024; // 20MB for ImageKit free plan
-
-  if (!validTypes.includes(file.type)) {
-    throw new Error('Invalid file type. Please upload JPEG, PNG, GIF, WebP, or BMP images.');
-  }
-
-  if (file.size > maxSize) {
-    throw new Error('File size too large. Maximum size is 20MB for images.');
-  }
-
-  return true;
-};
-
-export const validateVideoFile = (file) => {
-  const validTypes = [
-    'video/mp4',
-    'video/webm',
-    'video/ogg',
-    'video/avi',
-    'video/mov',
-    'video/wmv'
-  ];
-  
-  const maxSize = 100 * 1024 * 1024; // 100MB for ImageKit free plan
-
-  if (!validTypes.includes(file.type)) {
-    throw new Error('Invalid video file type. Please upload MP4, WebM, OGG, AVI, MOV, or WMV videos.');
-  }
-
-  if (file.size > maxSize) {
-    throw new Error('Video file size too large. Maximum size is 100MB.');
-  }
-
-  return true;
-};
+}

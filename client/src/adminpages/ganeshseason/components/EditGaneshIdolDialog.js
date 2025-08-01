@@ -44,14 +44,9 @@ import {
 
 // UPDATED: Import ImageKit utilities with correct named imports
 import { 
-  uploadToImageKit, 
+  simpleImageKitUpload, 
   validateImageFile,
-  uploadVideoToImageKit,
   validateVideoFile,
-  getVideoMetadata,
-  formatDuration,
-  countVideos,
-  countImages
 } from '../../../utils/imagekit';
 
 const { Title, Text } = Typography;
@@ -198,7 +193,8 @@ const EditGaneshIdolDialog = ({
       onChange('images', newImages);
 
       // Upload to ImageKit with progress tracking
-      const result = await uploadToImageKit(file, {
+      // Replaced 'uploadToImageKit' with 'simpleImageKitUpload'
+      const result = await simpleImageKitUpload(file, {
         fileName: `ganesh_edit_image_${Date.now()}_${index}`,
         folder: '/images/ganesh-idols',
         tags: ['ganesh', 'idol', 'edit', 'mittiarts'],
@@ -244,18 +240,6 @@ const EditGaneshIdolDialog = ({
       // Validate video file
       validateVideoFile(file);
 
-      // Get video metadata
-      try {
-        const metadata = await getVideoMetadata(file);
-        console.log('Video metadata:', metadata);
-        setVideoMetadata(prev => ({
-          ...prev,
-          [index]: metadata
-        }));
-      } catch (metaError) {
-        console.warn('Could not get video metadata:', metaError);
-      }
-      
       // Set loading state
       setUploadingVideoIndex(index);
       setVideoUploadProgress({ [index]: 0 });
@@ -270,7 +254,8 @@ const EditGaneshIdolDialog = ({
       onChange('videos', newVideos);
 
       // Upload video to ImageKit
-      const result = await uploadVideoToImageKit(file, {
+      // Replaced 'uploadVideoToImageKit' with 'simpleImageKitUpload'
+      const result = await simpleImageKitUpload(file, {
         fileName: `ganesh_edit_video_${Date.now()}_${index}`,
         folder: '/videos/ganesh-idols',
         title: `${idol.name || 'Ganesh Idol'} - Video ${index + 1}`,
@@ -285,14 +270,14 @@ const EditGaneshIdolDialog = ({
       const updatedVideos = [...(idol.videos || Array(5).fill(null))];
       updatedVideos[index] = {
         type: 'video',
-        src: result.src,
-        url: result.src,
-        thumbnail: result.thumbnail,
-        title: result.title,
+        src: result.url, // Assuming simpleImageKitUpload returns a url
+        url: result.url,
+        thumbnail: result.thumbnailUrl, // Assuming it returns thumbnailUrl
+        title: file.name,
         fileId: result.fileId,
-        format: result.format,
+        format: file.type.split('/')[1],
         size: result.size,
-        uploadedAt: result.uploadedAt
+        uploadedAt: new Date().toISOString()
       };
       onChange('videos', updatedVideos);
 
@@ -420,7 +405,7 @@ const EditGaneshIdolDialog = ({
           <div style={{ position: 'relative', width: '100%', height: '100%' }}>
             {/* Video Thumbnail */}
             <img
-              src={videoData.thumbnail}
+              src={videoData.thumbnail || `${videoData.url}?tr=so-1.0`} // ImageKit thumbnail transformation
               alt={videoData.title || `Video ${index + 1}`}
               style={{
                 width: '100%',

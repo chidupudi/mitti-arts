@@ -15,8 +15,6 @@ import {
   PictureOutlined,
   WarningOutlined,
 } from '@ant-design/icons';
-// UPDATED: Import from ImageKit utils instead of Cloudinary
-import { countVideos, countImages } from '../../../utils/imagekit';
 
 const { Title, Text } = Typography;
 
@@ -49,14 +47,15 @@ const GaneshStatisticsCards = ({ statistics }) => {
 
       idols.forEach(idol => {
         const images = idol.images || [];
-        const imageCount = countImages(images);
-        const videoCount = countVideos(images);
+        // Use local logic to count images and videos
+        const imageCount = (images || []).filter(img => img && typeof img === 'string').length;
+        const videoCount = (idol.videos || []).filter(vid => vid && typeof vid === 'object').length;
         
         totalImgs += imageCount;
         totalVids += videoCount;
         
         if (videoCount > 0) idolsWithVids++;
-        if (images.filter(img => img && img !== 'loading').length === 0) idolsWithoutMed++;
+        if (imageCount === 0 && videoCount === 0) idolsWithoutMed++;
       });
 
       return {
@@ -373,7 +372,7 @@ const GaneshStatisticsCards = ({ statistics }) => {
             <Statistic
               title="Most Popular Category"
               value={traditionalIdols >= modernIdols && traditionalIdols >= premiumIdols ? 'Traditional' : 
-                     modernIdols >= premiumIdols ? 'Modern' : 'Premium'}
+                      modernIdols >= premiumIdols ? 'Modern' : 'Premium'}
               valueStyle={{ color: '#FF8F00', fontSize: '18px', fontWeight: 'bold' }}
             />
           </Col>

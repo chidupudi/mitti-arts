@@ -33,11 +33,10 @@ import {
 } from '@ant-design/icons';
 
 // Import ImageKit widget utilities
+// UPDATED: The path is now to your corrected imagekit.js file
 import { 
   uploadWithImageKitWidget, 
-  validateImageFile,
-  validateVideoFile 
-} from '../../../utils/imagekit-widget';
+} from '../../../utils/imagekit';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -68,7 +67,7 @@ const AddGaneshIdolDialog = ({
       
       console.log('✅ Upload completed:', result);
       
-      if (mediaType === 'image' || result.type === 'image') {
+      if (result.fileType === 'image') {
         const newImages = [...(idol.images || Array(8).fill(''))];
         newImages[index] = result.url;
         handleChange('images', newImages);

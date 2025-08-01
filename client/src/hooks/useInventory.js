@@ -9,7 +9,8 @@ import {
   updateDoc,
   doc 
 } from 'firebase/firestore';
-import { uploadToImageKit, validateImageFile } from '../utils/imagekit';
+// UPDATED: Corrected the import from 'uploadToImageKit' to 'simpleImageKitUpload'
+import { simpleImageKitUpload, validateImageFile } from '../utils/imagekit';
 
 export const useInventory = () => {
   // Data states
@@ -304,8 +305,10 @@ export const useInventory = () => {
         }));
       }
 
-      // UPDATED: Use ImageKit instead of Cloudinary
-      const imageUrl = await uploadToImageKit(file, '/products');
+      // UPDATED: Use simpleImageKitUpload instead of uploadToImageKit
+      // Passing options as an object
+      const result = await simpleImageKitUpload(file, { folder: '/products' });
+      const imageUrl = result.url; // Assuming the result object has a 'url' property
 
       if (isEdit) {
         setEditProduct(prev => {
