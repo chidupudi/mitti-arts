@@ -30,6 +30,9 @@ import { collection, getDocs, query, where, deleteDoc, doc, addDoc } from 'fireb
 import { useSeason } from '../hooks/useSeason';
 import { addToCartSafe } from '../utils/cartUtility';
 import useScrollPosition from '../hooks/useScrollPosition';
+import useSimpleScrollPosition from '../hooks/useSimpleScrollPosition';
+// import useEnhancedScrollPosition from '../hooks/useEnhancedScrollPosition';
+// import { useScrollActions } from '../stores/scrollStore';
 
 // Import components from productscomponents directory
 import FilterPanel from './productscomponents/FilterPanel';
@@ -587,7 +590,16 @@ const Products = () => {
   
   const { currentSeason, isGaneshSeason, loading: seasonLoading } = useSeason();
   
+  // Simple scroll position management (stable version)
   const { restoreScrollPosition, saveScrollPosition } = useScrollPosition('productsScrollPosition');
+  
+  // Simple enhanced scroll system
+  const {
+    saveScrollPosition: saveSimplePosition,
+    restoreScrollPosition: restoreSimplePosition,
+    hasSavedPosition: hasSimplePosition,
+    currentPosition,
+  } = useSimpleScrollPosition('productsScrollPosition');
   
   const [user, setUser] = useState(null);
   
@@ -639,16 +651,22 @@ const Products = () => {
     isSearching: isGaneshSearching
   } = useGaneshIdolFilter(ganeshIdols, searchQuery, ganeshFilterParams, selectedHeightFilter);
 
-  // NEW: Effect to restore filter state when returning from product detail
+  // ENHANCED: Effect to restore filter state and scroll position when returning from product detail
   useEffect(() => {
     const fromProductDetail = sessionStorage.getItem('returnFromProductDetail');
     
     if (fromProductDetail === 'true') {
-      console.log('Returning from product detail, restoring state...');
+      console.log('🔙 [Products] Returning from product detail, restoring state...');
       
-      // Load and restore filter state
-      const savedState = loadFilterState(isGaneshSeason);
+      // Load and restore filter state with enhanced fallbacks
+      let savedState = null;
+      
+      // Load filter state (simplified)
+      savedState = loadFilterState(isGaneshSeason);
+
       if (savedState) {
+        console.log('✅ [Products] Restoring filter state:', savedState);
+        
         if (isGaneshSeason) {
           // Restore Ganesh filter state
           if (savedState.ganeshPriceRange) setGaneshPriceRange(savedState.ganeshPriceRange);
@@ -666,17 +684,40 @@ const Products = () => {
         }
       }
       
-      // Clear the return flag
+      // Clear return flags
       sessionStorage.removeItem('returnFromProductDetail');
       
-      // Restore scroll position after a short delay to allow for rendering
-      const timer = setTimeout(() => {
-        restoreScrollPosition();
+      // Simple scroll position restoration
+      const restoreTimer = setTimeout(async () => {
+        console.log('🔄 [Products] Attempting scroll restoration...');
+        
+        try {
+          // Method 1: Try simple restoration
+          const restored = await restoreSimplePosition({
+            maxAttempts: 10,
+            delay: 200,
+          });
+          
+          if (restored) {
+            console.log('✅ [Products] Simple scroll restoration successful');
+          } else {
+            // Method 2: Fallback to original method
+            console.log('⚠️ [Products] Simple restoration failed, trying legacy method...');
+            await restoreScrollPosition();
+          }
+        } catch (error) {
+          console.error('❌ [Products] Scroll restoration failed:', error);
+        }
       }, 300);
       
-      return () => clearTimeout(timer);
+      return () => clearTimeout(restoreTimer);
     }
-  }, [location.pathname, restoreScrollPosition, isGaneshSeason]);
+  }, [
+    location.pathname,
+    restoreScrollPosition,
+    restoreSimplePosition,
+    isGaneshSeason,
+  ]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -699,59 +740,115 @@ const Products = () => {
     message[type](content);
   }, []);
 
-  // NEW: Enhanced navigation handlers that save state
+  // ENHANCED: Navigation handlers with multiple saving mechanisms
   const handleProductClick = useCallback((id, code) => {
-    console.log('Product clicked:', { id, code });
+    console.log('🔗 [Products] Product clicked:', { id, code });
     
-    // Save current scroll position
+    // Enhanced scroll position saving with multiple methods
+    const currentPos = currentPosition;
+    console.log('💾 [Products] Saving scroll position:', currentPos);
+    
+    // Simple position saving
+    saveSimplePosition({
+      trigger: 'product-click',
+      productId: id,
+      productCode: code,
+    });
+    
+    // Legacy save (fallback)
     saveScrollPosition();
     
-    // Save current filter state
+    // Filter state saving
     const currentState = isGaneshSeason ? {
       ganeshPriceRange,
       ganeshSortBy,
       categoryFilter,
       customizableOnly,
       selectedHeightFilter,
-      searchQuery
+      searchQuery,
+      isGaneshSeason: true,
+      productClicked: { id, code },
     } : {
       priceRange,
       sortBy,
       hyderabadOnly,
-      searchQuery
+      searchQuery,
+      isGaneshSeason: false,
+      productClicked: { id, code },
     };
     
+    // Save filter state
     saveFilterState(isGaneshSeason, currentState);
     
-    // Set the return flag
+    // Set return flag
     sessionStorage.setItem('returnFromProductDetail', 'true');
     
+    // Navigate to product detail
     navigate(`/product/${id}?code=${code}`);
-  }, [navigate, isGaneshSeason, ganeshPriceRange, ganeshSortBy, categoryFilter, customizableOnly, selectedHeightFilter, searchQuery, priceRange, sortBy, hyderabadOnly, saveScrollPosition]);
+  }, [
+    navigate,
+    isGaneshSeason,
+    ganeshPriceRange,
+    ganeshSortBy,
+    categoryFilter,
+    customizableOnly,
+    selectedHeightFilter,
+    searchQuery,
+    priceRange,
+    sortBy,
+    hyderabadOnly,
+    saveScrollPosition,
+    saveSimplePosition,
+    currentPosition,
+  ]);
 
   const handleGaneshIdolClick = useCallback((idolId) => {
-    console.log('Ganesh idol clicked:', idolId);
+    console.log('🕉️ [Products] Ganesh idol clicked:', idolId);
     
-    // Save current scroll position
+    // Enhanced scroll position saving
+    const currentPos = currentPosition;
+    console.log('💾 [Products] Saving Ganesh scroll position:', currentPos);
+    
+    // Simple save
+    saveSimplePosition({
+      trigger: 'ganesh-idol-click',
+      idolId,
+    });
+    
+    // Legacy save
     saveScrollPosition();
     
-    // Save current filter state for Ganesh season
+    // Filter state saving for Ganesh season
     const currentState = {
       ganeshPriceRange,
       ganeshSortBy,
       categoryFilter,
       customizableOnly,
       selectedHeightFilter,
-      searchQuery
+      searchQuery,
+      isGaneshSeason: true,
+      idolClicked: idolId,
     };
     
+    // Save filter state
     saveFilterState(true, currentState);
     
-    // Set the return flag
+    // Set return flag
     sessionStorage.setItem('returnFromProductDetail', 'true');
     
     navigate(`/ganesh-idol/${idolId}`);
-  }, [navigate, ganeshPriceRange, ganeshSortBy, categoryFilter, customizableOnly, selectedHeightFilter, searchQuery, saveScrollPosition]);
+  }, [
+    navigate,
+    ganeshPriceRange,
+    ganeshSortBy,
+    categoryFilter,
+    customizableOnly,
+    selectedHeightFilter,
+    searchQuery,
+    saveScrollPosition,
+    saveSimplePosition,
+    currentPosition,
+  ]);
 
   const handlePotteryPrebook = useCallback(() => {
     navigate('/contactus');
@@ -1202,30 +1299,47 @@ const Products = () => {
           />
         )}
 
-        {/* Performance Debug */}
+        {/* Enhanced Performance & Scroll Debug */}
         {process.env.NODE_ENV === 'development' && (
           <div
             style={{
               position: 'fixed',
               bottom: 10,
               right: 10,
-              backgroundColor: 'rgba(0,0,0,0.8)',
+              backgroundColor: 'rgba(0,0,0,0.9)',
               color: 'white',
-              padding: '8px',
-              borderRadius: '4px',
-              fontSize: '11px',
+              padding: '12px',
+              borderRadius: '8px',
+              fontSize: '10px',
               fontFamily: 'monospace',
               zIndex: 9999,
               display: isMobile ? 'none' : 'block',
+              maxWidth: '400px',
+              lineHeight: '1.4',
             }}
           >
+            {/* Products Info */}
             {isGaneshSeason ? (
-              <>Idols: {filteredGaneshIdols.length} | Total: {ganeshTotalCount} | Season: Ganesh | Sort: {ganeshSortBy} | Height: {selectedHeightFilter || 'All'}</>
+              <>📿 Idols: {filteredGaneshIdols.length} | Total: {ganeshTotalCount} | Season: Ganesh | Sort: {ganeshSortBy} | Height: {selectedHeightFilter || 'All'}</>
             ) : (
-              <>Products: {filteredProducts.length} | Total: {totalCount} | Season: Normal</>
+              <>🏺 Products: {filteredProducts.length} | Total: {totalCount} | Season: Normal</>
             )}
             <br />
-            Filters: {isGaneshSeason ? 'Ganesh' : 'Regular'} | Saved: {sessionStorage.getItem(isGaneshSeason ? GANESH_FILTER_STATE_KEY : FILTER_STATE_KEY) ? 'Yes' : 'No'}
+            
+            {/* Filter State */}
+            🔍 Filters: {isGaneshSeason ? 'Ganesh' : 'Regular'} | Legacy: {sessionStorage.getItem(isGaneshSeason ? GANESH_FILTER_STATE_KEY : FILTER_STATE_KEY) ? 'Yes' : 'No'}
+            <br />
+            
+            {/* Simple Scroll Info */}
+            📍 Scroll: Y:{currentPosition?.y || 0} | Simple: {hasSimplePosition() ? '✅' : '❌'} | Legacy: {sessionStorage.getItem('productsScrollPosition') ? '✅' : '❌'}
+            <br />
+            
+            {/* Navigation Context */}
+            🧭 Return Flag: {sessionStorage.getItem('returnFromProductDetail') ? '✅' : '❌'}
+            <br />
+            
+            {/* Libraries Status */}
+            📚 Libraries: Simple:✅ | ReactUse:✅ | SessionStorage:✅
           </div>
         )}
       </div>

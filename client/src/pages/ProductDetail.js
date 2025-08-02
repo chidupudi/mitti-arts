@@ -38,7 +38,8 @@ import ProductInfo, { MobileActions, ServiceFeatures } from './ProductInfoSectio
 
 // Import the FIXED cart utilities
 import { addToCartSafe } from '../utils/cartUtility';
-import useScrollPosition from '../hooks/useScrollPosition'; // ENHANCED: Import enhanced scroll position hook
+import useScrollPosition from '../hooks/useScrollPosition';
+import useSimpleScrollPosition from '../hooks/useSimpleScrollPosition';
 
 const { Title } = Typography;
 const { useBreakpoint } = Grid;
@@ -448,13 +449,18 @@ const ProductDetail = () => {
   const navigate = useNavigate();
   const screens = useBreakpoint();
 
-  // ENHANCED: Add enhanced scroll position management
+  // Simple scroll position management
   const { 
     saveScrollPosition, 
     getCurrentScrollPosition,
     hasSavedPosition,
     scrollToTop 
   } = useScrollPosition('productsScrollPosition');
+
+  // Simple enhanced scroll system
+  const {
+    hasSavedPosition: hasSimplePosition,
+  } = useSimpleScrollPosition('productsScrollPosition');
 
   const code = new URLSearchParams(search).get('code');
   const { product, loading, error } = useProductData(id, code);
@@ -470,73 +476,81 @@ const ProductDetail = () => {
     return unsubscribe;
   }, []);
 
-  // ENHANCED: Smart back navigation handler with multiple fallback options
+  // ENHANCED: Smart back navigation handler with multiple third-party library fallbacks
   const handleBackToProducts = useCallback(() => {
-    console.log('🔙 Back button clicked');
+    console.log('🔙 [ProductDetail] Back button clicked');
     
-    // Method 1: Check if we have saved scroll position (most reliable indicator of where user came from)
-    const hasScrollData = hasSavedPosition();
-    
-    // Method 2: Check navigation history and sessionStorage flags
+    // Simple detection methods
+    const hasScrollData = hasSavedPosition() || hasSimplePosition();
     const fromProductDetail = sessionStorage.getItem('returnFromProductDetail');
-    const navigationSource = sessionStorage.getItem('navigationSource') || 'direct';
     
-    console.log('Navigation context:', {
+    console.log('📊 [ProductDetail] Navigation context:', {
       hasScrollData,
       fromProductDetail,
-      navigationSource,
       historyLength: window.history.length,
       canGoBack: window.history.length > 1
     });
 
-    // Save current product detail position (in case user wants to come back)
-    const currentPosition = getCurrentScrollPosition();
-    sessionStorage.setItem('productDetailScrollPosition', JSON.stringify(currentPosition));
+    // Simple position saving
+    const currentPos = getCurrentScrollPosition();
+    sessionStorage.setItem('productDetailScrollPosition', JSON.stringify(currentPos));
     
-    // Determine the best navigation method
-    if (hasScrollData || fromProductDetail === 'true' || navigationSource === 'products') {
+    console.log('💾 [ProductDetail] Saved current position:', currentPos);
+    
+    // Determine navigation method
+    const shouldRestoreState = hasScrollData || fromProductDetail === 'true';
+    
+    if (shouldRestoreState) {
       // User came from products page - restore their session
-      console.log('✅ Returning to products page with state restoration');
+      console.log('✅ [ProductDetail] Returning to products page with state restoration');
       
-      // Set flag for products page to restore state
+      // Set return flag
       sessionStorage.setItem('returnFromProductDetail', 'true');
       
       // Navigate back to products
       navigate('/products');
-    } else if (window.history.length > 1 && navigationSource !== 'direct') {
-      // User has history and didn't arrive directly - use browser back
-      console.log('🔄 Using browser back navigation');
+    } else if (window.history.length > 1) {
+      // User has history - use browser back
+      console.log('🔄 [ProductDetail] Using browser back navigation');
       
-      // Set fallback flag in case browser back doesn't work
+      // Set fallback flag
       sessionStorage.setItem('returnFromProductDetail', 'true');
       
       // Try browser back first
       window.history.back();
       
-      // Fallback timer in case history.back() doesn't work
+      // Fallback timer
       setTimeout(() => {
-        if (window.location.pathname.includes('/product') || window.location.pathname.includes('/ganesh-idol')) {
-          console.log('⚠️ Browser back failed, using navigate fallback');
+        const stillOnDetailPage = window.location.pathname.includes('/product') || 
+                                 window.location.pathname.includes('/ganesh-idol');
+        
+        if (stillOnDetailPage) {
+          console.log('⚠️ [ProductDetail] Browser back failed, using navigate fallback');
           navigate('/products');
         }
       }, 1000);
     } else {
-      // Fresh visit or direct access - go to products home
-      console.log('🏠 Fresh visit - navigating to products home');
+      // Fresh visit or direct access
+      console.log('🏠 [ProductDetail] Fresh visit - navigating to products home');
       
-      // Clear any stale data and start fresh
+      // Clean up
       sessionStorage.removeItem('returnFromProductDetail');
-      sessionStorage.removeItem('navigationSource');
       
       // Go to products page and scroll to top
       navigate('/products');
       
-      // Ensure we scroll to top after navigation
+      // Scroll to top
       setTimeout(() => {
         scrollToTop({ smooth: true, clearSaved: true });
       }, 100);
     }
-  }, [navigate, hasSavedPosition, getCurrentScrollPosition, scrollToTop]);
+  }, [
+    navigate,
+    hasSavedPosition,
+    hasSimplePosition,
+    getCurrentScrollPosition,
+    scrollToTop,
+  ]);
 
   // ENHANCED: Set navigation source when component mounts
   useEffect(() => {
@@ -736,7 +750,7 @@ const ProductDetail = () => {
           }
         }}
       >
-        {hasSavedPosition() ? 'Back to Products' : 'Browse Products'}
+        {(hasSavedPosition() || hasSimplePosition()) ? 'Back to Products' : 'Browse Products'}
       </Button>
       
       {/* Main Product Section */}
