@@ -336,7 +336,7 @@ const App = () => {
               <Suspense fallback={<LoadingFallback />}>
                 <Routes>
                   {/* Public Routes */}
-                   <Route path="/" element={<Navigate to="/products" replace />} />
+                  <Route path="/" element={<Navigate to="/products" replace />} />
                   <Route path="/about" element={<About />} />
                   <Route path="/policies" element={<Policies />} />
                   <Route path="/contactus" element={<ContactUs />} />

@@ -24,7 +24,7 @@ const terracottaColors = {
 const carouselSlides = [
   {
     type: 'pottery',
-    image: 'https://res.cloudinary.com/dca26n68n/image/upload/v1752423554/WhatsApp_Image_2025-07-13_at_13.36.04_5cdf4b7c_ucnech.jpg',
+    image: 'https://ik.imagekit.io/mittiarts/corusel%201?updatedAt=1754140872706',
     title: '🏺 All Pottery Collection',
     subtitle: 'Coming Soon After Ganesh Festival',
     description: 'Handcrafted clay products, eco-friendly cookware',
@@ -32,13 +32,13 @@ const carouselSlides = [
   },
   {
     type: 'ganesh',
-    image: 'https://res.cloudinary.com/dca26n68n/image/upload/v1752679979/WhatsApp_Image_2025-07-16_at_18.56.16_f4dc988d_b6fjy9.jpg', // Replace with your Ganesh image URL
+    image: 'https://ik.imagekit.io/mittiarts/corusel%203?updatedAt=1754140987200', // Replace with your Ganesh image URL
     title: '🕉️ Ganesh Festival Collection',
     subtitle: 'Handcrafted with Love & Devotion'
   },
   {
     type: 'ganesh',
-    image: 'https://res.cloudinary.com/dca26n68n/image/upload/v1752680023/WhatsApp_Image_2025-07-16_at_18.56.16_fcaea6dc_vqugcb.jpg', // Replace with your Ganesh image URL
+    image: 'https://ik.imagekit.io/mittiarts/corusel%202?updatedAt=1754140987321', // Replace with your Ganesh image URL
     title: '🕉️ Traditional & Modern Designs',
     subtitle: 'Choose from Various Styles'
   },
