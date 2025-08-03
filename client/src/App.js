@@ -12,7 +12,6 @@ import { SeasonProvider } from './hooks/useSeason';
 // Regular components
 import Header from './components/Header';
 import Footer from './components/Footer';
-import ScrollToTop from './components/ScrollToTop';
 import SSLErrorHandler from './components/SSLErrorHandler';
 import NotFound from './components/NotFound';
 import ScrollingBanner from './components/ScrollingBanner'; // Add this import
@@ -322,7 +321,6 @@ const App = () => {
       <CssBaseline />
       <Router>
         <SeasonProvider>
-          <ScrollToTop />
           {/* <SSLErrorHandler /> */}
           
           <Box sx={{
