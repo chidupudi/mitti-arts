@@ -3,7 +3,7 @@ import React from 'react';
 import { Box, Typography, useTheme, useMediaQuery } from '@mui/material';
 
 const ScrollingBanner = ({ 
-  message = "📅 Book before Aug 7th to get 15% OFF! 🎨 Get Mitti Arts Alive with your order! 🌟",
+  message = "📅 Book before Aug 7th to get 8% OFF! 🎨 Get Mitti Arts Alive with your order! 🌟",
   height = "40px",
   speed = 20 // seconds for one complete scroll
 }) => {
@@ -62,7 +62,7 @@ const ScrollingBanner = ({
 // Alternative version with multiple messages
 export const MultiMessageBanner = ({ 
   messages = [
-    "📅 Book before Aug 7th to get 15% OFF!",
+    "📅 Book before Aug 7th to get 8% OFF!",
     "🎨 Get Mitti Arts Alive with your order!",
     "🌟 Limited time offer - Don't miss out!"
   ],

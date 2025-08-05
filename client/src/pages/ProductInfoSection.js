@@ -66,7 +66,7 @@ const colors = {
 
 // NEW: Discount calculation helper for Ganesh products
 const calculateGaneshDiscount = (originalPrice) => {
-  const discountPercentage = 15; // 15% off for Ganesh products
+  const discountPercentage = 8; // 8% off for Ganesh products
   const discountAmount = Math.round(originalPrice * discountPercentage / 100);
   const discountedPrice = originalPrice - discountAmount;
   
@@ -877,7 +877,7 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
                     border: 'none'
                   }}
                 >
-                  15% OFF Limited Time!
+                  8% OFF Limited Time!
                 </Tag>
               </>
             ) : (
@@ -1317,7 +1317,7 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
         {/* 8. NEW: Special Discount Alert for Ganesh Products */}
         {product.isGaneshIdol && (
           <Alert
-            message="🎉 Limited Time Offer - 15% OFF!"
+            message="🎉 Limited Time Offer - 8% OFF!"
             description={
               <div style={{ marginTop: '8px' }}>
                 <Text style={{ fontWeight: 600, color: colors.ganesh }}>

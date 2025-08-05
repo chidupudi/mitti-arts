@@ -37,7 +37,7 @@ const terracottaColors = {
 
 // NEW: Discount calculation helper
 const calculateGaneshDiscount = (originalPrice) => {
-  const discountPercentage = 15; // 15% off for Ganesh products
+  const discountPercentage = 8; // 8% off for Ganesh products
   const discountAmount = Math.round(originalPrice * discountPercentage / 100);
   const discountedPrice = originalPrice - discountAmount;
  
@@ -51,7 +51,7 @@ const calculateGaneshDiscount = (originalPrice) => {
 };
 
 
-// Ganesh Idol Card Component with 15% Discount
+// Ganesh Idol Card Component with 8% Discount
 export const GaneshIdolCard = memo(({ 
   idol, 
   onShowInterest,
@@ -137,7 +137,7 @@ export const GaneshIdolCard = memo(({
         {getCategoryIcon(idol.category)} {idol.category}
       </Tag>
 
-      {/* NEW: 15% OFF Badge */}
+      {/* NEW: 8% OFF Badge */}
       <Tag
         style={{
           position: 'absolute',
@@ -153,7 +153,7 @@ export const GaneshIdolCard = memo(({
           borderRadius: '6px',
         }}
       >
-        15% OFF
+        8% OFF
       </Tag>
 
       {/* Customizable Badge - moved down due to discount badge */}
@@ -254,7 +254,7 @@ export const GaneshIdolCard = memo(({
                 margin: 0
               }}
             >
-              15% OFF
+              8% OFF
             </Tag>
           </div>
           
