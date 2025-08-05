@@ -269,7 +269,7 @@ const RegularLayoutContent = ({ children }) => {
       <Header />
       {/* Add Scrolling Banner below Header */}
       <ScrollingBanner 
-        message="📅 Book before Aug 7th to get 15% OFF! 🎨 Get Mitti Arts Alive with your order! 🌟"
+        message="📅 Book before Aug 7th to get 8% OFF! 🎨 Get Mitti Arts Alive with your order! 🌟"
         height="42px"
         speed={22}
       />
