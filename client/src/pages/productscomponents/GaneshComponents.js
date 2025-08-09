@@ -71,7 +71,11 @@ export const GaneshIdolCard = memo(({
   const imageHeight = getImageHeight();
   const isMobile = !screens.sm;
   
-  // NEW: Calculate discount for Ganesh idol
+  // NEW: Check if idol is hidden/out of stock
+  const isHidden = idol.hidden || idol.availability === 'unavailable';
+  const isOutOfStock = isHidden;
+  
+  // Calculate discount for Ganesh idol
   const originalPrice = idol.price || 15000;
   const priceInfo = calculateGaneshDiscount(originalPrice);
 
@@ -108,23 +112,47 @@ export const GaneshIdolCard = memo(({
 
   return (
     <Card
-      hoverable
+      hoverable={!isOutOfStock}
       onClick={handleCardClick}
       style={{
         height: '100%',
         borderRadius: '12px',
         border: `1px solid ${terracottaColors.ganesh}30`,
         transition: 'all 0.3s ease',
-        cursor: 'pointer',
+        cursor: isOutOfStock ? 'default' : 'pointer',
+        // NEW: Add styling for out of stock idols
+        opacity: isOutOfStock ? 0.75 : 1,
+        position: 'relative',
       }}
       bodyStyle={{ padding: 0 }}
       className="ganesh-idol-card"
     >
-      {/* Category Badge */}
+      {/* NEW: Out of Stock Ribbon */}
+      {isHidden && (
+        <div style={{
+          position: 'absolute',
+          top: '12px',
+          right: '-25px',
+          transform: 'rotate(35deg)',
+          width: '100px',
+          textAlign: 'center',
+          padding: '4px 0',
+          fontSize: '10px',
+          fontWeight: 700,
+          color: 'white',
+          backgroundColor: '#f5222d', // Red color for out of stock
+          zIndex: 2,
+          letterSpacing: '0.5px',
+        }}>
+          OUT OF STOCK
+        </div>
+      )}
+
+      {/* Category Badge - moved down if out of stock */}
       <Tag
         style={{
           position: 'absolute',
-          top: '12px',
+          top: isHidden ? '52px' : '12px', // Move down if out of stock ribbon exists
           left: '12px',
           zIndex: 2,
           backgroundColor: getCategoryColor(idol.category),
@@ -137,27 +165,29 @@ export const GaneshIdolCard = memo(({
         {getCategoryIcon(idol.category)} {idol.category}
       </Tag>
 
-      {/* NEW: 8% OFF Badge */}
-      <Tag
-        style={{
-          position: 'absolute',
-          top: '12px',
-          right: '12px',
-          zIndex: 2,
-          backgroundColor: '#E91E63',
-          color: 'white',
-          border: 'none',
-          fontWeight: 'bold',
-          fontSize: isMobile ? '11px' : '12px',
-          padding: '4px 8px',
-          borderRadius: '6px',
-        }}
-      >
-        8% OFF
-      </Tag>
+      {/* 8% OFF Badge - only show if not out of stock */}
+      {!isHidden && (
+        <Tag
+          style={{
+            position: 'absolute',
+            top: '12px',
+            right: '12px',
+            zIndex: 2,
+            backgroundColor: '#E91E63',
+            color: 'white',
+            border: 'none',
+            fontWeight: 'bold',
+            fontSize: isMobile ? '11px' : '12px',
+            padding: '4px 8px',
+            borderRadius: '6px',
+          }}
+        >
+          8% OFF
+        </Tag>
+      )}
 
-      {/* Customizable Badge - moved down due to discount badge */}
-      {idol.customizable && (
+      {/* Customizable Badge - only show if not out of stock */}
+      {idol.customizable && !isHidden && (
         <Tag
           style={{
             position: 'absolute',
@@ -185,6 +215,8 @@ export const GaneshIdolCard = memo(({
             height: imageHeight,
             objectFit: 'cover',
             transition: 'transform 0.3s ease',
+            // NEW: Apply filter for out of stock idols
+            filter: isOutOfStock ? 'grayscale(30%)' : 'none',
           }}
           onError={() => setImageSrc('https://via.placeholder.com/300x320/FF8F00/FFFFFF?text=Ganesh+Idol')}
         />
@@ -218,7 +250,7 @@ export const GaneshIdolCard = memo(({
           {idol.description || 'Beautiful handcrafted Ganesh idol for your festivities'}
         </Text>
 
-        {/* NEW: Updated Price Section with Discount */}
+        {/* Price Section - show even if out of stock but with different styling */}
         <div style={{ marginBottom: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             {/* Discounted Price - Main Price */}
@@ -226,70 +258,78 @@ export const GaneshIdolCard = memo(({
               level={5} 
               style={{ 
                 margin: 0,
-                color: terracottaColors.ganesh,
+                color: isOutOfStock ? terracottaColors.textSecondary : terracottaColors.ganesh,
                 fontSize: isMobile ? '18px' : '20px'
               }}
             >
               ₹{priceInfo.discountedPrice.toLocaleString()}
             </Title>
             
-            {/* Original Price - Strikethrough */}
-            <Text 
-              delete 
-              type="secondary" 
-              style={{ 
-                fontSize: isMobile ? '14px' : '16px',
-                color: terracottaColors.textSecondary
-              }}
-            >
-              ₹{priceInfo.originalPrice.toLocaleString()}
-            </Text>
-            
-            {/* Discount Badge */}
-            <Tag 
-              color="error" 
-              style={{ 
-                fontSize: isMobile ? '10px' : '11px', 
-                fontWeight: 600,
-                margin: 0
-              }}
-            >
-              8% OFF
-            </Tag>
+            {/* Original Price - Strikethrough - only show if not out of stock */}
+            {!isHidden && (
+              <>
+                <Text 
+                  delete 
+                  type="secondary" 
+                  style={{ 
+                    fontSize: isMobile ? '14px' : '16px',
+                    color: terracottaColors.textSecondary
+                  }}
+                >
+                  ₹{priceInfo.originalPrice.toLocaleString()}
+                </Text>
+                
+                {/* Discount Badge */}
+                <Tag 
+                  color="error" 
+                  style={{ 
+                    fontSize: isMobile ? '10px' : '11px', 
+                    fontWeight: 600,
+                    margin: 0
+                  }}
+                >
+                  8% OFF
+                </Tag>
+              </>
+            )}
           </div>
           
-          {/* Savings Amount */}
-          <Text 
-            style={{ 
-              display: 'block',
-              fontSize: isMobile ? '11px' : '12px',
-              color: '#4CAF50',
-              fontWeight: 600,
-              marginTop: '4px'
-            }}
-          >
-            You save ₹{priceInfo.discountAmount.toLocaleString()}!
-          </Text>
+          {/* Savings Amount - only show if not out of stock */}
+          {!isHidden && (
+            <Text 
+              style={{ 
+                display: 'block',
+                fontSize: isMobile ? '11px' : '12px',
+                color: '#4CAF50',
+                fontWeight: 600,
+                marginTop: '4px'
+              }}
+            >
+              You save ₹{priceInfo.discountAmount.toLocaleString()}!
+            </Text>
+          )}
         </div>
 
-        {/* Specifications */}
-        <Space wrap size="small" style={{ marginBottom: '12px' }}>
-          {idol.height && (
-            <Tag size="small" style={{ fontSize: isMobile ? '9px' : '10px', color: terracottaColors.textSecondary }}>
-              📏 {idol.height}
-            </Tag>
-          )}
-          {idol.weight && (
-            <Tag size="small" style={{ fontSize: isMobile ? '9px' : '10px', color: terracottaColors.textSecondary }}>
-              ⚖️ {idol.weight}
-            </Tag>
-          )}
-          {idol.color && (
-            <Tag size="small" style={{ fontSize: isMobile ? '9px' : '10px', color: terracottaColors.textSecondary }}>
-              🎨 {idol.color}
-            </Tag>
-          )}
-        </Space>
+        {/* Specifications - only show if not out of stock */}
+        {!isHidden && (
+          <Space wrap size="small" style={{ marginBottom: '12px' }}>
+            {idol.height && (
+              <Tag size="small" style={{ fontSize: isMobile ? '9px' : '10px', color: terracottaColors.textSecondary }}>
+                📏 {idol.height}
+              </Tag>
+            )}
+            {idol.weight && (
+              <Tag size="small" style={{ fontSize: isMobile ? '9px' : '10px', color: terracottaColors.textSecondary }}>
+                ⚖️ {idol.weight}
+              </Tag>
+            )}
+            {idol.color && (
+              <Tag size="small" style={{ fontSize: isMobile ? '9px' : '10px', color: terracottaColors.textSecondary }}>
+                🎨 {idol.color}
+              </Tag>
+            )}
+          </Space>
+        )}
       </div>
 
       {/* Card Actions */}
@@ -303,19 +343,25 @@ export const GaneshIdolCard = memo(({
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            onShowInterest(idol);
+            if (!isOutOfStock) {
+              onShowInterest(idol);
+            }
           }}
+          disabled={isOutOfStock}
           block
           style={{
             borderRadius: '8px',
             height: isMobile ? '36px' : '40px',
             fontWeight: 600,
             fontSize: isMobile ? '13px' : '14px',
-            background: `linear-gradient(135deg, ${terracottaColors.ganesh} 0%, #FFB74D 100%)`,
-            borderColor: terracottaColors.ganesh,
+            background: isOutOfStock 
+              ? '#d9d9d9' 
+              : `linear-gradient(135deg, ${terracottaColors.ganesh} 0%, #FFB74D 100%)`,
+            borderColor: isOutOfStock ? '#d9d9d9' : terracottaColors.ganesh,
+            color: isOutOfStock ? '#000000a0' : 'white',
           }}
         >
-          Show Interest
+          {isOutOfStock ? 'Out of Stock' : 'Show Interest'}
         </Button>
         
         <Text 
@@ -324,10 +370,13 @@ export const GaneshIdolCard = memo(({
             textAlign: 'center',
             marginTop: '8px',
             fontSize: isMobile ? '10px' : '11px',
-            color: terracottaColors.textSecondary
+            color: isOutOfStock ? terracottaColors.textSecondary : terracottaColors.textSecondary
           }}
         >
-          Our team will contact you for customization
+          {isOutOfStock 
+            ? 'This idol is currently out of stock'
+            : 'Our team will contact you for customization'
+          }
         </Text>
       </div>
     </Card>
@@ -510,9 +559,11 @@ export const PotteryComingSoonCard = memo(({ onClick, customPotteryImage }) => {
 
 PotteryComingSoonCard.displayName = 'PotteryComingSoonCard';
 
-export default {
+const GaneshComponents = {
   GaneshIdolCard,
   PotteryComingSoonCard
 };
+
+export default GaneshComponents;
 
 export { terracottaColors, calculateGaneshDiscount };

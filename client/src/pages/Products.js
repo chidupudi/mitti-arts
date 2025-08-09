@@ -292,22 +292,25 @@ const useGaneshIdols = () => {
         const idolsArr = [];
         querySnapshot.forEach((doc) => {
           const data = doc.data();
-          if (!data.hidden) {
-            idolsArr.push({
-              id: doc.id,
-              ...data,
-              price: Number(data.price) || 15000,
-              rating: Number(data.rating) || 4.5,
-              reviews: Number(data.reviews) || 28,
-              imgUrl: data.images?.[0] || '',
-              estimatedDays: Number(data.estimatedDays) || 7,
-              advancePercentage: Number(data.advancePercentage) || 25,
-              createdAt: data.createdAt || new Date().toISOString(),
-              height: data.height || '',
-              category: data.category || 'traditional',
-              customizable: data.customizable !== false,
-            });
-          }
+          // CHANGED: Include both hidden and visible idols
+          idolsArr.push({
+            id: doc.id,
+            ...data,
+            price: Number(data.price) || 15000,
+            rating: Number(data.rating) || 4.5,
+            reviews: Number(data.reviews) || 28,
+            imgUrl: data.images?.[0] || '',
+            estimatedDays: Number(data.estimatedDays) || 7,
+            advancePercentage: Number(data.advancePercentage) || 25,
+            createdAt: data.createdAt || new Date().toISOString(),
+            height: data.height || '',
+            category: data.category || 'traditional',
+            customizable: data.customizable !== false,
+            // Include hidden status
+            hidden: data.hidden || false,
+            // Set availability based on hidden status
+            availability: data.hidden ? 'unavailable' : (data.availability || 'available'),
+          });
         });
         setGaneshIdols(idolsArr);
       } catch (error) {
@@ -521,7 +524,16 @@ const useGaneshIdolFilter = (ganeshIdols, searchQuery, filters, heightFilter) =>
 
     switch (filters.sortBy) {
       case 'relevance':
-        filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+        // Sort by availability first (available idols first), then by rating
+        filtered.sort((a, b) => {
+          const aAvailable = !a.hidden && a.availability !== 'unavailable';
+          const bAvailable = !b.hidden && b.availability !== 'unavailable';
+          
+          if (aAvailable && !bAvailable) return -1;
+          if (!aAvailable && bAvailable) return 1;
+          
+          return (b.rating || 0) - (a.rating || 0);
+        });
         break;
       case 'priceLowToHigh':
         filtered.sort((a, b) => a.price - b.price);
@@ -553,7 +565,14 @@ const useGaneshIdolFilter = (ganeshIdols, searchQuery, filters, heightFilter) =>
         filtered.sort((a, b) => (a.estimatedDays || 7) - (b.estimatedDays || 7));
         break;
       default:
+        // Default sort: available first, then by height
         filtered.sort((a, b) => {
+          const aAvailable = !a.hidden && a.availability !== 'unavailable';
+          const bAvailable = !b.hidden && b.availability !== 'unavailable';
+          
+          if (aAvailable && !bAvailable) return -1;
+          if (!aAvailable && bAvailable) return 1;
+          
           const heightA = parseFloat((a.height || '0').toString().replace(/[^0-9.]/g, '')) || 0;
           const heightB = parseFloat((b.height || '0').toString().replace(/[^0-9.]/g, '')) || 0;
           return heightB - heightA;
@@ -562,6 +581,8 @@ const useGaneshIdolFilter = (ganeshIdols, searchQuery, filters, heightFilter) =>
     }
 
     const totalCount = ganeshIdols.length;
+    const availableCount = ganeshIdols.filter(idol => !idol.hidden && idol.availability !== 'unavailable').length;
+    const outOfStockCount = ganeshIdols.filter(idol => idol.hidden || idol.availability === 'unavailable').length;
     const traditionalCount = ganeshIdols.filter(idol => idol.category === 'traditional').length;
     const modernCount = ganeshIdols.filter(idol => idol.category === 'modern').length;
     const premiumCount = ganeshIdols.filter(idol => idol.category === 'premium').length;
@@ -570,6 +591,8 @@ const useGaneshIdolFilter = (ganeshIdols, searchQuery, filters, heightFilter) =>
     return {
       idols: filtered,
       totalCount,
+      availableCount,
+      outOfStockCount,
       traditionalCount,
       modernCount,
       premiumCount,
@@ -629,14 +652,14 @@ const Products = () => {
     sortBy,
     hyderabadOnly,
     hideOutOfStock: false,
-  }), [priceRange[0], priceRange[1], sortBy, hyderabadOnly]);
+  }), [priceRange, sortBy, hyderabadOnly]);
 
   const ganeshFilterParams = useMemo(() => ({
     priceRange: ganeshPriceRange,
     sortBy: ganeshSortBy,
     categoryFilter,
     customizableOnly,
-  }), [ganeshPriceRange[0], ganeshPriceRange[1], ganeshSortBy, categoryFilter, customizableOnly]);
+  }), [ganeshPriceRange, ganeshSortBy, categoryFilter, customizableOnly]);
 
   const { 
     products: filteredProducts, 
@@ -648,6 +671,8 @@ const Products = () => {
   const {
     idols: filteredGaneshIdols,
     totalCount: ganeshTotalCount,
+    availableCount: ganeshAvailableCount,
+    outOfStockCount: ganeshOutOfStockCount,
     isSearching: isGaneshSearching
   } = useGaneshIdolFilter(ganeshIdols, searchQuery, ganeshFilterParams, selectedHeightFilter);
 
@@ -1320,26 +1345,22 @@ const Products = () => {
           >
             {/* Products Info */}
             {isGaneshSeason ? (
-              <>📿 Idols: {filteredGaneshIdols.length} | Total: {ganeshTotalCount} | Season: Ganesh | Sort: {ganeshSortBy} | Height: {selectedHeightFilter || 'All'}</>
+              <>📿 Idols: {filteredGaneshIdols.length} | Available: {ganeshAvailableCount} | Out of Stock: {ganeshOutOfStockCount} | Total: {ganeshTotalCount}</>
             ) : (
-              <>🏺 Products: {filteredProducts.length} | Total: {totalCount} | Season: Normal</>
+              <>🏺 Products: {filteredProducts.length} | Total: {totalCount}</>
             )}
             <br />
             
             {/* Filter State */}
-            🔍 Filters: {isGaneshSeason ? 'Ganesh' : 'Regular'} | Legacy: {sessionStorage.getItem(isGaneshSeason ? GANESH_FILTER_STATE_KEY : FILTER_STATE_KEY) ? 'Yes' : 'No'}
+            🔍 Filters: {isGaneshSeason ? 'Ganesh' : 'Regular'} | Sort: {isGaneshSeason ? ganeshSortBy : sortBy}
             <br />
             
-            {/* Simple Scroll Info */}
-            📍 Scroll: Y:{currentPosition?.y || 0} | Simple: {hasSimplePosition() ? '✅' : '❌'} | Legacy: {sessionStorage.getItem('productsScrollPosition') ? '✅' : '❌'}
+            {/* Scroll Info */}
+            📍 Scroll: Y:{currentPosition?.y || 0} | Simple: {hasSimplePosition() ? '✅' : '❌'}
             <br />
             
             {/* Navigation Context */}
             🧭 Return Flag: {sessionStorage.getItem('returnFromProductDetail') ? '✅' : '❌'}
-            <br />
-            
-            {/* Libraries Status */}
-            📚 Libraries: Simple:✅ | ReactUse:✅ | SessionStorage:✅
           </div>
         )}
       </div>
