@@ -88,6 +88,7 @@ export const GaneshIdolCard = memo(({
       return;
     }
     
+    
     e.preventDefault();
     onProductClick(idol.id);
   };
