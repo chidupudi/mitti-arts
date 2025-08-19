@@ -234,7 +234,7 @@ const AdminLayoutContent = ({ children }) => {
         <Header />
         {/* Add Scrolling Banner below Header */}
         <ScrollingBanner 
-          message="📅 Book before Aug 7th to get 8% OFF! 🎨 Get Mitti Arts Alive with your order! 🌟"
+          message="🎨 Get Mitti Arts Alive with your order! 🌟 Handcrafted Clay Products for Authentic Celebrations! 📅"
           height="42px"
           speed={22}
         />
@@ -269,7 +269,7 @@ const RegularLayoutContent = ({ children }) => {
       <Header />
       {/* Add Scrolling Banner below Header */}
       <ScrollingBanner 
-        message="📅 Book before Aug 7th to get 8% OFF! 🎨 Get Mitti Arts Alive with your order! 🌟"
+        message="🎨 Get Mitti Arts Alive with your order! 🌟 Handcrafted Clay Products for Authentic Celebrations! 📅"
         height="42px"
         speed={22}
       />

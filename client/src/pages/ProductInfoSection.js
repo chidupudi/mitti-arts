@@ -64,18 +64,14 @@ const colors = {
   eco: '#4CAF50',
 };
 
-// NEW: Discount calculation helper for Ganesh products
+// Discount calculation helper for Ganesh products - DISCOUNT REMOVED
 const calculateGaneshDiscount = (originalPrice) => {
-  const discountPercentage = 8; // 8% off for Ganesh products
-  const discountAmount = Math.round(originalPrice * discountPercentage / 100);
-  const discountedPrice = originalPrice - discountAmount;
-  
   return {
     originalPrice,
-    discountedPrice,
-    discountPercentage,
-    discountAmount,
-    hasDiscount: true
+    discountedPrice: originalPrice, // No discount applied
+    discountPercentage: 0,
+    discountAmount: 0,
+    hasDiscount: false
   };
 };
 
@@ -865,20 +861,6 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
                 >
                   Eco-Friendly
                 </Tag>
-                {/* NEW: Discount Badge for Ganesh Idols */}
-                <Tag
-                  style={{
-                    fontWeight: 600,
-                    padding: '4px 12px',
-                    borderRadius: '6px',
-                    fontSize: '14px',
-                    backgroundColor: '#E91E63',
-                    color: 'white',
-                    border: 'none'
-                  }}
-                >
-                  8% OFF Limited Time!
-                </Tag>
               </>
             ) : (
               <>
@@ -1314,32 +1296,6 @@ const ProductInfo = memo(({ product, onAddToCart, onBuyNow, onToggleWishlist, is
           </Row>
         </div>
 
-        {/* 8. NEW: Special Discount Alert for Ganesh Products */}
-        {product.isGaneshIdol && (
-          <Alert
-            message="🎉 Limited Time Offer - 8% OFF!"
-            description={
-              <div style={{ marginTop: '8px' }}>
-                <Text style={{ fontWeight: 600, color: colors.ganesh }}>
-                  Save ₹{priceInfo.discountAmount.toLocaleString()} on this beautiful Ganesh idol!
-                </Text>
-                <br />
-                <Text style={{ fontSize: '13px', color: colors.textSecondary }}>
-                  This special discount is available for a limited time only. 
-                  Book now to secure your sacred Ganesh idol at this special price.
-                </Text>
-              </div>
-            }
-            type="success"
-            showIcon
-            style={{
-              backgroundColor: `${colors.ganesh}10`,
-              border: `1px solid ${colors.ganesh}30`,
-              borderRadius: '8px',
-              marginBottom: '24px'
-            }}
-          />
-        )}
 
         {/* Rest of the component remains the same... Gift Kit Information, Important Information, etc. */}
         

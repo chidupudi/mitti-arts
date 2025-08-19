@@ -35,23 +35,19 @@ const terracottaColors = {
   ganesh: '#FF8F00',
 };
 
-// NEW: Discount calculation helper
+// Discount calculation helper - DISCOUNT REMOVED
 const calculateGaneshDiscount = (originalPrice) => {
-  const discountPercentage = 8; // 8% off for Ganesh products
-  const discountAmount = Math.round(originalPrice * discountPercentage / 100);
-  const discountedPrice = originalPrice - discountAmount;
- 
   return {
     originalPrice,
-    discountedPrice,
-    discountPercentage,
-    discountAmount,
-    hasDiscount: true
+    discountedPrice: originalPrice, // No discount applied
+    discountPercentage: 0,
+    discountAmount: 0,
+    hasDiscount: false
   };
 };
 
 
-// Ganesh Idol Card Component with 8% Discount
+// Ganesh Idol Card Component
 export const GaneshIdolCard = memo(({ 
   idol, 
   onShowInterest,
@@ -166,26 +162,6 @@ export const GaneshIdolCard = memo(({
         {getCategoryIcon(idol.category)} {idol.category}
       </Tag>
 
-      {/* 8% OFF Badge - only show if not out of stock */}
-      {!isHidden && (
-        <Tag
-          style={{
-            position: 'absolute',
-            top: '12px',
-            right: '12px',
-            zIndex: 2,
-            backgroundColor: '#E91E63',
-            color: 'white',
-            border: 'none',
-            fontWeight: 'bold',
-            fontSize: isMobile ? '11px' : '12px',
-            padding: '4px 8px',
-            borderRadius: '6px',
-          }}
-        >
-          8% OFF
-        </Tag>
-      )}
 
       {/* Customizable Badge - only show if not out of stock */}
       {idol.customizable && !isHidden && (
@@ -266,49 +242,8 @@ export const GaneshIdolCard = memo(({
               ₹{priceInfo.discountedPrice.toLocaleString()}
             </Title>
             
-            {/* Original Price - Strikethrough - only show if not out of stock */}
-            {!isHidden && (
-              <>
-                <Text 
-                  delete 
-                  type="secondary" 
-                  style={{ 
-                    fontSize: isMobile ? '14px' : '16px',
-                    color: terracottaColors.textSecondary
-                  }}
-                >
-                  ₹{priceInfo.originalPrice.toLocaleString()}
-                </Text>
-                
-                {/* Discount Badge */}
-                <Tag 
-                  color="error" 
-                  style={{ 
-                    fontSize: isMobile ? '10px' : '11px', 
-                    fontWeight: 600,
-                    margin: 0
-                  }}
-                >
-                  8% OFF
-                </Tag>
-              </>
-            )}
           </div>
           
-          {/* Savings Amount - only show if not out of stock */}
-          {!isHidden && (
-            <Text 
-              style={{ 
-                display: 'block',
-                fontSize: isMobile ? '11px' : '12px',
-                color: '#4CAF50',
-                fontWeight: 600,
-                marginTop: '4px'
-              }}
-            >
-              You save ₹{priceInfo.discountAmount.toLocaleString()}!
-            </Text>
-          )}
         </div>
 
         {/* Specifications - only show if not out of stock */}
